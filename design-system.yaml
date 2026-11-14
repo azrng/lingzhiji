@@ -2,170 +2,237 @@
 # 颜色、主题、字体、风格关键词当前为内置基线值：首次界面任务前按产品品牌定制，完成后把 meta.status 改为「已定制」
 # status 为「已定制」后 use-ai-rule 重新生成不再覆盖本文件；结构契约与定制流程见界面子规则的设计系统小节
 # 该文件面向人和 AI 共同使用：可读、可解析、非可执行、易于比对。
-# 技术栈：React + TypeScript + Ant Design 5 + ECharts + Zustand
+# 《灵植记》视觉候选方案；产品原型经用户确认前不锁定。
+# 技术栈：React + TypeScript + Tailwind CSS 4 + Zustand；图表仅在实际需要时启用。
 
 meta:
-  name: "企业级应用设计系统"
-  version: "2.1.0"
-  last_updated: "2026-05-19"
+  name: "灵植记设计系统"
+  version: "2.2.0"
+  last_updated: "2026-11-14"
   status: "基线待定制"
+  draft_note: "已按现有概念稿提出候选值；原型经用户确认后回填并改为已定制。"
   owners:
     - "design"
     - "frontend"
   tech_stack:
-    styling: "Ant Design 5 Design Token + CSS Modules（唯一样式引擎）"
-    icons: "@ant-design/icons（唯一图标库，尺寸 16-24px）"
-    charts: "ECharts + echarts-for-react（唯一图表库）"
+    styling: "Tailwind CSS 4；复杂画面允许使用引用同一 token 的局部 CSS"
+    icons: "功能图标使用 @ant-design/icons；灵植、资源和事件使用项目美术素材"
+    charts: "MVP 不引入图表；确有图表需求时遵循下方保留规范"
     state_global: "Zustand（跨组件全局状态）"
     state_local: "React Hooks（组件本地状态）"
   default_ports:
-    frontend: 3000 # React 开发服务器 / 容器内端口
-    backend: 8080 # ASP.NET Core / 容器内端口
-    database: 5432 # PostgreSQL / 容器内端口
+    frontend: 5173 # 候选 Vite 端口，以实际配置和可用端口为准
+    backend: null # MVP 无后端
+    database: null # MVP 无数据库
   api_base_url:
-    env_var: "VITE_API_BASE_URL"
-    default: "http://localhost:8080"
-    rule: "前端所有 API 请求统一读取此环境变量，禁止在代码中硬编码后端地址"
-  port_conflict_policy: "宿主机端口冲突时，优先调整 docker-compose.yml 中的宿主机映射端口，容器内端口保持不变，并同步更新 .env.example 和前端配置"
+    env_var: null
+    default: null
+    rule: "MVP 无远端 API；后续接入时按前端规则配置，不在客户端硬编码地址或密钥。"
+  port_conflict_policy: "开发端口冲突时使用其他可用端口并明确告知，实际启动方式以项目配置为准。"
   usage:
     read_order:
       - "在进行任何 UI 改动前阅读本文件"
-      - "然后查看 src/config/antd-theme.ts Ant Design 主题配置"
-      - "然后查看 src/config/echarts-theme.ts 图表主题配置"
+      - "查看最新 PRD 与已确认的界面原型"
+      - "实现阶段检查由本文件同步的 Tailwind 主题变量；规划路径见 tokens.theme_mapping"
       - "然后再查看现有页面与组件实现"
     principles:
       - "优先复用，而不是重新发明"
-      - "优先使用 Ant Design 组件和 Design Token，而不是硬编码视觉值"
+      - "使用本文件 token 派生 Tailwind 主题变量，而不是在组件硬编码视觉值"
       - "优先使用已有项目组件，而不是先写自定义组件"
-      - "图表颜色统一来自 echarts-theme，不在页面层硬编码"
+      - "本版无图表需求；后续图表颜色仍须引用统一 token"
 
 product:
   style_keywords:
-    - "专业"
-    - "清晰"
-    - "可信"
-    - "高效"
-    - "现代"
+    - "仙侠种田"
+    - "清雅手账"
+    - "草木与纸墨"
+    - "轻松清晰"
+    - "少量鎏金"
   ui_goal:
-    - "企业后台界面优先保证清晰度与信息密度平衡"
-    - "移动端界面需要保证触控舒适"
-    - "状态和反馈必须让用户一眼看懂"
-    - "数据可视化图表风格统一、专业"
+    - "灵田与作物是视觉主角，资源和行动信息为经营决策服务。"
+    - "背词区域保持安静、易读，答题反馈清晰，学习进度与种植反馈互相呼应。"
+    - "以桌面网页为主要体验；窄屏保持背词、种植、收获和结算可操作。"
+    - "采用现有概念稿的纸色、黛青、草绿和木色；金色只强调成熟、突破及少量主操作。"
+  reference:
+    visual_assets: "design/concept-art/ 的现有场景和人物概念稿"
+    interaction_source: "doc/requirements/lingzhiji/v0.1-prd.md；旧展示稿的玩法文案不作为事实来源"
+
+game_ui:
+  composition:
+    desktop: "以灵田为中心；顶部展示日期、境界和资源，侧边安排弟子与日志，底部放行动。"
+    narrow: "保留资源摘要与灵田，行动和日志依序排列；弹层不遮挡关闭与确认操作。"
+    emphasis: "自然山景与作物承担画面记忆点；控件底色平静，装饰不遮挡词义和状态。"
+  surfaces:
+    page: "tokens.semantic.background.page"
+    panel: "tokens.semantic.background.container"
+    primary: "tokens.colors.primary.500 + tokens.semantic.text.inverse"
+    milestone: "tokens.colors.accent.gold_pale + tokens.colors.accent.gold_ink；金色仅作强调"
+    overlay: "深色半透明遮罩；不可借模糊代替对比或层级"
+    gold_rule: "金色主要用于装饰和强调；小字使用 gold_ink 配 gold_pale，不在纸色上直接用浅金显示正文。"
+  controls:
+    primary: "一个视图只突出当前主要动作；主按钮用 primary.500 底和浅色文案。"
+    secondary: "次要操作用纸色或透明背景、control 边框和文字，不抢过主动作。"
+    disabled: "保留名称并展示不可操作原因，不只降低透明度或依赖悬停。"
+    resources: "灵气、灵石、贡献、修为显示名称与数值；上限变化时保持当前值清晰。"
+    progress: "生长和修为进度条同时提供数值或文字，颜色和动效只作辅助。"
+    feedback: "完成、消耗、错误和无资源均给出明确反馈；不阻断连续操作。"
+  type_roles:
+    title: "serif；字号 xl 至 3xl；只用于游戏标题、境界及重要时刻"
+    body: "sans；正文 16px、辅助说明不小于 14px；中文自然换行"
+    word: "单词独立突出，释义和四个选项优先清晰可读；无需依赖在线字体"
+    numeric: "资源、价格和日期使用等宽数字，避免变化时跳动"
+  fields:
+    empty: "显示可播种与可交互区域，不把空田表现为错误"
+    growing: "展示灵植名称、阶段和生长进度"
+    thirsty: "图形加文字提示缺水和后果，不只靠颜色"
+    ready: "成熟标识和可收获操作同时可见；无需持续闪烁"
+    locked: "展示所需境界和资源，不以单独锁图标解释原因"
+  study:
+    order: "词库选择 → 新词学习 → 十题测验 → 正误反馈 → 结果与奖励"
+    layout: "新词、释义和选项有足够间距；错误与正确答案均附文字说明。"
+    resume: "关闭或刷新后可继续当前学习；未完成不能结束游戏日，原因和入口可见。"
+  market_and_quota:
+    market: "同屏展示单价、种植境界、灵气成本和库存；未达境界的购买前清楚提示。"
+    quota: "展示需求、当前折算、选择明细、超额和欠缴后果；首月适应期单独提示。"
+  accessibility:
+    contrast: "普通文字对其背景至少 4.5:1；大文字至少 3:1，关键控件边界至少 3:1。"
+    input: "键盘可完成全部操作；交互焦点明显且不被遮挡，图标按钮有名称。"
+    touch: "常用操作触控区域至少 44×44 CSS px，相邻操作保留间距。"
+    feedback: "状态、错误、答案和资源变化同时使用文字或图形表达，不只依赖色彩。"
+    motion: "尊重 prefers-reduced-motion；成熟、播种、答题反馈可静态理解。"
+    modal: "打开后焦点进入弹层，关闭恢复触发位置；支持键盘关闭但不能丢失已答进度。"
+  assets:
+    source: "现有概念稿和经确认的后续游戏素材；按实际授权使用。"
+    layering: "场景、灵植、角色和 UI 装饰分层；文字与交互状态在界面中呈现，不烘焙进背景。"
+    formats: "插画使用适当压缩的 WebP/PNG；需透明背景的素材保留透明通道；矢量素材使用 SVG。"
+    consistency: "六种灵植使用统一视角、光照和比例；不同生长状态需靠轮廓和名称区分。"
+    loading: "图片提前预留尺寸，加载失败时显示可识别名称与操作，不阻塞背词。"
+  motion:
+    feedback: "点击、播种和收获以短促、可跳过的反馈为主；不让动效阻止连续操作。"
+    milestone: "境界突破可用一次性较明显反馈，支持跳过与减少动效。"
 
 # ============================================================
 # 颜色 Token
-# 实现资源：src/config/antd-theme.ts 的 Design Token 映射
-# 使用方式：经 ConfigProvider theme token 或 CSS Modules 变量引用，禁止硬编码
+# 由本文件作为唯一事实来源，在实现阶段同步到 Tailwind @theme 与 CSS 变量；禁止组件硬编码。
 # ============================================================
 tokens:
   colors:
-    # 主品牌色 - Ant Design 蓝
+    # 灵田黛绿：可用于主按钮，使用白色按钮文案
     primary:
-      50: "#E6F4FF"
-      100: "#BAE0FF"
-      200: "#91CAFF"
-      300: "#69B1FF"
-      400: "#4096FF"
-      500: "#1677FF" # Ant Design 默认主色，用于主按钮、链接、激活态
-      600: "#0958D9" # hover 态
-      700: "#003EB3" # active 态
-      800: "#002C8C"
-      900: "#001D66"
+      50: "#EEF5F0"
+      100: "#DCEBE0"
+      200: "#BFD8C6"
+      300: "#99BEA5"
+      400: "#6F9B80"
+      500: "#315F4D"
+      600: "#284E40"
+      700: "#203F34"
+      800: "#1C352D"
+      900: "#172B25"
 
-    # 成功色 - 企业绿
+    # 成功状态：搭配文字与图形，不只靠颜色
     success:
-      50: "#F0FDF4"
-      100: "#E6FBEE"
-      200: "#BFFCE0"
-      300: "#8FF7D0"
-      400: "#5AE9BA"
-      500: "#10B981" # 主成功色
-      600: "#059669"
-      700: "#047857"
-      800: "#065F46"
-      900: "#064E3B"
+      50: "#E6F2E8"
+      100: "#D4E8D8"
+      200: "#B9D6C0"
+      300: "#91BE9E"
+      400: "#6C9E7C"
+      500: "#2F6B46"
+      600: "#285C3C"
+      700: "#214B32"
+      800: "#1A3D29"
+      900: "#152F20"
 
-    # 警告色 - 企业橙
+    # 警告状态：定额和缺水提醒
     warning:
-      50: "#FEF3C7"
-      100: "#FEE8B6"
-      200: "#FDD48F"
-      300: "#FBC15E"
-      400: "#F9A825"
-      500: "#F59E0B" # 主警告色
-      600: "#D97706"
-      700: "#B45309"
-      800: "#92400E"
-      900: "#78350F"
+      50: "#FBF2DA"
+      100: "#F5E7C4"
+      200: "#E9D5A0"
+      300: "#D9BD78"
+      400: "#B8913C"
+      500: "#78520D"
+      600: "#68470C"
+      700: "#573B0A"
+      800: "#473008"
+      900: "#382607"
 
-    # 错误色 - 企业红
+    # 错误状态：答错、保存失败
     error:
-      50: "#FEF2F2"
-      100: "#FEE2E2"
-      200: "#FECACA"
-      300: "#FCA5A5"
-      400: "#F87171"
-      500: "#EF4444" # 主错误色
-      600: "#DC2626"
-      700: "#B91C1C"
-      800: "#991B1B"
-      900: "#7F1D1D"
+      50: "#FBECE8"
+      100: "#F5DAD3"
+      200: "#E9B9AE"
+      300: "#D99787"
+      400: "#C96A5A"
+      500: "#9F3A2D"
+      600: "#8B3227"
+      700: "#75291F"
+      800: "#602119"
+      900: "#4B1A14"
 
     # 信息色
     info:
-      50: "#EFF6FF"
-      100: "#DBEAFE"
-      500: "#1A90FF"
-      600: "#0078E0"
+      50: "#EAF2F1"
+      100: "#D3E5E2"
+      500: "#2F5560"
+      600: "#264750"
 
     # 中性色 - 灰度系
     gray:
-      50: "#FAFBFC"
-      100: "#F3F4F6"
-      150: "#EBEEF2"
-      200: "#E5E7EB"
-      300: "#D1D5DB"
-      400: "#9CA3AF"
-      500: "#6B7280"
-      600: "#4B5563"
-      700: "#374151"
-      800: "#1F2937"
-      900: "#111827"
+      50: "#FFFDF8"
+      100: "#F7F2E7"
+      150: "#F0EBE0"
+      200: "#E7DFCB"
+      300: "#C9BFA6"
+      400: "#9A9989"
+      500: "#66766C"
+      600: "#55675E"
+      700: "#46534C"
+      800: "#2F3B36"
+      900: "#202B27"
+    accent:
+      gold: "#B8913C"
+      gold_pale: "#F7E9BD"
+      gold_ink: "#6E4E12"
+      wood: "#8F6B3D"
+      soil: "#B08D5F"
+      herb: "#7FBF7F"
+      glow: "#FFE9A8"
 
   # ============================================================
-  # 语义化颜色映射（使用 Ant Design Design Token）
-  # 优先使用 ConfigProvider theme token，而非硬编码颜色
+  # 语义角色引用上方 token；映射到 Tailwind @theme，不维护第二份配色。
   # ============================================================
   semantic:
     text:
-      primary: "colorText" # Ant Design token: colorText
-      secondary: "colorTextSecondary" # colorTextSecondary
-      disabled: "colorTextDisabled" # colorTextDisabled
-      inverse: "colorTextLightSolid" # 深色背景上的白色文本
-      link: "colorPrimary" # colorPrimary
-      link_hover: "colorPrimaryHover" # colorPrimaryHover
+      primary: "tokens.colors.gray.800"
+      secondary: "tokens.colors.gray.600"
+      disabled: "tokens.colors.gray.400"
+      inverse: "tokens.colors.gray.50"
+      link: "tokens.colors.primary.500"
+      link_hover: "tokens.colors.primary.600"
     background:
-      page: "colorBgLayout" # colorBgLayout
-      container: "colorBgContainer" # colorBgContainer
-      subtle: "colorBgContainer" # colorBgContainer
-      active: "colorPrimaryBg" # colorPrimaryBg
+      page: "tokens.colors.gray.100"
+      container: "tokens.colors.gray.50"
+      subtle: "tokens.colors.gray.150"
+      active: "tokens.colors.primary.50"
     border:
-      default: "colorBorderSecondary" # colorBorderSecondary
-      strong: "colorBorder" # colorBorder
-      focus: "colorPrimary" # colorPrimary
+      default: "tokens.colors.gray.200" # 装饰性分隔
+      strong: "tokens.colors.gray.300" # 非交互容器边界
+      control: "tokens.colors.gray.600" # 交互控件边界
+      focus: "tokens.colors.info.500"
     status:
-      success_bg: "colorSuccessBg"
-      success_text: "colorSuccess"
-      warning_bg: "colorWarningBg"
-      warning_text: "colorWarning"
-      error_bg: "colorErrorBg"
-      error_text: "colorError"
-      info_bg: "colorInfoBg"
-      info_text: "colorInfo"
+      success_bg: "tokens.colors.success.50"
+      success_text: "tokens.colors.success.500"
+      warning_bg: "tokens.colors.warning.50"
+      warning_text: "tokens.colors.warning.500"
+      error_bg: "tokens.colors.error.50"
+      error_text: "tokens.colors.error.500"
+      info_bg: "tokens.colors.info.50"
+      info_text: "tokens.colors.info.500"
 
   typography:
     font_family:
-      sans: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+      sans: "'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif"
+      serif: "'Songti SC', STSong, SimSun, serif"
       mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
     font_size:
       xs: "12px" # text-xs
@@ -221,8 +288,8 @@ tokens:
     none: "none"
     xs: "0 1px 2px 0 rgba(0,0,0,0.04)"
     sm: "0 1px 3px 0 rgba(0,0,0,0.08)"
-    md: "0 4px 8px -2px rgba(0,0,0,0.10), 0 2px 4px -2px rgba(0,0,0,0.06)"
-    lg: "0 10px 15px -3px rgba(0,0,0,0.10), 0 4px 6px -2px rgba(0,0,0,0.05)"
+    md: "0 4px 12px rgba(47,85,96,0.08)"
+    lg: "0 10px 28px rgba(47,85,96,0.12)"
     xl: "0 20px 25px -5px rgba(0,0,0,0.10), 0 10px 10px -5px rgba(0,0,0,0.04)"
 
   transitions:
@@ -239,13 +306,21 @@ tokens:
     xl: "1280px" # 宽屏
     2xl: "1536px" # 超宽屏
 
+  theme_mapping:
+    status: "规划；实现资源尚未创建"
+    location: "src/styles/theme.css"
+    rule: "从本文件同步颜色、字体、间距、圆角及阴影到 Tailwind CSS 4 @theme；CSS 为执行映射，不作为第二份设计事实来源。"
+    example: "tokens.colors.primary.500 对应 --color-primary-500，供 bg-primary-500 等工具类使用。"
+
 # ============================================================
 # ECharts 图表主题配置
 # 具体实现文件：src/config/echarts-theme.ts
 # 所有图表颜色、字体、网格、tooltip 均来自此配置
 # ============================================================
 echarts:
-  theme_name: "enterprise"
+  active: false
+  scope: "MVP 无图表；以下为历史基线，不构成依赖或页面需求。后续使用前须按本文件 token 重新定制。"
+  theme_name: "legacy-enterprise"
   color_palette:
     - "#1A90FF" # 主蓝（primary-500）
     - "#10B981" # 主绿（success-500）
@@ -283,6 +358,8 @@ echarts:
 # 通过 ConfigProvider theme token 统一管理
 # ============================================================
 ant_design:
+  active: false
+  scope: "历史组件主题映射，保留供追溯；灵植记不使用 antd 组件或 ConfigProvider，本节不适用于当前实现。"
   theme_config:
     location: "src/config/antd-theme.ts"
     description: "通过 ConfigProvider 的 theme.token 属性自定义主题"
@@ -310,20 +387,16 @@ state_management:
   local_state:
     tool: "React Hooks（useState、useReducer、useCallback、useEffect）"
     use_for:
-      - "表单输入值"
-      - "弹窗开关"
+      - "当前弹层开关与纯展示状态"
+      - "导入输入值和选择操作"
       - "单个组件的 loading/error 状态"
-      - "本地筛选、排序、分页"
   global_state:
     tool: "Zustand"
-    store_location: "src/store/"
+    store_location: "src/stores/"
     use_for:
-      - "当前登录用户信息"
-      - "权限与角色"
-      - "侧边菜单折叠状态"
-      - "全局通知/消息"
-      - "跨页面共享的筛选条件"
-      - "主题/语言配置"
+      - "游戏日、资源、灵田与境界"
+      - "任务堂进度、词库选择和跨库学习记录"
+      - "坊市、定额、事件与存档状态"
     store_naming: "use[Domain]Store（如 useUserStore、usePermissionStore）"
     forbidden:
       - "Redux"
@@ -342,18 +415,18 @@ page_states:
     - "no-permission"
   guidance:
     loading:
-      description: "数据加载中"
-      implementation: "列表/表格用骨架屏（Skeleton 效果），按钮操作用 disabled + spinner"
+      description: "本地存档或词库加载中"
+      implementation: "主要区域保留尺寸并显示加载提示，保存和导入中的按钮防止重复提交"
       skeleton_example: "CSS Modules 中以 colors token 组合实现骨架屏背景"
     empty:
-      description: "无数据"
-      implementation: "展示空状态图示 + 简短说明 + 引导操作按钮"
+      description: "空田、空仓库或尚无学习记录"
+      implementation: "展示状态名称和下一步操作，不将正常空状态表现为错误"
     error:
-      description: "请求失败"
-      implementation: "展示可读的错误原因，提供重试按钮"
+      description: "本地存档、导入或词库加载失败"
+      implementation: "说明发生的问题，保留现有进度并提供重试或返回；存档失败时明确提示"
     no_permission:
-      description: "权限不足"
-      implementation: "明确说明权限不足，不暴露内部实现细节"
+      description: "浏览器拒绝存储或访问必要资源"
+      implementation: "说明可采取的恢复方式；单机游戏不虚构账号、角色或权限系统"
 
 # ============================================================
 # 组件使用规则
@@ -432,7 +505,7 @@ component_rules:
 # ============================================================
 form_rules:
   layout:
-    label_position: "标签在输入框上方（top），企业表单标准布局"
+    label_position: "标签位于输入框上方，说明内容和用途"
     label_style: "text-sm font-medium text-gray-700"
     required_mark: "标签后紧跟红色星号 * ，使用 text-error-500"
     helper_text: "输入框下方，text-xs text-gray-500"
@@ -467,7 +540,8 @@ form_rules:
 # ============================================================
 # 组件详细规范
 # 口径说明：下方工具类字符串（如 text-sm、px-3、rounded-lg）仅为尺寸 / 色值语义速记，
-# 落地必须换算为本文件 token 经 antd-theme.ts（React）或 CSS 变量实现；本项目不引入 Tailwind，禁止照抄类名
+# 以下通用组件示例保留以供参考；仅适用当前游戏所需组件，具体外观以 game_ui 和本文件 token 为准。
+# 示例中旧灰阶、白色或框架 API 不得覆盖产品 token；Tailwind 类须使用本文件派生的主题值。
 # ============================================================
 component_specs:
   # ----------------------------------------------------------
@@ -1159,10 +1233,9 @@ icons:
     medium: 20
     large: 24
   usage_rules:
-    - "统一从 @ant-design/icons 导入，禁止自定义 SVG 或其他图标库"
-    - "尺寸统一用 style={{ fontSize: 20 }}：`<IconFont style={{ fontSize: 20 }} />`"
-    - "颜色通过 style 控制：`<PlusOutlined style={{ fontSize: 20, color: token.colorPrimary }} />`"
-    - "禁止使用 <img src='icon.svg' /> 或 <i className='fa-...' />"
+    - "通用功能图标统一使用 @ant-design/icons，尺寸和颜色通过主题类控制。"
+    - "灵植、资源与事件的专属插画可以使用项目 SVG/PNG 素材，不视为功能图标库。"
+    - "仅图标的按钮必须有可访问名称；装饰图标不重复朗读。"
 
 # ============================================================
 # 响应式设计规范
@@ -1188,14 +1261,14 @@ responsive:
 # ============================================================
 do:
   - "优先复用现有组件和页面模式"
-  - "优先使用 Ant Design 组件和 Design Token（token.colorPrimary 而非硬编码颜色）"
+  - "使用 Tailwind 主题变量和原生语义控件，游戏组件复用本文件 token"
   - "保持完整的页面状态反馈（loading/empty/error/no-permission）"
-  - "图表颜色统一来自 echarts-theme 配置文件"
+  - "未来如需图表，颜色通过主题资源引用本文件 token"
   - "全局状态使用 Zustand store，本地状态使用 React Hooks"
-  - "图标统一使用 @ant-design/icons"
+  - "功能图标使用 @ant-design/icons；游戏资源插画使用项目素材"
   - "响应式遵循移动优先原则"
   - "同时关注桌面端与移动端可读性"
-  - "主题定制统一通过 ConfigProvider theme token 配置"
+  - "主题变量由本文件同步到 Tailwind @theme；原型确认后锁定"
 
 dont:
   - "不要使用 style={{}} 属性硬编码样式"

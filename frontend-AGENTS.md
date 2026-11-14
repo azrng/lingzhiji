@@ -1,7 +1,7 @@
 ---
 rule_id: frontend-agents
-version: 3.0.8
-last_updated: 2026-11-07
+version: 3.0.9
+last_updated: 2026-11-14
 dependencies: [agents-root]
 ---
 
@@ -18,8 +18,8 @@ dependencies: [agents-root]
 
 ### 前端
 - React + TypeScript + Vite；版本以仓库锁定为准，不主动升级，新项目先联网检索当前最新正式版
-- Ant Design 5 组件库（antd）
-- Ant Design Icons（@ant-design/icons，唯一图标库）
+- Tailwind CSS 4；必要的复杂画面样式可使用引用同一 token 的局部 CSS
+- 通用功能图标使用 Ant Design Icons（@ant-design/icons）；灵植、资源和事件允许使用项目游戏美术素材
 - React Router 6（路由管理）
 - Zustand（全局状态管理：用户信息、权限、通知等跨组件共享状态）
 - Axios（HTTP 客户端）
@@ -41,11 +41,11 @@ dependencies: [agents-root]
   - 仓库已有样式实现：从现有代码反向提炼产品 token 回填 `design-system.yaml`，不强行套用基线值
   - 资料缺失：先向用户询问品牌色、明暗主题、密度等偏好，禁止把基线色默认当作产品主色
 - `meta.status` 为「已定制」后，`use-ai-rule` 重新生成会保留本地 `design-system.yaml` 不覆盖；定制后忘记改状态，下次生成会被基线覆盖
-- `meta.tech_stack` 与界面子规则声明的技术栈不一致（如规则为 Blazor 而文件仍是 React + Ant Design 基线，或基线组件库与项目实际引用的组件库不同）时，该文件视为过期基线：框架 / 组件库专属章节（组件主题映射、状态管理、构建环境变量、前端端口）一律不适用，仅可参考与框架无关的色彩 / 间距 token；先按上述定制流程重建或用 `use-ai-rule` 重新生成正确技术栈的基线再开始界面任务，并把不一致作为待确认项提请用户
+- `meta.tech_stack` 与界面子规则声明的技术栈不一致时，该文件中的框架 / 组件库专属章节一律不适用，仅可参考与框架无关的色彩 / 间距 token；先按定制流程重建或用 `use-ai-rule` 重新生成正确技术栈的基线，再开始界面任务，并把不一致作为待确认项提请用户
 - 调整 token 的固定顺序：先改 `design-system.yaml`，再同步文件中声明的实现资源（样式资源 / 主题配置 / 图表主题），最后改界面
 - 语义 token 的命名、分层与「token → 实现资源 → 组件」引用管线属于结构契约：可以改值、增删 token，不得另建平行 token 体系或在界面绕过 token 硬编码
-- 使用 Ant Design 主题系统（ConfigProvider + Design Token），所有视觉规范在 `design-system.yaml` 中定义
-- 优先使用 Ant Design 组件和样式，禁止 inline style，禁止硬编码颜色/间距/圆角
+- 以 `design-system.yaml` 为视觉规范唯一事实来源，实现阶段同步到 Tailwind CSS 4 的 `@theme` 和 CSS 变量
+- 优先使用原生语义控件与可复用游戏组件；禁止 inline style，禁止硬编码颜色/间距/圆角
 
 ### UI 规范锁定
 
@@ -191,8 +191,8 @@ project-root/
 │   ├── hooks/             # 自定义 Hooks（useXxx）
 │   ├── types/             # TypeScript 类型定义
 │   ├── utils/             # 纯工具函数
-│   ├── config/
-│   │   └── antd-theme.ts  # Ant Design 主题配置
+│   ├── styles/
+│   │   └── theme.css      # 由设计系统同步的 Tailwind 主题变量
 │   ├── App.tsx
 │   └── main.tsx
 ├── index.html
@@ -235,11 +235,11 @@ project-root/
 - 异步操作直接在 store actions 或组件中通过 async/await 处理
 
 ### 样式规则
-- 优先使用 Ant Design 组件内置样式和 Design Token
-- 自定义样式使用 CSS Modules 或全局 CSS，变量来自 `design-system.yaml`
+- 使用 Tailwind 工具类与 `@theme` 主题变量；复杂画面允许局部 CSS，变量来自 `design-system.yaml`
+- 原生控件与游戏专属组件保持一致的交互、可访问性和状态反馈
 - 禁止 inline style，禁止硬编码颜色值（如 `#1677ff`）
-- 主题定制统一通过 `ConfigProvider` 的 `theme` 属性配置
-- 响应式设计遵循移动优先原则，使用 Ant Design 的 Grid 系统（Row / Col）；存量样式文件已是桌面优先写法（max-width 查询）时，增量改动沿用该文件既有约定，不整体重写扩大 diff，新增文件仍遵循移动优先
+- 主题定制统一从 `design-system.yaml` 同步到 Tailwind `@theme` 与 CSS 变量
+- 响应式设计遵循移动优先原则，使用 CSS Grid / Flex 和统一断点；存量样式文件已是桌面优先写法（max-width 查询）时，增量改动沿用该文件既有约定，不整体重写扩大 diff，新增文件仍遵循移动优先
 
 ### 组件规则
 - 优先复用仓库已有的通用组件和业务域组件，禁止重复创建同类组件

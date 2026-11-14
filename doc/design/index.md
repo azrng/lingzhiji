@@ -22,8 +22,8 @@ relations:
 | lingzhiji | 存档（持久化 / 导入导出 / 多标签页） | `lingzhiji/save.md` | approved | REQ §14 §16 |
 | lingzhiji | 界面结构与状态（布局 / 线框 / 状态映射） | `lingzhiji/ui.md` | approved | REQ §13 |
 
-契约：存档结构草案见 `doc/contracts/lingzhiji/save-data.md`（CON-LINGZHIJI-SAVE-001，approved 草案待阶段 1 落地）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
+契约：存档契约 CON-LINGZHIJI-SAVE-001 已落地为 `src/game/types.ts` + `src/game/save.ts`（代码为事实来源，历史草案 `doc/contracts/lingzhiji/save-data.md` 已标 superseded）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
 
-原型：界面交互原型见 `prototype/lingzhiji/game-proto/`（React 同栈 mock 工程，选型决策与状态见 `lingzhiji/ui.md` §3.6，待用户确认）。
+原型：界面交互原型见 `prototype/lingzhiji/game-proto/`（React 同栈 mock 工程，选型决策与状态见 `lingzhiji/ui.md` §3.6；布局已定稿为侧边日志构图）。
 
 > 阶段流转：PRD 与全部设计文档均为 `approved` 后方可进入阶段 1；界面原型按 frontend-AGENTS.md「原型设计与确认」另行确认，视觉 token 以 `design-system.yaml`（当前为候选值）为准。

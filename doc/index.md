@@ -14,4 +14,4 @@ last_updated: 2026-11-14
 |---|---|---|---|---|---|
 | lingzhiji | 灵植记（修仙种田 × 背单词） | 需求 | `requirements/lingzhiji/v0.1-prd.md` | approved | REQ-LINGZHIJI-001 |
 | lingzhiji | 阶段 0 设计文档索引（架构 / 核心循环 / 种植 / 任务堂 / 经济 / 境界 / 存档 / 界面） | 设计 | `design/index.md` | approved | DES-INDEX → 各功能设计 |
-| lingzhiji | 存档结构契约草案 + 词库契约索引 | 契约 | `contracts/lingzhiji/save-data.md`、`contracts/lingzhiji.md` | approved | CON-LINGZHIJI-SAVE-001 / CON-LINGZHIJI-WLIB-001 |
+| lingzhiji | 存档结构契约（已落地为代码）+ 词库契约索引 | 契约 | `contracts/lingzhiji/save-data.md`（superseded）、`contracts/lingzhiji.md` | approved | CON-LINGZHIJI-SAVE-001 → `src/game/types.ts` / CON-LINGZHIJI-WLIB-001 |

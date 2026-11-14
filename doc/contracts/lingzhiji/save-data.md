@@ -3,16 +3,20 @@ doc_id: CON-LINGZHIJI-SAVE-001
 doc_type: contract-draft
 module: lingzhiji
 feature: save
-status: approved
-last_updated: 2026-11-14
+status: superseded
+last_updated: 2026-11-15
 relations:
   - doc/design/lingzhiji/save.md
   - doc/design/architecture.md
+  - src/game/types.ts
+  - src/game/save.ts
 ---
 
 # 契约草案：存档数据结构 v1（CON-LINGZHIJI-SAVE-001）
 
-完整字段只维护在本草案；各设计文档只引用编号。阶段 1 落地为 `src/game/types.ts` + `src/game/save.ts` 后，本文件标 `superseded` 并只留来源链接与变更记录。
+> **已落地（2026-11-15）**：本契约由阶段 1 实现落地为代码，**最终事实来源变更为 `src/game/types.ts`（GameState 结构）与 `src/game/save.ts`（校验与导码）**；本文件保留为历史草案，不再维护字段表，后续结构变更直接修改代码并同步 `doc/design/lingzhiji/save.md`。
+>
+> 落地差异说明：`rngState` 内嵌于 `GameState`（草案为顶层字段）；`LibStat.distinct` 改为 `distinctWords: string[]`（可序列化且支持首答口径）；新增 `MILESTONE_SHOWN` / `TUTORIAL_DONE` 动作。字段语义与设计文档一致。
 
 ## 顶层
 

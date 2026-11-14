@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 520">
+  <defs>
+    <radialGradient id="herbGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#DFF3D8" stop-opacity=".9"/>
+      <stop offset="100%" stop-color="#DFF3D8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="robe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#54836F"/>
+      <stop offset="100%" stop-color="#3F665A"/>
+    </linearGradient>
+  </defs>
+  <style>
+    @keyframes bob {0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+    .fl{animation:bob 3.6s ease-in-out infinite}
+    .fl2{animation:bob 4.4s ease-in-out .6s infinite}
+    .fl3{animation:bob 5.2s ease-in-out 1.1s infinite}
+  </style>
+
+  <!-- 地面阴影 -->
+  <ellipse cx="200" cy="470" rx="112" ry="15" fill="#2E2A28" opacity=".08"/>
+
+  <!-- 竹背篓（在最底层，被头身部分遮挡） -->
+  <g>
+    <rect x="108" y="66" width="184" height="136" rx="40" fill="#A9805B"/>
+    <rect x="108" y="66" width="184" height="36" rx="36" fill="#8F6B3D"/>
+    <g stroke="#8F6B3D" stroke-width="3" opacity=".45">
+      <line x1="110" y1="122" x2="290" y2="122"/>
+      <line x1="110" y1="144" x2="290" y2="144"/>
+      <line x1="110" y1="166" x2="290" y2="166"/>
+      <line x1="112" y1="188" x2="288" y2="188"/>
+    </g>
+    <g stroke="#C9A063" stroke-width="2.5" opacity=".5">
+      <path d="M150,78 Q142,124 150,196"/>
+      <path d="M200,74 L200,200"/>
+      <path d="M250,78 Q258,124 250,196"/>
+    </g>
+    <!-- 篓中灵草（探头） -->
+    <g class="fl">
+      <circle cx="122" cy="72" r="15" fill="url(#herbGlow)"/>
+      <path d="M122,70 Q116,58 120,48" stroke="#7FBF7F" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="116" cy="52" rx="7" ry="4" fill="#9BCF9B" transform="rotate(-28 116 52)"/>
+      <ellipse cx="127" cy="50" rx="7" ry="4" fill="#7FBF7F" transform="rotate(24 127 50)"/>
+    </g>
+    <g class="fl2">
+      <circle cx="278" cy="70" r="15" fill="url(#herbGlow)"/>
+      <path d="M278,68 Q284,56 280,46" stroke="#7FBF7F" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="285" cy="50" rx="7" ry="4" fill="#9BCF9B" transform="rotate(28 285 50)"/>
+      <ellipse cx="272" cy="52" rx="7" ry="4" fill="#7FBF7F" transform="rotate(-24 272 52)"/>
+    </g>
+  </g>
+
+  <!-- 颈 -->
+  <rect x="190" y="216" width="20" height="26" fill="#EBC5A5"/>
+
+  <!-- 道袍主体 -->
+  <path d="M162,240 C154,300 138,372 126,436 L274,436 C262,372 246,300 238,240 Z" fill="url(#robe)"/>
+  <!-- 中衣交领 -->
+  <path d="M200,240 L172,236 C180,266 189,280 200,288 C211,280 220,266 228,236 Z" fill="#F4EFE6"/>
+  <path d="M172,236 C180,266 189,280 200,288" fill="none" stroke="#3D6659" stroke-width="2.5"/>
+  <path d="M228,236 C220,266 211,280 200,288" fill="none" stroke="#3D6659" stroke-width="2.5"/>
+  <!-- 衣摆开缝 -->
+  <g stroke="#3D6659" stroke-width="2" opacity=".65">
+    <line x1="182" y1="354" x2="168" y2="430"/>
+    <line x1="218" y1="354" x2="232" y2="430"/>
+  </g>
+
+  <!-- 袖子 -->
+  <path d="M162,242 C130,254 108,282 102,314 C114,330 142,330 156,316 C154,290 156,262 162,242 Z" fill="#578A7A"/>
+  <path d="M238,242 C270,254 292,282 298,314 C286,330 258,330 244,316 C246,290 244,262 238,242 Z" fill="#578A7A"/>
+  <path d="M103,312 C113,327 141,328 155,314 L153,303 C141,317 117,317 106,303 Z" fill="#F4EFE6"/>
+  <path d="M297,312 C287,327 259,328 245,314 L247,303 C259,317 283,317 294,303 Z" fill="#F4EFE6"/>
+
+  <!-- 手 -->
+  <circle cx="118" cy="324" r="13" fill="#F2D5B8"/>
+  <circle cx="288" cy="324" r="13" fill="#F2D5B8"/>
+
+  <!-- 灵锄（右手持） -->
+  <path d="M290,322 Q306,392 320,460" stroke="#A9805B" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <path d="M294,468 Q320,450 346,468 Q322,486 294,468 Z" fill="#9AA6AD"/>
+  <path d="M312,458 L330,464 L326,474 L308,468 Z" fill="#6E5A43"/>
+
+  <!-- 背篓系带（压在袍子上） -->
+  <path d="M120,92 C108,160 132,224 158,246" stroke="#8F6B3D" stroke-width="9" fill="none" stroke-linecap="round" opacity=".95"/>
+  <path d="M280,92 C292,160 268,224 242,246" stroke="#8F6B3D" stroke-width="9" fill="none" stroke-linecap="round" opacity=".95"/>
+
+  <!-- 腰带与挂饰 -->
+  <path d="M146,318 L254,318 L258,352 L142,352 Z" fill="#D9B45B"/>
+  <circle cx="200" cy="335" r="8" fill="#B98F3E"/>
+  <g stroke="#B98F3E" stroke-width="3" stroke-linecap="round">
+    <line x1="193" y1="352" x2="189" y2="382"/>
+    <line x1="207" y1="352" x2="211" y2="382"/>
+  </g>
+  <circle cx="189" cy="386" r="4.5" fill="#B98F3E"/>
+  <circle cx="211" cy="386" r="4.5" fill="#B98F3E"/>
+  <line x1="200" y1="352" x2="200" y2="364" stroke="#B98F3E" stroke-width="2.5"/>
+  <path d="M200,364 L208,374 L200,390 L192,374 Z" fill="#7FC8B7" stroke="#5EA893" stroke-width="2"/>
+  <!-- 葫芦 -->
+  <g>
+    <circle cx="256" cy="378" r="9" fill="#C98A4B"/>
+    <circle cx="256" cy="394" r="12" fill="#C98A4B"/>
+    <rect x="250" y="366" width="12" height="6" rx="2" fill="#D9B45B"/>
+  </g>
+
+  <!-- 靴 -->
+  <rect x="142" y="436" width="38" height="20" rx="8" fill="#3A3F45"/>
+  <rect x="220" y="436" width="38" height="20" rx="8" fill="#3A3F45"/>
+
+  <!-- 头部 -->
+  <g>
+    <circle cx="200" cy="140" r="84" fill="#2E2A28"/>
+    <circle cx="200" cy="150" r="76" fill="#F2D5B8"/>
+    <circle cx="127" cy="164" r="11" fill="#F2D5B8"/>
+    <circle cx="273" cy="164" r="11" fill="#F2D5B8"/>
+    <!-- 刘海 -->
+    <path d="M130,152 C130,96 162,72 200,72 C238,72 270,96 270,152 C262,128 250,134 244,118 C236,132 224,120 216,130 C208,118 194,130 184,120 C174,132 162,124 154,138 C146,128 136,136 130,152 Z" fill="#2E2A28"/>
+    <!-- 发髻与木簪 -->
+    <circle cx="200" cy="58" r="25" fill="#2E2A28"/>
+    <path d="M186,48 Q200,40 214,48" stroke="#4A4440" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <line x1="156" y1="58" x2="254" y2="36" stroke="#B99A6B" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="254" cy="36" r="6" fill="#D9B45B"/>
+    <rect x="180" y="72" width="40" height="9" rx="4.5" fill="#D9B45B"/>
+    <!-- 眉眼 -->
+    <path d="M158,154 Q170,148 182,154" stroke="#2E2A28" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M218,154 Q230,148 242,154" stroke="#2E2A28" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="168" cy="174" rx="15" ry="17" fill="#FFFFFF"/>
+    <ellipse cx="232" cy="174" rx="15" ry="17" fill="#FFFFFF"/>
+    <circle cx="168" cy="176" r="10" fill="#2E2A28"/>
+    <circle cx="232" cy="176" r="10" fill="#2E2A28"/>
+    <circle cx="164" cy="170" r="3.5" fill="#FFFFFF"/>
+    <circle cx="228" cy="170" r="3.5" fill="#FFFFFF"/>
+    <!-- 嘴与腮红 -->
+    <path d="M191,205 Q200,213 209,205" stroke="#C06A58" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="141" cy="196" rx="13" ry="7.5" fill="#F0AC92" opacity=".6"/>
+    <ellipse cx="259" cy="196" rx="13" ry="7.5" fill="#F0AC92" opacity=".6"/>
+  </g>
+
+  <!-- 灵气光点 -->
+  <g>
+    <circle class="fl" cx="92" cy="150" r="5" fill="#DFF3D8" opacity=".9"/>
+    <circle class="fl2" cx="314" cy="122" r="4" fill="#FFE9A8" opacity=".9"/>
+    <circle class="fl3" cx="304" cy="252" r="5" fill="#CFEFD0" opacity=".85"/>
+    <circle class="fl2" cx="84" cy="262" r="4" fill="#FFE9A8" opacity=".85"/>
+    <circle class="fl3" cx="118" cy="58" r="4" fill="#CFEFD0" opacity=".9"/>
+  </g>
+</svg>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵植记 · 概念设定 v0.1</title>
+<style>
+  :root{
+    --paper:#F7F2E7;
+    --card:#FFFDF8;
+    --ink:#2F3B36;
+    --ink-soft:#5E6B64;
+    --dai:#2F5560;
+    --green:#4A7C6F;
+    --gold:#B8913C;
+    --line:#E7DFCB;
+    --c-dai:#2F5560; --c-green:#4A7C6F; --c-paper:#F7F2E7; --c-wood:#8F6B3D;
+    --c-herb:#7FBF7F; --c-gold:#D9B45B; --c-red:#C96A5A; --c-ink:#2E2A28;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:
+      radial-gradient(circle at 12% 8%, rgba(185,207,198,.18) 0 26%, transparent 40%),
+      radial-gradient(circle at 88% 90%, rgba(217,180,91,.12) 0 22%, transparent 38%),
+      var(--paper);
+    color:var(--ink);
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.7;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:56px 28px 72px}
+
+  /* 头部 */
+  header{margin-bottom:44px;animation:up .7s ease both}
+  .kicker{color:var(--gold);letter-spacing:.42em;font-size:13px;margin-bottom:10px}
+  h1{
+    font-family:"Songti SC","STSong","SimSun",serif;
+    font-size:44px;font-weight:700;color:var(--dai);letter-spacing:.12em;
+  }
+  h1 small{font-size:17px;color:var(--ink-soft);font-weight:400;letter-spacing:.2em;margin-left:14px}
+  header p{color:var(--ink-soft);margin-top:10px;font-size:15px}
+  .head-rule{margin-top:22px;height:1px;background:linear-gradient(90deg,var(--gold),transparent 70%)}
+
+  /* 区块 */
+  section{margin-top:52px;animation:up .7s ease both}
+  section:nth-of-type(2){animation-delay:.1s}
+  section:nth-of-type(3){animation-delay:.18s}
+  section:nth-of-type(4){animation-delay:.26s}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:20px}
+  .sec-no{
+    font-family:"Songti SC","STSong","SimSun",serif;color:var(--gold);
+    font-size:14px;letter-spacing:.3em;border:1px solid var(--gold);
+    border-radius:999px;padding:2px 12px 2px 14px;white-space:nowrap;
+  }
+  .sec-head h2{
+    font-family:"Songti SC","STSong","SimSun",serif;font-size:26px;
+    color:var(--dai);letter-spacing:.14em;font-weight:700;
+  }
+  .sec-head::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:26px;box-shadow:0 10px 28px rgba(63,86,74,.08);
+    transition:transform .3s ease, box-shadow .3s ease;
+  }
+  .card:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(63,86,74,.13)}
+
+  /* 人物区 */
+  .char-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .char-stage{
+    display:flex;justify-content:center;padding:12px 0;
+    background:radial-gradient(ellipse at 50% 88%, rgba(143,107,61,.12) 0 32%, transparent 60%);
+  }
+  .char-stage img{height:440px;max-width:100%}
+  .avatar-row{display:flex;align-items:center;gap:22px;margin-bottom:18px}
+  .avatar{
+    width:132px;height:132px;border-radius:50%;overflow:hidden;flex:none;
+    border:3px solid var(--line);background:radial-gradient(circle at 50% 42%, #EFF5EE 0 62%, #E4EDE4 100%);
+  }
+  .avatar img{width:412px;margin-left:-140px;margin-top:-93px;display:block}
+  .avatar-row h3{
+    font-family:"Songti SC","STSong","SimSun",serif;font-size:21px;color:var(--dai);letter-spacing:.1em;
+  }
+  .avatar-row p{color:var(--ink-soft);font-size:14px;margin-top:4px}
+  .traits{list-style:none;font-size:15px}
+  .traits li{padding:7px 0 7px 22px;position:relative;border-bottom:1px dashed var(--line)}
+  .traits li:last-child{border-bottom:none}
+  .traits li::before{content:"◆";position:absolute;left:2px;color:var(--gold);font-size:10px;top:13px}
+  .traits b{color:var(--dai)}
+
+  /* 环境区 */
+  .env-card img{width:100%;display:block;border-radius:10px}
+  .scene{
+    position:relative;margin-top:24px;overflow:hidden;border-radius:10px;
+    border:1px solid var(--line);
+  }
+  .scene img.env{width:100%;display:block}
+  .scene img.char{position:absolute;height:34%;right:20%;bottom:5.5%}
+  .scene-cap{position:absolute;left:16px;top:12px;background:rgba(47,85,96,.72);color:#F4EFE0;
+    font-size:13px;letter-spacing:.18em;padding:4px 14px;border-radius:999px;backdrop-filter:blur(2px)}
+
+  /* 色板 */
+  .palette{display:flex;flex-wrap:wrap;gap:14px}
+  .chip{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;
+    display:flex;align-items:center;gap:11px;min-width:150px}
+  .chip i{width:34px;height:34px;border-radius:9px;display:block;border:1px solid rgba(46,42,40,.12)}
+  .chip .t{font-size:13px;color:var(--ink)}
+  .chip .h{font-size:11px;color:var(--ink-soft);font-family:Consolas,monospace}
+
+  /* 说明 */
+  .notes{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .notes ul{list-style:none;font-size:15px}
+  .notes li{padding:8px 0 8px 22px;position:relative;border-bottom:1px dashed var(--line)}
+  .notes li:last-child{border-bottom:none}
+  .notes li::before{content:"◆";position:absolute;left:2px;color:var(--gold);font-size:10px;top:14px}
+  .notes b{color:var(--dai)}
+
+  footer{margin-top:56px;color:var(--ink-soft);font-size:13px;text-align:center;letter-spacing:.14em}
+
+  @keyframes up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  @media (max-width:820px){
+    .char-grid,.notes{grid-template-columns:1fr}
+    h1{font-size:34px}
+    .char-stage img{height:360px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">LINGZHIJI · CONCEPT ART</div>
+    <h1>灵植记<small>概念设定 v0.1 · 待审核</small></h1>
+    <p>风格方向：淡雅仙侠手账风 —— 黛青底色 · 云雾纹理 · 金色点缀 · 灵草微光。全部资产为手绘 SVG（矢量 / 可动画 / 可直接嵌入游戏 UI），审阅通过后作为游戏主视觉基调。</p>
+    <div class="head-rule"></div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">壹</span><h2>人物形象 · 灵植弟子</h2></div>
+    <div class="char-grid">
+      <div class="card char-stage">
+        <img src="character-lingzhi-dizi.svg" alt="灵植弟子立绘">
+      </div>
+      <div class="card">
+        <div class="avatar-row">
+          <div class="avatar"><img src="character-lingzhi-dizi.svg" alt="头像"></div>
+          <div>
+            <h3>外门灵植弟子</h3>
+            <p>开局形象：练气一层 · 青云宗 · 初得三块灵田</p>
+          </div>
+        </div>
+        <ul class="traits">
+          <li><b>丸子发髻 + 木簪金簪头</b> —— 辨识度记忆点，境界提升后可换发饰（二期）</li>
+          <li><b>青绿道袍 + 米白交领中衣</b> —— 主色即游戏 UI 主色，统一视觉</li>
+          <li><b>竹背篓装灵草（微光）</b> —— 点题"灵植"，展示收获成果</li>
+          <li><b>右手灵锄</b> —— 种田主行动的具象化</li>
+          <li><b>腰间玉佩与葫芦</b> —— 修仙味道的软装饰，金色点缀呼应 UI</li>
+          <li><b>周身灵气光点</b> —— 背词合格后灌注灵气的视觉语言</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">贰</span><h2>环境图 · 灵田场景</h2></div>
+    <div class="card env-card">
+      <img src="environment-spirit-field.svg" alt="灵田环境图">
+      <div class="scene">
+        <span class="scene-cap">场景合成预览 · 弟子站在成熟灵草旁</span>
+        <img class="env" src="environment-spirit-field.svg" alt="合成预览">
+        <img class="char" src="character-lingzhi-dizi.svg" alt="弟子">
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">叁</span><h2>色彩体系</h2></div>
+    <div class="palette">
+      <div class="chip"><i style="background:#2F5560"></i><div class="t">黛青<span class="h"><br>#2F5560</span></div></div>
+      <div class="chip"><i style="background:#4A7C6F"></i><div class="t">青绿<span class="h"><br>#4A7C6F</span></div></div>
+      <div class="chip"><i style="background:#F7F2E7"></i><div class="t">宣纸<span class="h"><br>#F7F2E7</span></div></div>
+      <div class="chip"><i style="background:#8F6B3D"></i><div class="t">木褐<span class="h"><br>#8F6B3D</span></div></div>
+      <div class="chip"><i style="background:#7FBF7F"></i><div class="t">灵草绿<span class="h"><br>#7FBF7F</span></div></div>
+      <div class="chip"><i style="background:#D9B45B"></i><div class="t">流金<span class="h"><br>#D9B45B</span></div></div>
+      <div class="chip"><i style="background:#C96A5A"></i><div class="t">朱砂<span class="h"><br>#C96A5A</span></div></div>
+      <div class="chip"><i style="background:#2E2A28"></i><div class="t">墨色<span class="h"><br>#2E2A28</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">肆</span><h2>风格说明与用途</h2></div>
+    <div class="notes">
+      <div class="card">
+        <ul class="traits">
+          <li><b>开始画面</b> —— 环境图作背景，人物立绘居中，故事引子覆盖其上</li>
+          <li><b>游戏主界面</b> —— 环境图裁切作顶部横幅 / 田地区域背景</li>
+          <li><b>头像</b> —— 圆形裁切，用于状态栏与结算成绩单</li>
+          <li><b>灵气光点动画</b> —— 测验合格、灌注时的即时反馈特效语言</li>
+        </ul>
+      </div>
+      <div class="card">
+        <ul class="traits">
+          <li><b>全部为手绘 SVG</b> —— 无版权风险、体积极小、可无损缩放、可加动画</li>
+          <li><b>初版定调</b> —— 本页确定人物/场景/配色的方向，细节可逐版迭代</li>
+          <li><b>后续可升级</b> —— 若想换 AI 生图或像素风，配色体系（第叁节）仍然复用</li>
+          <li><b>审核方式</b> —— 对造型、配色、气质提意见，我按意见修订</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>灵植记 · 概念设定 v0.1 · 2026-11-14</footer>
+</div>
+</body>
+</html>

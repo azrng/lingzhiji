@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵植记 · Mock 界面原型 v0.1</title>
+<style>
+  :root{
+    --paper:#F7F2E7; --card:#FFFDF8; --ink:#2F3B36; --ink-soft:#6B7770;
+    --dai:#2F5560; --green:#4A7C6F; --green-soft:#578A7A; --green-deep:#3D6659;
+    --gold:#D9B45B; --gold-deep:#B8913C; --wood:#8F6B3D; --wood-deep:#6E5A43;
+    --soil:#B08D5F; --soil-line:#A17C50; --herb:#7FBF7F; --herb-soft:#9BCF9B;
+    --herb-pale:#DFF3D8; --glow:#FFE9A8; --red:#C96A5A; --inkc:#2E2A28;
+    --line:#E7DFCB; --shadow:0 10px 28px rgba(47,85,96,.12);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:
+      radial-gradient(circle at 10% 6%, rgba(185,207,198,.16) 0 24%, transparent 42%),
+      radial-gradient(circle at 92% 96%, rgba(217,180,91,.10) 0 20%, transparent 40%),
+      var(--paper);
+    color:var(--ink);
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.65; min-height:100vh;
+  }
+  .serif{font-family:"Songti SC","STSong","SimSun",serif}
+  button{font-family:inherit;cursor:pointer}
+
+  .app{max-width:1140px;margin:0 auto;padding:22px 24px 40px}
+
+  /* ============ 顶栏 ============ */
+  .topbar{
+    display:flex;align-items:center;gap:0;background:var(--card);
+    border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+    padding:12px 20px;margin-bottom:18px;
+  }
+  .tb-cell{padding:0 18px;display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--line)}
+  .tb-cell:first-child{padding-left:0}
+  .tb-cell:last-child{border-right:none}
+  .tb-label{font-size:11px;color:var(--ink-soft);letter-spacing:.22em}
+  .tb-value{font-size:17px;color:var(--dai);font-weight:600;letter-spacing:.04em}
+  .tb-value small{font-size:12px;color:var(--ink-soft);font-weight:400}
+  .grow{flex:1}
+  .xiuwei{width:150px;height:8px;background:#EAE3D2;border-radius:99px;overflow:hidden;margin-top:3px}
+  .xiuwei i{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--gold),var(--gold-deep));border-radius:99px}
+  .res{display:flex;align-items:baseline;gap:6px}
+  .res b{font-size:18px;color:var(--dai)}
+  .res .ic{font-size:15px}
+  .lingqi-dots{display:flex;gap:4px;margin-top:4px}
+  .lingqi-dots i{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--gold-deep)}
+  .lingqi-dots i.full{background:radial-gradient(circle at 35% 35%, var(--glow), var(--gold));border-color:var(--gold-deep)}
+  .quota-chip{
+    margin-left:14px;background:linear-gradient(135deg,#FBF4E2,#F4EACB);border:1px solid var(--gold);
+    color:#7A5F1E;border-radius:999px;padding:6px 14px;font-size:13px;display:flex;align-items:center;gap:8px;
+  }
+  .quota-chip:hover{filter:brightness(1.03)}
+  .quota-mini{width:64px;height:6px;background:#E7DBB8;border-radius:99px;overflow:hidden}
+  .quota-mini i{display:block;height:100%;width:80%;background:var(--gold-deep)}
+
+  /* ============ 主体两栏 ============ */
+  .main{display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start}
+  @media (max-width:920px){.main{grid-template-columns:1fr}}
+
+  /* 灵田区 */
+  .fields-head{display:flex;align-items:baseline;gap:12px;margin:2px 2px 12px}
+  .fields-head h2{font-size:19px;color:var(--dai);letter-spacing:.14em}
+  .fields-head span{font-size:12px;color:var(--ink-soft)}
+  .fields{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media (max-width:640px){.fields{grid-template-columns:1fr}}
+  .plot{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:14px 14px 12px;position:relative;overflow:hidden;
+    transition:transform .3s ease;
+  }
+  .plot:hover{transform:translateY(-2px)}
+  .plot-tag{
+    position:absolute;top:14px;right:12px;font-size:11px;letter-spacing:.1em;
+    padding:3px 10px;border-radius:999px;z-index:2;
+  }
+  .tag-ready{background:#F4EACB;color:#7A5F1E;border:1px solid var(--gold)}
+  .tag-growing{background:#EAF2EC;color:#3D6659;border:1px solid #BFD3C6}
+  .tag-empty{background:#F0EBE0;color:#8B8574;border:1px dashed #C9BFA6}
+  .plot-art{
+    height:118px;border-radius:12px;background:var(--soil);
+    border:3px solid var(--wood);display:flex;align-items:flex-end;justify-content:center;
+    position:relative;overflow:hidden;
+  }
+  .plot-art::before{
+    content:"";position:absolute;inset:10px;border-radius:8px;
+    background:repeating-linear-gradient(0deg,transparent 0 16px, rgba(110,90,67,.35) 16px 18px);
+  }
+  .plot-art svg{position:relative;z-index:1}
+  .array{
+    position:absolute;left:50%;bottom:10px;transform:translateX(-50%);
+    width:78%;height:30px;border:2.5px dashed rgba(240,212,138,.95);border-radius:50%;
+    box-shadow:0 0 14px rgba(255,233,168,.55), inset 0 0 12px rgba(255,233,168,.35);
+    animation:pulse 2.8s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.75}50%{opacity:1}}
+  .plot-info{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+  .plot-name{font-size:15px;font-weight:600;color:var(--dai)}
+  .plot-name small{font-size:11px;color:var(--ink-soft);font-weight:400;margin-left:6px}
+  .plot-day{font-size:12px;color:var(--ink-soft)}
+  .gbar{height:7px;background:#EAE3D2;border-radius:99px;overflow:hidden;margin-top:6px}
+  .gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--herb),#5E8F5E);border-radius:99px}
+  .plot-note{font-size:12px;color:var(--ink-soft);margin-top:6px;min-height:18px}
+
+  /* 侧栏：弟子卡 + 日志 */
+  .side{display:flex;flex-direction:column;gap:16px}
+  .disciple{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:16px;
+  }
+  .d-row{display:flex;align-items:center;gap:14px}
+  .d-avatar{
+    width:74px;height:74px;border-radius:50%;overflow:hidden;flex:none;
+    border:2.5px solid var(--gold);background:radial-gradient(circle at 50% 42%,#EFF5EE 0 62%,#E4EDE4 100%);
+  }
+  .d-avatar img{width:231px;margin-left:-79px;margin-top:-52px;display:block}
+  .d-name{font-size:16px;font-weight:600;color:var(--dai)}
+  .d-sub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .gongfa{
+    margin-top:12px;background:linear-gradient(135deg,#F2F6F0,#EAF1EA);
+    border:1px solid #CBDCCB;border-radius:12px;padding:10px 12px;
+  }
+  .gongfa .gf-top{display:flex;justify-content:space-between;align-items:baseline}
+  .gongfa b{color:var(--green-deep);font-size:14px}
+  .gongfa span{font-size:11px;color:var(--ink-soft)}
+  .gongfa .gbar{margin-top:7px}
+  .gongfa .gbar i{background:linear-gradient(90deg,#9BCF9B,#5E8F5E)}
+  .gf-tip{font-size:11px;color:var(--ink-soft);margin-top:6px}
+  .log{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:14px 16px;flex:1;
+  }
+  .log h3{font-size:14px;color:var(--dai);letter-spacing:.16em;margin-bottom:8px}
+  .log ul{list-style:none;font-size:13px}
+  .log li{padding:6px 0;border-bottom:1px dashed var(--line);color:#46534C}
+  .log li:last-child{border-bottom:none}
+  .log .tg{display:inline-block;font-size:10.5px;padding:1px 8px;border-radius:99px;margin-right:8px;letter-spacing:.08em}
+  .tg-ev{background:#F4EACB;color:#7A5F1E}
+  .tg-act{background:#EAF2EC;color:#3D6659}
+  .tg-task{background:#E4EEF2;color:#2F5560}
+  .tg-quota{background:#F7E7E3;color:#A34A3C}
+
+  /* ============ 行动面板 ============ */
+  .actions{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:14px 18px;margin-top:18px;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .ap{display:flex;flex-direction:column;gap:4px;padding-right:16px;border-right:1px solid var(--line)}
+  .ap .tb-label{font-size:11px}
+  .ap-dots{display:flex;gap:5px}
+  .ap-dots i{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#B7E3C0,#4E9C6A);border:1.5px solid #3E7F55}
+  .ap-dots i.used{background:#E7E0CF;border-color:#C9BFA6;box-shadow:none}
+  .act-btns{display:flex;gap:10px;flex-wrap:wrap;flex:1}
+  .abtn{
+    border:1.5px solid var(--wood);background:#FFF9EC;color:#6E5A43;
+    border-radius:12px;padding:9px 16px;font-size:14px;letter-spacing:.06em;
+    display:flex;align-items:center;gap:7px;transition:all .2s ease;
+  }
+  .abtn:hover{background:#FBF1DA;transform:translateY(-1px)}
+  .abtn.primary{
+    background:linear-gradient(135deg,#F7E9BD,#EFD489);border-color:var(--gold-deep);
+    color:#6E4E12;font-weight:600;
+  }
+  .abtn.primary:hover{filter:brightness(1.04)}
+  .abtn.done{background:#F0EBE0;border-color:#C9BFA6;color:#9A947F;cursor:not-allowed;transform:none}
+  .abtn .cost{font-size:11px;color:inherit;opacity:.65}
+
+  /* ============ 弹层 ============ */
+  .overlay{
+    position:fixed;inset:0;background:rgba(46,58,54,.42);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:var(--card);border:1px solid var(--line);border-radius:20px;
+    box-shadow:0 24px 60px rgba(24,40,36,.3);width:min(640px,94vw);
+    max-height:88vh;overflow:auto;padding:26px 28px;position:relative;
+    animation:pop .25s ease both;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+  .m-close{
+    position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;
+    border:1px solid var(--line);background:#F6F1E4;color:#8B8574;font-size:15px;
+  }
+  .m-close:hover{background:#EFE8D6}
+  .m-kicker{font-size:11px;color:var(--gold-deep);letter-spacing:.3em;margin-bottom:6px}
+  .m-title{font-size:22px;color:var(--dai);letter-spacing:.1em;margin-bottom:4px}
+  .m-sub{font-size:13px;color:var(--ink-soft)}
+
+  /* 测验 */
+  .quiz-progress{display:flex;align-items:center;gap:12px;margin:16px 0 6px}
+  .qp-bar{flex:1;height:9px;background:#EAE3D2;border-radius:99px;position:relative;overflow:visible}
+  .qp-bar i{display:block;height:100%;width:60%;background:linear-gradient(90deg,var(--herb),#5E8F5E);border-radius:99px}
+  .qp-bar .mark{position:absolute;left:60%;top:-4px;width:2px;height:17px;background:var(--gold-deep)}
+  .qp-text{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+  .rewards{display:flex;gap:8px;margin:10px 0 16px;flex-wrap:wrap}
+  .rw{font-size:12px;background:#F2F6F0;border:1px solid #CBDCCB;color:#3D6659;border-radius:999px;padding:3px 12px}
+  .rw.gold{background:#FBF4E2;border-color:var(--gold);color:#7A5F1E}
+  .q-word{font-size:34px;color:var(--dai);letter-spacing:.02em;margin:8px 0 2px}
+  .q-phon{font-size:13px;color:var(--ink-soft);font-family:Consolas,monospace}
+  .q-ask{font-size:14px;color:var(--ink);margin:14px 0 12px}
+  .opt{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    border:1.5px solid var(--line);background:#FDFAF2;border-radius:12px;
+    padding:11px 16px;font-size:15px;margin-bottom:9px;transition:all .18s ease;color:var(--ink);
+  }
+  .opt:hover{border-color:var(--gold);background:#FBF4E2}
+  .opt .abc{
+    width:26px;height:26px;border-radius:50%;background:#EAE3D2;color:#6B6552;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;
+  }
+  .opt.right{border-color:#4E9C6A;background:#EDF6EE}
+  .opt.right .abc{background:#4E9C6A;color:#fff}
+  .opt.wrong{border-color:var(--red);background:#F9ECE8}
+  .opt.wrong .abc{background:var(--red);color:#fff}
+  .quiz-result{
+    display:none;font-size:13px;margin-top:4px;padding:9px 14px;border-radius:10px;
+    background:#FBF4E2;color:#7A5F1E;border:1px solid var(--gold);
+  }
+  .quiz-result.on{display:block}
+  .m-foot{margin-top:14px;display:flex;justify-content:space-between;align-items:center}
+  .link-btn{border:none;background:none;color:var(--ink-soft);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+
+  /* 坊市 */
+  .mk-tabs{display:flex;gap:8px;margin:14px 0 12px}
+  .mk-tab{border:1.5px solid var(--line);background:#FDFAF2;border-radius:999px;padding:6px 18px;font-size:14px;color:var(--ink-soft)}
+  .mk-tab.on{border-color:var(--gold-deep);background:#FBF4E2;color:#7A5F1E;font-weight:600}
+  .mk-list{list-style:none}
+  .mk-item{
+    display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px dashed var(--line);
+  }
+  .mk-item:last-child{border-bottom:none}
+  .mk-ic{width:36px;height:36px;border-radius:10px;background:#F2ECDC;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  .mk-name{font-size:14.5px;color:var(--ink)}
+  .mk-name small{display:block;font-size:11.5px;color:var(--ink-soft)}
+  .mk-price{margin-left:auto;font-size:14px;color:var(--dai);font-weight:600;white-space:nowrap}
+  .mk-price small{font-size:11px;color:var(--ink-soft);font-weight:400}
+  .mk-btn{
+    border:1.5px solid var(--green);background:#EFF5EE;color:#3D6659;
+    border-radius:9px;padding:5px 14px;font-size:13px;margin-left:10px;
+  }
+  .mk-btn:hover{background:#E2EDE2}
+  .mk-lock{font-size:11.5px;color:#A34A3C;background:#F7E7E3;border-radius:999px;padding:2px 10px;margin-left:8px}
+
+  /* 定额 */
+  .quota-big{display:flex;align-items:baseline;gap:10px;margin:14px 0 8px}
+  .quota-big b{font-size:40px;color:var(--dai)}
+  .quota-big span{font-size:14px;color:var(--ink-soft)}
+  .quota-status{
+    display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#3E7F55;
+    background:#EDF6EE;border:1px solid #BFD9C4;border-radius:999px;padding:4px 14px;margin-bottom:14px;
+  }
+  .quota-status::before{content:"";width:8px;height:8px;border-radius:50%;background:#4E9C6A}
+  .quota-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  .quota-table td{padding:7px 4px;border-bottom:1px dashed var(--line);color:#46534C}
+  .quota-table td:last-child{text-align:right;color:var(--dai)}
+  .quota-warn{font-size:12.5px;color:#A34A3C;background:#F7E7E3;border-radius:10px;padding:9px 14px;margin-top:14px}
+
+  /* ============ 开始画面 ============ */
+  #start{
+    position:fixed;inset:0;z-index:100;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #start .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #start .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(47,85,96,.38),rgba(47,85,96,.14) 45%,rgba(47,85,96,.5))}
+  #start .start-char{
+    position:absolute;z-index:1;height:40%;left:11%;bottom:1.5%;
+    filter:drop-shadow(0 10px 24px rgba(24,40,36,.35));
+  }
+  .start-box{
+    position:relative;z-index:2;text-align:center;color:#F7F2E7;
+    text-shadow:0 2px 18px rgba(24,40,36,.5);padding:20px;
+  }
+  .start-box .kicker{font-size:13px;letter-spacing:.5em;color:#F2E3B8;margin-bottom:14px}
+  .start-box h1{font-size:64px;letter-spacing:.3em;text-indent:.3em;font-weight:700}
+  .start-box .intro{
+    max-width:430px;margin:18px auto 30px;font-size:14.5px;line-height:2;
+    color:rgba(247,242,231,.92);
+  }
+  .start-btn{
+    border:2px solid var(--gold);background:rgba(47,85,96,.55);color:#F7F2E7;
+    font-size:17px;letter-spacing:.4em;text-indent:.4em;border-radius:999px;
+    padding:13px 46px;backdrop-filter:blur(3px);transition:all .25s ease;
+  }
+  .start-btn:hover{background:rgba(217,180,91,.85);color:#3D3110;transform:translateY(-2px)}
+
+  .demo-bar{
+    position:fixed;left:14px;bottom:14px;z-index:60;font-size:12px;color:#7A5F1E;
+    background:rgba(251,244,226,.92);border:1px dashed var(--gold);border-radius:999px;
+    padding:5px 16px;letter-spacing:.06em;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 开始画面 ============ -->
+<div id="start">
+  <img class="bg" src="../concept-art/environment-spirit-field.svg" alt="">
+  <div class="shade"></div>
+  <img class="start-char" src="../concept-art/character-lingzhi-dizi.svg" alt="灵植弟子">
+  <div class="start-box">
+    <div class="kicker">QING YUN SECT · LINGZHI DISCIPLE</div>
+    <h1 class="serif">灵植记</h1>
+    <p class="intro">
+      你通过外门试炼，成为青云宗灵植弟子。<br>
+      三块下品灵田、五十枚灵石，和每月必须缴足的十五株灵草。<br>
+      剩下的，都看你自己的造化——<b>去任务堂抄录心法口诀（背单词），以灵气催熟灵草</b>，向筑基之路精进。
+    </p>
+    <button class="start-btn" data-start>开 始 修 行</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ============ 顶栏 ============ -->
+  <div class="topbar">
+    <div class="tb-cell">
+      <span class="tb-label">日期</span>
+      <span class="tb-value">入宗第 2 月<small> · 第 12 天</small></span>
+    </div>
+    <div class="tb-cell">
+      <span class="tb-label">境界 · 修为</span>
+      <span class="tb-value">练气三层 <small>58 / 80</small></span>
+      <div class="xiuwei"><i></i></div>
+    </div>
+    <div class="tb-cell">
+      <span class="tb-label">灵石</span>
+      <span class="res"><span class="ic">💠</span><b>86</b></span>
+    </div>
+    <div class="tb-cell">
+      <span class="tb-label">贡献点</span>
+      <span class="res"><span class="ic">📜</span><b>45</b></span>
+    </div>
+    <div class="tb-cell">
+      <span class="tb-label">灵气（背单词所得）</span>
+      <span class="lingqi-dots"><i class="full"></i><i class="full"></i><i class="full"></i><i></i><i></i></span>
+    </div>
+    <div class="grow"></div>
+    <button class="quota-chip" data-open="#quota-modal">
+      本月定额 12/15 株 <span class="quota-mini"><i></i></span> 剩 18 天
+    </button>
+  </div>
+
+  <div class="main">
+    <!-- ============ 灵田区 ============ -->
+    <div>
+      <div class="fields-head">
+        <h2 class="serif">灵田</h2>
+        <span>聚灵阵恒温恒湿 · 三块下品灵田（练气三层上限 3 块，练气三层后可开荒至 5 块）</span>
+      </div>
+      <div class="fields">
+        <div class="plot">
+          <span class="plot-tag tag-ready">✦ 成熟</span>
+          <div class="plot-art">
+            <div class="array"></div>
+            <svg width="70" height="86" viewBox="0 0 70 86">
+              <circle cx="35" cy="30" r="26" fill="#FFE9A8" opacity=".55"/>
+              <path d="M35,80 L35,26" stroke="#5E8F5E" stroke-width="6" stroke-linecap="round"/>
+              <ellipse cx="18" cy="46" rx="15" ry="7" fill="#7FBF7F" transform="rotate(-34 18 46)"/>
+              <ellipse cx="52" cy="46" rx="15" ry="7" fill="#7FBF7F" transform="rotate(34 52 46)"/>
+              <ellipse cx="17" cy="62" rx="12" ry="6" fill="#9BCF9B" transform="rotate(-28 17 62)"/>
+              <ellipse cx="53" cy="62" rx="12" ry="6" fill="#9BCF9B" transform="rotate(28 53 62)"/>
+              <circle cx="35" cy="22" r="10" fill="#BFE3A8"/>
+              <circle cx="35" cy="22" r="5" fill="#F2E3B8"/>
+            </svg>
+          </div>
+          <div class="plot-info">
+            <span class="plot-name">青灵草<small>一阶</small></span>
+            <span class="plot-day">15 / 15 天</span>
+          </div>
+          <div class="gbar"><i style="width:100%"></i></div>
+          <div class="plot-note">聚灵阵环绕，灵气充盈 —— 收获可得 5 株 + 修为 5</div>
+        </div>
+
+        <div class="plot">
+          <span class="plot-tag tag-growing">生长中</span>
+          <div class="plot-art">
+            <svg width="56" height="72" viewBox="0 0 56 72">
+              <path d="M28,66 L28,20" stroke="#6E9B6E" stroke-width="5" stroke-linecap="round"/>
+              <ellipse cx="15" cy="34" rx="12" ry="6" fill="#7FBF7F" transform="rotate(-32 15 34)"/>
+              <ellipse cx="41" cy="34" rx="12" ry="6" fill="#7FBF7F" transform="rotate(32 41 34)"/>
+              <ellipse cx="14" cy="46" rx="10" ry="5" fill="#9BCF9B" transform="rotate(-28 14 46)"/>
+              <ellipse cx="42" cy="46" rx="10" ry="5" fill="#9BCF9B" transform="rotate(28 42 46)"/>
+              <circle cx="28" cy="16" r="6" fill="#9BCF9B"/>
+            </svg>
+          </div>
+          <div class="plot-info">
+            <span class="plot-name">凝露花<small>一阶</small></span>
+            <span class="plot-day">12 / 20 天</span>
+          </div>
+          <div class="gbar"><i style="width:60%"></i></div>
+          <div class="plot-note">今日已灌浇 ✓ · 灵雨事件使其额外 +2 天</div>
+        </div>
+
+        <div class="plot">
+          <span class="plot-tag tag-empty">空田</span>
+          <div class="plot-art" style="align-items:center;justify-content:center">
+            <svg width="40" height="52" viewBox="0 0 40 52" opacity=".45">
+              <path d="M20,46 L20,20" stroke="#8F6B3D" stroke-width="4" stroke-linecap="round"/>
+              <ellipse cx="12" cy="22" rx="9" ry="4.5" fill="#A9805B" transform="rotate(-30 12 22)"/>
+              <ellipse cx="28" cy="22" rx="9" ry="4.5" fill="#A9805B" transform="rotate(30 28 22)"/>
+            </svg>
+          </div>
+          <div class="plot-info">
+            <span class="plot-name">空田</span>
+            <span class="plot-day">——</span>
+          </div>
+          <div class="gbar"><i style="width:0%"></i></div>
+          <div class="plot-note">库存种子：青灵草 ×2 · 凝露花 ×1</div>
+        </div>
+      </div>
+
+      <!-- ============ 行动面板 ============ -->
+      <div class="actions">
+        <div class="ap">
+          <span class="tb-label">行动力</span>
+          <div class="ap-dots"><i class="used"></i><i></i><i></i></div>
+        </div>
+        <div class="act-btns">
+          <button class="abtn done">💧 灌浇灵田 <span class="cost">1AP · 今日已执行</span></button>
+          <button class="abtn primary" data-open="#quiz-modal">📖 任务堂 · 背单词 <span class="cost">1AP</span></button>
+          <button class="abtn">✂️ 收获 <span class="cost">1AP</span></button>
+          <button class="abtn">⛏️ 开荒 <span class="cost">2AP</span></button>
+          <button class="abtn">🧘 修炼吐纳 <span class="cost">1AP · 修为+2</span></button>
+          <button class="abtn" data-open="#market-modal">🏪 坊市 <span class="cost">0AP</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 侧栏 ============ -->
+    <div class="side">
+      <div class="disciple">
+        <div class="d-row">
+          <div class="d-avatar"><img src="../concept-art/character-lingzhi-dizi.svg" alt="弟子头像"></div>
+          <div>
+            <div class="d-name">外门灵植弟子</div>
+            <div class="d-sub">青云宗 · 练气三层 · 入宗 42 天</div>
+          </div>
+        </div>
+        <div class="gongfa">
+          <div class="gf-top"><b>功法 · 聚灵诀（Lv3）</b><span>心得 62 / 100</span></div>
+          <div class="gbar"><i style="width:62%"></i></div>
+          <div class="gf-tip">Lv4「辨灵术」：测验合格时灵气 +1 —— 背单词的长线动力</div>
+        </div>
+      </div>
+      <div class="log">
+        <h3>今日 · 日志</h3>
+        <ul>
+          <li><span class="tg tg-ev">事件</span>灵雨！全田生长 +2 天</li>
+          <li><span class="tg tg-act">行动</span>灌浇灵田 —— 全部地块今日免缺水</li>
+          <li><span class="tg tg-task">任务</span>背词合格 8/10 —— 灵气 +3 · 贡献 +5 · 心得 +8，青灵草加速 1 天</li>
+          <li><span class="tg tg-quota">定额</span>本月已缴 12/15 株，还差 3 株（剩 18 天）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 任务堂测验弹层 ============ -->
+<div class="overlay" id="quiz-modal">
+  <div class="modal">
+    <button class="m-close" data-close="#quiz-modal">✕</button>
+    <div class="m-kicker">MISSION HALL</div>
+    <div class="m-title serif">任务堂 · 抄录心法口诀</div>
+    <div class="m-sub">背单词产出灵气 —— 灵气灌注可让全部灵草生长加速。合格线 6/10。</div>
+
+    <div class="quiz-progress">
+      <span class="qp-text">第 7 / 10 题</span>
+      <div class="qp-bar"><i style="width:60%"></i><span class="mark"></span></div>
+      <span class="qp-text">当前 5 对 · 合格线 ≥6</span>
+    </div>
+    <div class="rewards">
+      <span class="rw">灵气 +3</span>
+      <span class="rw">贡献 +5</span>
+      <span class="rw">心得 +8</span>
+      <span class="rw gold">满分 10/10 额外 心得 +4</span>
+    </div>
+
+    <div class="q-word serif">abundant</div>
+    <div class="q-phon">/əˈbʌndənt/</div>
+    <div class="q-ask">以上单词的中文释义是？</div>
+    <button class="opt" data-k="0"><span class="abc">A</span>抽象的，深奥的</button>
+    <button class="opt" data-k="1"><span class="abc">B</span>丰富的，充裕的</button>
+    <button class="opt" data-k="0"><span class="abc">C</span>稀有的，罕见的</button>
+    <button class="opt" data-k="0"><span class="abc">D</span>勤奋的，用功的</button>
+
+    <div class="quiz-result" id="quiz-result"></div>
+    <div class="m-foot">
+      <button class="link-btn" data-close="#quiz-modal">今日先跳过（不耗 AP，无奖励）</button>
+      <span class="qp-text">词库：CET4 高频 300 词</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 坊市弹层 ============ -->
+<div class="overlay" id="market-modal">
+  <div class="modal">
+    <button class="m-close" data-close="#market-modal">✕</button>
+    <div class="m-kicker">MARKET</div>
+    <div class="m-title serif">坊市</div>
+    <div class="m-sub">收获的灵草缴足定额后可自由出售 —— 高阶灵种需要境界资格。</div>
+
+    <div class="mk-tabs">
+      <button class="mk-tab on">购买</button>
+      <button class="mk-tab">出售</button>
+    </div>
+    <ul class="mk-list">
+      <li class="mk-item">
+        <span class="mk-ic">🌱</span>
+        <span class="mk-name">青灵草种<small>一阶 · 生长期 15 天 · 收获 5 株</small></span>
+        <span class="mk-price">5 <small>灵石</small></span>
+        <button class="mk-btn">购买</button>
+      </li>
+      <li class="mk-item">
+        <span class="mk-ic">🌸</span>
+        <span class="mk-name">凝露花种<small>一阶 · 生长期 20 天 · 收获 4 朵</small></span>
+        <span class="mk-price">12 <small>灵石</small></span>
+        <button class="mk-btn">购买</button>
+      </li>
+      <li class="mk-item">
+        <span class="mk-ic">🍄</span>
+        <span class="mk-name">紫云芝种<small>二阶 · 生长期 30 天 · 收获 3 株</small></span>
+        <span class="mk-price">40 <small>灵石</small></span>
+        <span class="mk-lock">🔒 需练气四层</span>
+      </li>
+      <li class="mk-item">
+        <span class="mk-ic">🌿</span>
+        <span class="mk-name">功法残卷<small>心得 +30（金钱可加速学习进度，不能替代背词）</small></span>
+        <span class="mk-price">120 <small>灵石</small></span>
+        <button class="mk-btn">购买</button>
+      </li>
+      <li class="mk-item">
+        <span class="mk-ic">🌾</span>
+        <span class="mk-name">青灵草<small>库存 12 株 · 建议留足定额 3 株再卖</small></span>
+        <span class="mk-price">4 <small>灵石/株</small></span>
+        <button class="mk-btn">出售</button>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 定额弹层 ============ -->
+<div class="overlay" id="quota-modal">
+  <div class="modal">
+    <button class="m-close" data-close="#quota-modal">✕</button>
+    <div class="m-kicker">SECT QUOTA</div>
+    <div class="m-title serif">宗门定额 · 第 2 月</div>
+    <div class="quota-big"><b>12</b><span>/ 15 株（一阶灵草）</span></div>
+    <div class="quota-status">按期缴纳中 · 距月末还有 18 天</div>
+    <table class="quota-table">
+      <tr><td>青灵草</td><td>1 株 = 1 份</td></tr>
+      <tr><td>凝露花</td><td>1 朵 = 2 份</td></tr>
+      <tr><td>二阶灵草</td><td>1 株 = 12 份</td></tr>
+      <tr><td>三阶灵草</td><td>1 株 = 45 份</td></tr>
+    </table>
+    <div class="quota-warn">⚠ 逾期未缴足：贡献 −20、灵石罚 10；连续两月欠缴将收回 1 块灵田（100 贡献可赎回）。</div>
+  </div>
+</div>
+
+<div class="demo-bar">Mock 界面原型 v0.1 · 数据为假 · 仅审界面结构与视觉 · 对应 PRD §13</div>
+
+<script>
+  const qs = (s) => document.querySelector(s);
+  document.querySelectorAll("[data-open]").forEach(b => {
+    b.addEventListener("click", () => qs(b.dataset.open).classList.add("show"));
+  });
+  document.querySelectorAll("[data-close]").forEach(b => {
+    b.addEventListener("click", () => qs(b.dataset.close).classList.remove("show"));
+  });
+  document.querySelectorAll(".overlay").forEach(o => {
+    o.addEventListener("click", e => { if (e.target === o) o.classList.remove("show"); });
+  });
+  document.querySelectorAll("[data-start]").forEach(b => {
+    b.addEventListener("click", () => { qs("#start").style.display = "none"; });
+  });
+  document.querySelectorAll(".opt").forEach(o => {
+    o.addEventListener("click", () => {
+      const ok = o.dataset.k === "1";
+      o.classList.add(ok ? "right" : "wrong");
+      document.querySelectorAll(".opt").forEach(x => { if (x.dataset.k === "1") x.classList.add("right"); });
+      const r = qs("#quiz-result");
+      r.textContent = ok ? "✓ 答对了！本题计入累计（合格即得：灵气 +3 · 贡献 +5 · 心得 +8）"
+                         : "✗ 答错了。不合格也有 心得 +2 —— 明天再来。";
+      r.classList.add("on");
+    });
+  });
+  if (new URLSearchParams(location.search).has("main")) qs("#start").style.display = "none";
+</script>
+</body>
+</html>

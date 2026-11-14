@@ -4,7 +4,7 @@ doc_type: design
 module: lingzhiji
 feature: ui
 status: approved
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 relations:
   - doc/requirements/lingzhiji/v0.1-prd.md
   - doc/design/architecture.md
@@ -129,6 +129,15 @@ relations:
 - 弹层互斥：全屏层（任务堂 / 筑基结算）独占；普通弹层同屏最多 1 个 + toast 不遮挡关闭与确认
 - `?debug=1` 调试面板：跳天 / 加资源，仅验证用，不进入常规 UI 流（core-loop.md）
 - 多标签页横幅、存档导出导入、月末弹窗中断恢复见 save.md / economy.md
+
+### 3.6 交互原型（阶段 1 已产出）
+
+- **选型决策**：用户指定以 React 同栈直接开发原型（数据 mock），偏离 frontend-AGENTS.md 决策表「普通 Web → HTML 原型」默认行；按该规则「用户对选型另有指定时以用户指定为准，并记录在设计文档中」记录于此。理由：本作原型难点在状态循环（任务堂四相位、日推进门控、条件不足态），同栈原型的组件与交互可复用进正式实现
+- **位置**：`doc/design/prototype/lingzhiji/game-proto/`（Vite 7 + React 19 + TS strict + Tailwind 4 + Zustand 5 最小工程，运行方式见其 README；素材复制于 `design/concept-art/`）
+- **覆盖**：开始画面、主屏（顶栏/田格四态/行动面板/侧边日志）、任务堂全流程、坊市、月末定额、事件与突破 toast、筑基结算、设置演示桩、新手引导、调试面板（原型专用）
+- **已知简化**：逻辑集中于单文件 store（正式版拆 `src/game/` 纯逻辑层）、`Math.random()`（正式版可播种 PRNG）、无持久化、导入导出为演示桩
+- **布局说明**：原型采用 `design-system.yaml` 候选构图（日志侧边化）而非本文 §4.1 的底部日志线框；两种构图以原型确认为准，确认后回改本文线框
+- **状态**：待用户确认；确认后作为视觉与交互基线进入正式实现
 
 ## 6. 验证方式（smoke test 清单，对齐 PRD §16）
 

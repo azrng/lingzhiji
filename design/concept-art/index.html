@@ -106,9 +106,13 @@
     border-radius:10px;color:var(--dai);font-size:13px}
   .herb-labels{grid-template-columns:repeat(3,1fr)}
   .npc-labels{grid-template-columns:repeat(2,1fr)}
-  .resource-labels{grid-template-columns:repeat(4,1fr)}
+  .resource-labels,.goods-labels,.state-labels{grid-template-columns:repeat(4,1fr)}
   .icon-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
   .event-labels{grid-template-columns:repeat(5,1fr)}
+  .breakthrough-preview{position:relative;overflow:hidden;border-radius:10px;background:var(--dai)}
+  .breakthrough-preview img:first-child{width:100%;display:block}
+  .breakthrough-preview img:last-child{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .asset-note{margin-top:14px;color:var(--ink-soft)}
 
   /* 色板 */
   .palette{display:flex;flex-wrap:wrap;gap:14px}
@@ -132,7 +136,7 @@
   @media (max-width:820px){
     .char-grid,.notes{grid-template-columns:1fr}
     .icon-grid{grid-template-columns:1fr}
-    .herb-labels,.npc-labels,.resource-labels,.event-labels{grid-template-columns:repeat(3,1fr)}
+    .herb-labels,.npc-labels,.resource-labels,.goods-labels,.state-labels,.event-labels{grid-template-columns:repeat(3,1fr)}
     h1{font-size:34px}
     .char-stage img{height:360px}
   }
@@ -143,8 +147,8 @@
 
   <header>
     <div class="kicker">LINGZHIJI · CONCEPT ART</div>
-    <h1>灵植记<small>概念设定 v0.2 · 待审核</small></h1>
-    <p>风格方向：淡雅仙侠手账风 —— 黛青底色 · 云雾纹理 · 金色点缀 · 灵草微光。角色与环境沿用手绘 SVG；本轮补充灵植、NPC、资源和事件透明 PNG 图鉴稿，审阅通过后作为后续游戏美术基调。</p>
+    <h1>灵植记<small>概念设定 v0.3 · 待审核</small></h1>
+    <p>风格方向：淡雅仙侠手账风 —— 黛青底色 · 云雾纹理 · 金色点缀 · 灵草微光。角色与环境沿用手绘 SVG；本轮补充灵植、NPC、资源、商品、田地状态、事件和突破特效透明 PNG 图稿，审阅通过后作为后续游戏美术基调。</p>
     <div class="head-rule"></div>
   </header>
 
@@ -225,7 +229,39 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="sec-no">伍</span><h2>色彩体系</h2></div>
+    <div class="sec-head"><span class="sec-no">伍</span><h2>坊市商品图 · 六种种子与常用商品</h2></div>
+    <div class="card">
+      <img class="asset-sheet" src="market-goods-sheet.png" alt="六种灵草种包、功法残卷与灵草收获篮">
+      <div class="asset-labels goods-labels">
+        <span>青灵草种</span><span>凝露花种</span><span>紫云芝种</span><span>赤髓参种</span>
+        <span>龙血藤种</span><span>九叶莲种</span><span>功法残卷</span><span>灵草收获</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">陆</span><h2>灵田状态图 · 空田到成熟</h2></div>
+    <div class="card">
+      <img class="asset-sheet" src="plot-states-sheet.png" alt="空田、幼苗、生长中与成熟灵田状态">
+      <div class="asset-labels state-labels">
+        <span>空田</span><span>幼苗</span><span>生长中</span><span>成熟可收</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">柒</span><h2>筑基突破特效</h2></div>
+    <div class="card">
+      <div class="breakthrough-preview">
+        <img src="environment-spirit-field.svg" alt="灵田场景背景">
+        <img src="breakthrough-aura.png" alt="叠加于场景上的筑基灵气光效">
+      </div>
+      <p class="asset-note">透明特效层可叠加在现有灵田背景上，中心留白用于人物与筑基成绩单。</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">捌</span><h2>色彩体系</h2></div>
     <div class="palette">
       <div class="chip"><i style="background:#2F5560"></i><div class="t">黛青<span class="h"><br>#2F5560</span></div></div>
       <div class="chip"><i style="background:#4A7C6F"></i><div class="t">青绿<span class="h"><br>#4A7C6F</span></div></div>
@@ -239,7 +275,7 @@
   </section>
 
   <section>
-    <div class="sec-head"><span class="sec-no">陆</span><h2>风格说明与用途</h2></div>
+    <div class="sec-head"><span class="sec-no">玖</span><h2>风格说明与用途</h2></div>
     <div class="notes">
       <div class="card">
         <ul class="traits">
@@ -252,15 +288,15 @@
       <div class="card">
         <ul class="traits">
           <li><b>素材格式</b> —— 人物与环境是手绘 SVG；本轮图鉴与图标为透明 PNG 概念稿</li>
-          <li><b>初版定调</b> —— 本页补齐主角、两位事件 NPC、六种灵植和常用图标的视觉方向</li>
-          <li><b>后续细化</b> —— 确认方向后可按单株拆图、绘制生长阶段，并在界面中替换简化图形</li>
+          <li><b>初版定调</b> —— 本页补齐主角、两位事件 NPC、六种灵植、坊市商品、田地状态与筑基特效</li>
+          <li><b>后续细化</b> —— 确认方向后可将图集拆成独立素材，再接入实际界面</li>
           <li><b>审核方式</b> —— 当前均为待审核概念稿，可对造型、配色与气质提出修改</li>
         </ul>
       </div>
     </div>
   </section>
 
-  <footer>灵植记 · 概念设定 v0.2 · 2026-11-14</footer>
+  <footer>灵植记 · 概念设定 v0.3 · 2026-11-14</footer>
 </div>
 </body>
 </html>

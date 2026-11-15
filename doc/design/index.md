@@ -21,6 +21,7 @@ relations:
 | lingzhiji | 境界修行（修为 / 突破 / 筑基结算） | `lingzhiji/progression.md` | approved | REQ §5.2 §5.3 §8.4 |
 | lingzhiji | 存档（持久化 / 导入导出 / 多标签页） | `lingzhiji/save.md` | approved | REQ §14 §16 |
 | lingzhiji | 界面结构与状态（布局 / 线框 / 状态映射） | `lingzhiji/ui.md` | approved | REQ §13 |
+| lingzhiji | 现实日锚（晨露 / 地力 / 道心 / 修行日历 / 存档 v2） | `lingzhiji/real-day.md` | approved | REQ §19 |
 
 契约：存档契约 CON-LINGZHIJI-SAVE-001 已落地为 `src/game/types.ts` + `src/game/save.ts`（代码为事实来源，历史草案 `doc/contracts/lingzhiji/save-data.md` 已标 superseded）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
 

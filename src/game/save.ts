@@ -1,6 +1,6 @@
 // 存档（save.md）：localStorage 唯一读写点；版本校验、Base64 导码、损坏恢复。
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
-import { HERB_BY_ID } from './constants'
+import { HERB_BY_ID, HERBS } from './constants'
 import type { GameState, ReasonCode } from './types'
 
 export const SAVE_KEY = 'lingzhiji.save.v1'
@@ -43,7 +43,7 @@ const isInt = (v: unknown) => typeof v === 'number' && Number.isInteger(v)
 const nonNegInt = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0
 const isStr = (v: unknown) => typeof v === 'string'
 const isBool = (v: unknown) => typeof v === 'boolean'
-const isHerbId = (v: unknown) => isStr(v) && v in HERB_BY_ID
+const isHerbId = (v: unknown) => isStr(v) && Object.hasOwn(HERB_BY_ID, v)
 
 function validField(f: unknown): boolean {
   if (typeof f !== 'object' || f === null) return false
@@ -84,6 +84,7 @@ function validate(game: unknown): ReasonCode | null {
   if (typeof game !== 'object' || game === null) return 'BAD_SHAPE'
   const g = game as GameState
   const ok =
+    (g.characterId === undefined || g.characterId === 'junior-sister' || g.characterId === 'senior-brother' || g.characterId === 'senior-sister') &&
     nonNegInt(g.day) && g.day >= 1 &&
     (g.phase === 'day' || g.phase === 'quota') &&
     nonNegInt(g.ap) && g.ap <= 3 &&
@@ -99,8 +100,10 @@ function validate(game: unknown): ReasonCode | null {
     isInt(g.gongfa) && g.gongfa >= 1 && g.gongfa <= 5 &&
     Array.isArray(g.fields) && g.fields.length >= 1 && g.fields.every(validField) &&
     typeof g.seeds === 'object' && g.seeds !== null &&
+    HERBS.every((h) => nonNegInt(g.seeds[h.id])) &&
     Object.entries(g.seeds).every(([k, v]) => isHerbId(k) && nonNegInt(v)) &&
     typeof g.inventory === 'object' && g.inventory !== null &&
+    HERBS.every((h) => nonNegInt(g.inventory[h.id])) &&
     Object.entries(g.inventory).every(([k, v]) => isHerbId(k) && nonNegInt(v)) &&
     typeof g.quizDaily === 'object' && g.quizDaily !== null && isBool(g.quizDaily.done) &&
     typeof g.learning === 'object' && g.learning !== null &&
@@ -111,6 +114,7 @@ function validate(game: unknown): ReasonCode | null {
     validLibStat(g.learning.libs.cet4) && validLibStat(g.learning.libs.cet6) &&
     typeof g.month === 'object' && g.month !== null &&
     nonNegInt(g.month.unpaidStreak) && Array.isArray(g.month.ledger) &&
+    g.month.ledger.every((entry) => typeof entry === 'object' && entry !== null && nonNegInt(entry.month) && entry.month >= 1 && isBool(entry.paid) && isStr(entry.detail)) &&
     isBool(g.milestoneShown) && isBool(g.tutorialDone) &&
     Array.isArray(g.log) && g.log.length <= 50 &&
     g.log.every((l) => typeof l === 'object' && l !== null && nonNegInt(l.day) && isStr(l.title) && isStr(l.text)) &&
@@ -148,6 +152,7 @@ export function load(storage: Storage | null = getStorage()): LoadResult {
   } catch {
     return { ok: false, reason: 'BAD_JSON' }
   }
+  if (!data || typeof data !== 'object') return { ok: false, reason: 'BAD_SHAPE' }
   if (data.version !== SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
   const shapeErr = validate(data.game)
   if (shapeErr) return { ok: false, reason: shapeErr }
@@ -180,6 +185,7 @@ export function importCode(code: string): ImportResult {
   } catch {
     return { ok: false, reason: 'BAD_JSON' }
   }
+  if (!data || typeof data !== 'object') return { ok: false, reason: 'BAD_SHAPE' }
   if (data.version !== SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
   const shapeErr = validate(data.game)
   if (shapeErr) return { ok: false, reason: shapeErr }

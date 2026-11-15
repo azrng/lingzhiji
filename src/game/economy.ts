@@ -40,7 +40,7 @@ export function buyScroll(s: GameState): ReasonCode | null {
 
 // 出售：单价 = 表价 × 行情系数，向下取整且最低 1（economy.md §3.2）
 export function sellHerb(s: GameState, herb: HerbId, count: number): ReasonCode | null {
-  if (count < 1 || s.inventory[herb] < count) return 'NO_HERB'
+  if (!Number.isInteger(count) || count < 1 || s.inventory[herb] < count) return 'NO_HERB'
   const mult = s.pendingTomorrow.marketMult ?? 1
   const unit = Math.max(1, Math.floor(HERB_BY_ID[herb].sell * mult))
   s.inventory[herb] -= count
@@ -101,17 +101,18 @@ export function resolveQuota(
     for (const [id, n] of Object.entries(plan)) {
       const herb = id as HerbId
       const count = n ?? 0
-      if (count < 0 || s.inventory[herb] < count) return 'NOT_ELIGIBLE'
+      if (!Object.hasOwn(HERB_BY_ID, herb) || !Number.isInteger(count) || count < 0 || s.inventory[herb] < count) return 'NOT_ELIGIBLE'
+      converted += convertRate(HERB_BY_ID[herb]) * count
     }
+    // 先核对总额，避免可变调用在缴纳不足时扣除库存。
+    if (converted < QUOTA_TARGET) return 'NOT_ENOUGH_QUOTA'
     for (const [id, n] of Object.entries(plan)) {
       const herb = id as HerbId
       const count = n ?? 0
       if (count <= 0) continue
-      converted += convertRate(HERB_BY_ID[herb]) * count
       parts.push(`${HERB_BY_ID[herb].name}×${count}`)
       s.inventory[herb] -= count
     }
-    if (converted < QUOTA_TARGET) return 'NOT_ENOUGH_QUOTA'
     s.resources.contribution += 10
     s.month.unpaidStreak = 0
     s.month.ledger.push({ month, paid: true, detail: `足额缴纳（${parts.join('、')}，折算 ${converted} 株）` })

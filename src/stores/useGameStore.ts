@@ -5,7 +5,7 @@
 import { create } from 'zustand'
 import { createInitialState, dispatch } from '../game/engine'
 import { SAVE_KEY, load, persist } from '../game/save'
-import type { GameAction, GameState } from '../game/types'
+import type { CharacterId, GameAction, GameState } from '../game/types'
 
 interface GameStore {
   game: GameState
@@ -14,7 +14,7 @@ interface GameStore {
   saveError: string | null
   lastSavedAt: number // 本页最近一次成功写入的 savedAt
 
-  startNew: () => void
+  startNew: (characterId?: CharacterId) => void
   continueSaved: () => { ok: boolean; reason?: string }
   act: (action: GameAction) => { ok: boolean; reason?: string }
   hideTabBanner: () => void
@@ -51,8 +51,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     saveError: null,
     lastSavedAt: 0,
 
-    startNew: () => {
-      const game = createInitialState(Date.now() >>> 0)
+    startNew: (characterId) => {
+      const game = { ...createInitialState(Date.now() >>> 0), characterId: characterId ?? get().game.characterId }
       const savedAt = persist(game) // 新档立即落库：否则刷新回到开始画面，且不触发他页提示
       set({ game, started: true, lastSavedAt: savedAt, saveError: savedAt ? null : '存档保存失败，进度暂存于本页' })
     },

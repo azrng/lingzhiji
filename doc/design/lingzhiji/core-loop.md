@@ -75,7 +75,7 @@ endDay(state):
 - 持续类写入 `pendingTomorrow`，在**下一个游戏日**生效：
   - 灵泉涌出 → `pendingTomorrow.infusionDouble = true`：明日灌注基础效果 ×2（farming.md 计算时消费）
   - 坊市行情 → `pendingTomorrow.marketMult = 1.5 | 0.7`：明日出售单价按此折算（economy.md 消费）
-- `pendingTomorrow` 在下一次日终步骤 2 前被消费，步骤 6 重置为空；效果只覆盖一日，不叠加历史
+- `pendingTomorrow` 在下一次日终事件判定前清空；本次事件产生的效果保留到下一日（跨月时也经过定额结算保留），效果只覆盖一日，不叠加历史。
 
 ### 3.5 当日日志
 

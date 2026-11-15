@@ -10,11 +10,9 @@ export default function FieldGrid() {
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const [planting, setPlanting] = useState<number | null>(null)
-  const cols = Math.min(g.fields.length + (g.fields.length < FIELD_CAP[g.realm] ? 1 : 0), 7)
-  const gridCls = ['grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5', 'grid-cols-6', 'grid-cols-7'][cols] ?? 'grid-cols-3'
 
   return (
-    <div className={`grid ${gridCls} gap-4`}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {g.fields.map((f) => (
         <FieldCard key={f.id} fid={f.id} onPlant={() => setPlanting(f.id)} />
       ))}
@@ -47,7 +45,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   if (f.status === 'empty') {
     body = (
       <button onClick={onPlant} className="w-full h-full flex flex-col items-center justify-center gap-2 group">
-        <Sprite sheet="plot-states-sheet.png" cols={4} rows={1} col={0} size={72} />
+        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={100} />
         <span className="text-sm text-gray-500 group-hover:text-primary-500">＋ 播种</span>
       </button>
     )
@@ -55,7 +53,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     const pct = Math.round((f.progress! / eff) * 100)
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
-        <Sprite sheet="plot-states-sheet.png" cols={4} rows={1} col={f.progress! >= 2 ? 2 : 1} size={72} />
+        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={f.progress! >= 2 ? 0 : 1} row={f.progress! >= 2 ? 1 : 0} size={100} />
         <div className="flex items-center gap-1.5">
           <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
           <span className="text-sm font-medium text-gray-800">{herb!.name}</span>
@@ -72,7 +70,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative">
         <span className="absolute top-2 right-3 text-gold">✦</span>
-        <Sprite sheet="plot-states-sheet.png" cols={4} rows={1} col={3} size={72} />
+        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={100} />
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{g.gongfa >= 3 ? '（收获另有加成）' : ''}</div>
         <Btn onClick={() => act({ type: 'HARVEST', fieldId: fid })} disabled={g.ap < 1} variant="gold" className="!py-1.5">

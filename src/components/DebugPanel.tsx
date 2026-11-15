@@ -41,7 +41,7 @@ export default function DebugPanel() {
             }
           })} />
           <Dbg label="跳到本月第 30 天" onClick={jumpDay30} />
-          <Dbg label="重置开局" onClick={startNew} />
+          <Dbg label="重置开局" onClick={() => startNew()} />
         </div>
       )}
       <button onClick={() => setOpen(!open)} className="bg-gray-800/80 text-gray-100 text-xs rounded-full px-3.5 py-2 shadow-lg hover:bg-gray-800">

@@ -1,4 +1,5 @@
 import { monthOf } from '../game/economy'
+import { characterImage } from '../game/characters'
 import { LIBS } from '../game/wordbank'
 import { useGameStore } from '../stores/useGameStore'
 import { Btn } from './ui'
@@ -15,7 +16,7 @@ export default function MilestoneScreen() {
       <div className="relative z-10 max-w-xl mx-auto min-h-full flex flex-col items-center justify-center px-6 py-12">
         <div className="text-[12px] text-gold-pale tracking-[0.42em] mb-3">FOUNDATION ESTABLISHED</div>
         <h1 className="font-serif text-5xl text-gold-pale tracking-[0.14em] font-bold">突破筑基</h1>
-        <img src="/assets/character-lingzhi-dizi.svg" alt="" className="h-44 my-6 drop-shadow-lg" />
+        <img src={characterImage(g.characterId)} alt="" className="h-44 my-6 drop-shadow-lg" />
         <div className="w-full bg-gray-50/95 rounded-2xl shadow-lg p-6 text-sm text-gray-700 flex flex-col gap-2">
           <div className="font-serif text-lg text-info-600 tracking-widest mb-1">本局成绩单</div>
           <Row k="入宗时长" v={`${g.day} 个游戏日（第 ${monthOf(g.day)} 月）`} />

@@ -91,6 +91,21 @@ describe('存档（save.md）', () => {
     expect(storage.getItem(SAVE_KEY)).toBe(broken)
   })
 
+  it('拒绝空对象、缺失库存及无效人物形象，旧存档仍可导入', () => {
+    expect(importCode(btoa('null')).reason).toBe('BAD_SHAPE')
+    const storage = memoryStorage()
+    storage.setItem(SAVE_KEY, 'null')
+    expect(load(storage).reason).toBe('BAD_SHAPE')
+    const s = createInitialState(1)
+    expect(importCode(exportCode(s)).ok).toBe(true)
+    const badInventory = { ...s, inventory: {} }
+    const badCharacter = { ...s, characterId: 'unknown' }
+    for (const game of [badInventory, badCharacter]) {
+      const code = btoa(JSON.stringify({ version: 1, savedAt: 1, game }))
+      expect(importCode(code).reason).toBe('BAD_SHAPE')
+    }
+  })
+
   it('无存档返回 NO_SAVE', () => {
     expect(load(memoryStorage()).reason).toBe('NO_SAVE')
   })

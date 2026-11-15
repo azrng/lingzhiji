@@ -24,7 +24,7 @@ export function EventToasts() {
             <div className="text-sm font-medium text-gray-700 leading-snug">{t.title}</div>
             {t.text && <div className="text-xs text-gray-500 leading-snug mt-0.5">{t.text}</div>}
           </div>
-          <button onClick={() => dismiss(t.id)} className="text-gray-400 hover:text-gray-600 text-xs">×</button>
+          <button onClick={() => dismiss(t.id)} aria-label="关闭提示" className="text-gray-500 hover:text-gray-600 text-xs min-w-11 min-h-11">×</button>
         </div>
       ))}
     </div>

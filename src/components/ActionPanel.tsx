@@ -50,7 +50,7 @@ export default function ActionPanel() {
           💧 浇灌
         </Btn>
         <Btn variant="secondary" onClick={() => tryAct(() => act({ type: 'IRRIGATE' }))} disabled={g.resources.qi < 1 || noGrowing}
-          title={noGrowing ? REASON_TEXT.NO_CROP : '消耗 1 灵气，生长中田 +1 天'}>
+          title={noGrowing ? REASON_TEXT.NO_CROP : g.resources.qi < 1 ? REASON_TEXT.NO_QI : '消耗 1 灵气，加速生长中灵田'}>
           🔮 灌注
         </Btn>
         <Btn variant="secondary" onClick={() => tryAct(() => act({ type: 'TUNA' }))} disabled={g.tunaUsedToday || g.ap < 1}

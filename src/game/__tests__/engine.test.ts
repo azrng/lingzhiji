@@ -1,7 +1,7 @@
 // 引擎与种植单测：日结算五步顺序、门控、事件权重、缺水减产、播种零消耗（对齐 PRD §14/§16）
 import { describe, expect, it } from 'vitest'
 import { DAILY_AP, EVENTS, EVENT_CHANCE } from '../constants'
-import { dispatch, createInitialState } from '../engine'
+import { applyAction, dispatch, createInitialState } from '../engine'
 import { createRng } from '../rng'
 import type { GameState } from '../types'
 
@@ -55,6 +55,46 @@ describe('播种校验与零消耗', () => {
 })
 
 describe('日结算管线（core-loop.md 五步）', () => {
+  it('次日事件跨日和月末结算保留一天，并在下一次日结算时失效', () => {
+    const total = EVENTS.reduce((sum, event) => sum + event.weight, 0)
+    const seed = Array.from({ length: 10000 }, (_, i) => i).find((i) => {
+      const rng = createRng(i)
+      if (rng.next() >= EVENT_CHANCE) return false
+      let roll = rng.next() * total
+      return EVENTS.find((event) => (roll -= event.weight) <= 0)?.id === 'spring'
+    })!
+    for (const day of [1, 30]) {
+      let s = started(seed)
+      s.day = day
+      s.quizDaily.done = true
+      s.pendingTomorrow.marketMult = 1.5
+      s = dispatch(s, { type: 'END_DAY' }).state
+      expect(s.pendingTomorrow).toEqual({ infusionDouble: true })
+      if (day === 30) s = dispatch(s, { type: 'QUOTA_RESOLVE', pay: false, plan: {} }).state
+      expect(s.pendingTomorrow.infusionDouble).toBe(true)
+      s.quizDaily.done = true
+      s.rngState = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= EVENT_CHANCE)!
+      s = dispatch(s, { type: 'END_DAY' }).state
+      expect(s.pendingTomorrow).toEqual({})
+    }
+  })
+
+  it('功法升至二级时立即检查作物成熟', () => {
+    const s = started()
+    s.resources.insight = 100
+    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 14, curYield: 5, dry: 0, halved: false }
+    const r = dispatch(s, { type: 'GONGFA_UP' })
+    expect(r.ok).toBe(true)
+    expect(r.state.fields[0].status).toBe('mature')
+  })
+
+  it('可变调用缴纳不足时不扣库存', () => {
+    const s = started()
+    s.phase = 'quota'
+    s.inventory.qingling = 2
+    expect(applyAction(s, { type: 'QUOTA_RESOLVE', pay: true, plan: { qingling: 2 } }).reason).toBe('NOT_ENOUGH_QUOTA')
+    expect(s.inventory.qingling).toBe(2)
+  })
   it('未完成任务堂不能结束当天', () => {
     const r = dispatch(started(), { type: 'END_DAY' })
     expect(r.ok).toBe(false)

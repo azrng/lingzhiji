@@ -15,6 +15,7 @@ export default function SettingsModal() {
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
 
   const code = exportCode(game)
 
@@ -25,14 +26,20 @@ export default function SettingsModal() {
           <div className="text-gray-600 mb-2">导出存档（Base64 导码，请自行保存）</div>
           <textarea readOnly value={code} className="w-full h-20 bg-gray-100 border border-gray-200 rounded-lg p-2 text-xs text-gray-600" />
           <Btn variant="secondary" className="mt-2"
-            onClick={() => {
-              navigator.clipboard?.writeText(code)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(code)
+                setCopyError(false)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1500)
+              } catch {
+                setCopyError(true)
+              }
             }}>
             {copied ? '已复制 ✓' : '复制导码'}
           </Btn>
           <p className="text-xs text-gray-400 mt-1">清除浏览器数据仍可能丢失本地存档，导出请自行保管。</p>
+          {copyError && <p className="text-xs text-error-500 mt-1">复制失败，请手动选中导码复制。</p>}
         </div>
         <div>
           <div className="text-gray-600 mb-2">导入存档</div>
@@ -51,10 +58,12 @@ export default function SettingsModal() {
             onClick={() => {
               const r = importCode(importCodeText)
               if (r.ok && r.state) {
-                persist(r.state)
-                useGameStore.setState({ game: r.state })
-                setImportResult({ ok: true, msg: '导入成功，存档已覆盖' })
-                pushToasts([{ day: r.state.day, kind: 'settle', icon: '📥', title: '存档导入成功', text: `已恢复到第 ${r.state.day} 天` }])
+                const savedAt = persist(r.state)
+                useGameStore.setState({ game: r.state, lastSavedAt: savedAt || useGameStore.getState().lastSavedAt, saveError: savedAt ? null : '存档保存失败，进度暂存于本页' })
+                setImportResult(savedAt
+                  ? { ok: true, msg: '导入成功，存档已覆盖' }
+                  : { ok: false, msg: '导入内容已载入本页，但保存失败；请保留导码。' })
+                if (savedAt) pushToasts([{ day: r.state.day, kind: 'settle', icon: '📥', title: '存档导入成功', text: `已恢复到第 ${r.state.day} 天` }])
               } else {
                 setImportResult({ ok: false, msg: `${REASON_TEXT[r.reason ?? 'BAD_SHAPE'] ?? '导码无效'}（原档已保留）` })
               }

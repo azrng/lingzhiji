@@ -34,15 +34,22 @@ function GameScreen() {
   const tutorialStep = useUiStore((s) => s.tutorialStep)
 
   // 日志差量 → toast：dispatch 更新 game 后，与上次快照比对新增条目
-  const lastLogRef = useRef<number | null>(null)
+  const lastLogRef = useRef<string[] | null>(null)
   useEffect(() => {
-    // 首次渲染（含续档）与日志回退（重置/导入）只建立基线，不把历史日志弹成 toast
-    if (lastLogRef.current === null || game.log.length < lastLogRef.current) {
-      lastLogRef.current = game.log.length
+    const current = game.log.map((entry) => JSON.stringify(entry))
+    const previous = lastLogRef.current
+    lastLogRef.current = current
+    // 首次渲染只建立基线；日志满 50 条后，长度不变也要识别新增条目。
+    if (previous === null) return
+    let overlap = Math.min(previous.length, current.length)
+    while (overlap > 0 && !current.slice(current.length - overlap).every((entry, index) => entry === previous[index])) {
+      overlap -= 1
+    }
+    if (overlap === 0 && previous.length > 0) {
+      // 重置或导入的日志与旧日志无交集，不把历史记录当作新提示。
       return
     }
-    const fresh = game.log.slice(0, game.log.length - lastLogRef.current).reverse()
-    lastLogRef.current = game.log.length
+    const fresh = game.log.slice(0, current.length - overlap).reverse()
     if (fresh.length) pushToasts(fresh)
   }, [game.log, pushToasts])
 

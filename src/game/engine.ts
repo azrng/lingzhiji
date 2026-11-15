@@ -102,6 +102,8 @@ function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
 // 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定
 function endDay(s: GameState, rng: Rng): ReasonCode | null {
   if (!s.quizDaily.done) return 'QUIZ_NOT_DONE'
+  // 当日效果到此结束；本次事件产生的效果需要保留到下一日。
+  s.pendingTomorrow = {}
   // 1. 随机事件：30% 触发 1 个，按权重抽取
   if (rng.next() < EVENT_CHANCE) {
     const total = EVENTS.reduce((a, e) => a + e.weight, 0)
@@ -130,10 +132,9 @@ function advanceDay(s: GameState): void {
   farming.resetDaily(s)
   s.quizDaily.done = false
   s.quizDaily.session = null
-  s.pendingTomorrow = {}
 }
 
-// 功法升级：心得 100 + 贡献消耗；Lv2 生长期 −1 由 effDays 动态生效，无需回溯（farming.md）
+// 功法升级：心得 100 + 贡献消耗；Lv2 生长期缩短后立即检查成熟状态（farming.md）。
 function upgradeGongfa(s: GameState): ReasonCode | null {
   if (s.gongfa >= 5) return 'MAX_GONGFA'
   const cost = [0, 0, 50, 100, 150][s.gongfa]
@@ -142,6 +143,15 @@ function upgradeGongfa(s: GameState): ReasonCode | null {
   s.resources.insight -= 100
   s.resources.contribution -= cost
   s.gongfa += 1
+  // 生长期缩短后，已达到新阈值的作物应立即成熟。
+  if (s.gongfa === 2) {
+    for (const field of s.fields) {
+      if (field.status === 'growing' && field.herb && field.progress !== undefined && field.progress >= farming.effDays(field.herb, s.gongfa)) {
+        field.progress = farming.effDays(field.herb, s.gongfa)
+        field.status = 'mature'
+      }
+    }
+  }
   addLog(s, { kind: 'action', icon: '📖', title: `功法升至 Lv${s.gongfa}`, text: `心得 −100${cost ? `，贡献 −${cost}` : ''}` })
   return null
 }

@@ -43,10 +43,10 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-40 bg-gray-900/40 flex items-center justify-center p-4">
-      <div className={`bg-gray-50 rounded-2xl shadow-lg w-full ${wide ? 'max-w-2xl' : 'max-w-md'} flex flex-col max-h-[88vh]`}>
+      <div role="dialog" aria-modal="true" aria-label={title} className={`bg-gray-50 rounded-2xl shadow-lg w-full ${wide ? 'max-w-2xl' : 'max-w-md'} flex flex-col max-h-[88vh]`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 className="font-serif text-lg text-info-600 tracking-widest">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none px-1">
+          <button onClick={onClose} aria-label={`关闭${title}`} className="text-gray-500 hover:text-gray-700 text-xl leading-none min-w-11 min-h-11">
             ×
           </button>
         </div>
@@ -74,6 +74,7 @@ export function Sprite({
     display: 'inline-block',
     flex: 'none',
     backgroundImage: `url(/assets/${sheet})`,
+    backgroundRepeat: 'no-repeat',
     backgroundSize: `${cols * 100}% ${rows * 100}%`,
     backgroundPosition: `${cols > 1 ? (col / (cols - 1)) * 100 : 0}% ${rows > 1 ? (row / (rows - 1)) * 100 : 0}%`,
   }

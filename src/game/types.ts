@@ -1,6 +1,7 @@
 // 灵植记 · 核心类型定义（CON-LINGZHIJI-SAVE-001 落地点，契约草案落地后为唯一事实来源）
 
 export type LibId = 'cet4' | 'cet6'
+export type CharacterId = 'junior-sister' | 'senior-brother' | 'senior-sister'
 
 export type HerbId = 'qingling' | 'ninglu' | 'ziyun' | 'chisui' | 'longxue' | 'jiuye'
 
@@ -87,6 +88,7 @@ export interface Resources {
 }
 
 export interface GameState {
+  characterId?: CharacterId // 旧存档没有该字段，继续显示原有弟子形象
   day: number // 从 1 起算；月份派生计算
   phase: 'day' | 'quota' // 白天 / 月末定额结算交互中
   ap: number

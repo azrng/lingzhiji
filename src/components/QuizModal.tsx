@@ -16,9 +16,7 @@ export default function QuizModal() {
       <div className="max-w-2xl mx-auto min-h-full flex flex-col px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-serif text-2xl text-info-600 tracking-[0.14em]">任务堂 · 辨灵识字</h2>
-          {!session && (
-            <button onClick={() => setQuizOpen(false)} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
-          )}
+          <button onClick={() => setQuizOpen(false)} aria-label="关闭任务堂" className="text-gray-500 hover:text-gray-700 text-2xl leading-none min-w-11 min-h-11">×</button>
         </div>
         {!session && <Entry done={done} />}
         {session?.phase === 'learning' && <Learning />}

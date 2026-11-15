@@ -73,3 +73,15 @@ body {
     radial-gradient(circle at 92% 96%, rgba(217, 180, 91, 0.1) 0 20%, transparent 40%);
   background-attachment: fixed;
 }
+
+/* 灵田主界面使用山野场景，纸色蒙层保持文字与状态清晰。 */
+.game-world {
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-gray-50) 22%, transparent), color-mix(in srgb, var(--color-primary-100) 54%, transparent)),
+    url('/assets/spirit-garden-background.jpg') center top / cover fixed;
+}
+
+.field-garden {
+  background: color-mix(in srgb, var(--color-primary-50) 80%, transparent);
+  box-shadow: var(--shadow-lg);
+}

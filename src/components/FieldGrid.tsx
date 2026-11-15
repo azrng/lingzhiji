@@ -10,26 +10,42 @@ export default function FieldGrid() {
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const [planting, setPlanting] = useState<number | null>(null)
+  const hasConfiscated = g.fields.some((field) => field.status === 'confiscated')
+  const reclaimReason = hasConfiscated ? '请先赎回被收回的灵田' : g.ap < 2 ? REASON_TEXT.NO_AP : null
+  const growing = g.fields.filter((field) => field.status === 'growing').length
+  const mature = g.fields.filter((field) => field.status === 'mature').length
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {g.fields.map((f) => (
-        <FieldCard key={f.id} fid={f.id} onPlant={() => setPlanting(f.id)} />
-      ))}
-      {g.fields.length < FIELD_CAP[g.realm] && (
-        <button
-          onClick={() => act({ type: 'RECLAIM_LAND' })}
-          disabled={g.ap < 2}
-          title={g.ap < 2 ? REASON_TEXT.NO_AP : '开荒 1 块新灵田（2 AP）'}
-          className="min-h-44 rounded-2xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-primary-400 hover:text-primary-500 disabled:cursor-not-allowed disabled:opacity-60 flex flex-col items-center justify-center gap-2"
-        >
-          <span className="text-2xl">＋</span>
-          <span className="text-sm">开荒 · 2 AP</span>
-          <span className="text-xs text-gray-400">上限 {FIELD_CAP[g.realm]} 块</span>
-        </button>
-      )}
-      {planting !== null && <PlantModal fid={planting} onClose={() => setPlanting(null)} />}
-    </div>
+    <section className="field-garden rounded-3xl border border-primary-200/80 p-4 sm:p-5 lg:p-6">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs tracking-[.2em] text-primary-700">青云宗 · 灵植堂</p>
+          <h1 className="mt-1 font-serif text-3xl tracking-widest text-primary-900">我的灵田</h1>
+          <p className="mt-1 text-sm text-gray-700">一方灵土，静待草木生长。</p>
+        </div>
+        <div className="rounded-full border border-primary-200 bg-gray-50/90 px-4 py-2 text-xs text-primary-800">
+          灵田 {g.fields.length} / {FIELD_CAP[g.realm]} · 生长 {growing} · 待收 {mature}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {g.fields.map((f) => (
+          <FieldCard key={f.id} fid={f.id} onPlant={() => setPlanting(f.id)} />
+        ))}
+        {g.fields.length < FIELD_CAP[g.realm] && (
+          <button
+            onClick={() => act({ type: 'RECLAIM_LAND' })}
+            disabled={!!reclaimReason}
+            title={reclaimReason ?? '开荒 1 块新灵田（2 AP）'}
+            className="min-h-52 rounded-2xl border-2 border-dashed border-primary-300 bg-gray-50/50 text-primary-700 hover:bg-gray-50/80 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-2"
+          >
+            <span className="text-2xl">＋</span>
+            <span className="text-sm">开荒 · 2 AP</span>
+            <span className="text-xs text-gray-600">{reclaimReason ?? `上限 ${FIELD_CAP[g.realm]} 块`}</span>
+          </button>
+        )}
+        {planting !== null && <PlantModal fid={planting} onClose={() => setPlanting(null)} />}
+      </div>
+    </section>
   )
 }
 
@@ -44,16 +60,16 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   let body: ReactNode
   if (f.status === 'empty') {
     body = (
-      <button onClick={onPlant} className="w-full h-full flex flex-col items-center justify-center gap-2 group">
-        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={100} />
-        <span className="text-sm text-gray-500 group-hover:text-primary-500">＋ 播种</span>
+      <button onClick={onPlant} aria-label={`${fid} 号灵田，选择种子`} className="w-full h-full min-h-44 flex flex-col items-center justify-center gap-1 group rounded-xl focus-visible:outline-2 focus-visible:outline-primary-600">
+        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={136} />
+        <span className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-sm text-primary-700 group-hover:bg-primary-100">＋ 选择种子</span>
       </button>
     )
   } else if (f.status === 'growing') {
     const pct = Math.round((f.progress! / eff) * 100)
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
-        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={f.progress! >= 2 ? 0 : 1} row={f.progress! >= 2 ? 1 : 0} size={100} />
+        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={f.progress! / eff >= 0.5 ? 0 : 1} row={f.progress! / eff >= 0.5 ? 1 : 0} size={140} />
         <div className="flex items-center gap-1.5">
           <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
           <span className="text-sm font-medium text-gray-800">{herb!.name}</span>
@@ -70,7 +86,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative">
         <span className="absolute top-2 right-3 text-gold">✦</span>
-        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={100} />
+        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={140} />
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{g.gongfa >= 3 ? '（收获另有加成）' : ''}</div>
         <Btn onClick={() => act({ type: 'HARVEST', fieldId: fid })} disabled={g.ap < 1} variant="gold" className="!py-1.5">
@@ -96,8 +112,8 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   }
 
   return (
-    <div className="relative bg-gray-50 border border-gray-200 rounded-2xl shadow-md min-h-44 p-3 hover:shadow-lg transition-shadow">
-      <div className="absolute top-2 left-3 text-[11px] text-gray-400 tracking-widest">{fid} 号田</div>
+    <div className="relative bg-gray-50/90 border border-gray-50 rounded-2xl shadow-md min-h-52 p-3 hover:shadow-lg transition-shadow">
+      <div className="absolute top-4 left-4 text-xs text-gray-600 tracking-widest">{fid} 号灵田</div>
       {body}
     </div>
   )
@@ -125,7 +141,7 @@ function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
                 <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={40} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-800">{h.name}</div>
-                  <div className="text-xs text-gray-500">播种灵气 {h.qi} · 生长期 {h.days} 天 · 收获 {h.yield} 株 · 售 {h.sell} 灵石</div>
+                  <div className="text-xs text-gray-500">播种灵气 {h.qi} · 生长期 {effDays(h.id, g.gongfa)} 天 · 收获 {h.yield} 株 · 售 {h.sell} 灵石</div>
                 </div>
                 <div className="text-xs text-gray-500 whitespace-nowrap">库存 {g.seeds[h.id]}</div>
                 <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!py-1.5">

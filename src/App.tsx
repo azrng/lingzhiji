@@ -59,14 +59,16 @@ function GameScreen() {
   }, [tutorialDone, setTutorialStep])
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-5 min-h-screen flex flex-col">
-      <TopBar />
-      <div className="flex gap-4 flex-col lg:flex-row items-stretch">
-        <main className="flex-1 flex flex-col gap-4 min-w-0">
-          <FieldGrid />
-          <ActionPanel />
-        </main>
-        <DayLog />
+    <div className="game-world min-h-screen px-4 py-5 sm:px-6 lg:px-10 lg:py-7">
+      <div className="relative mx-auto max-w-[1440px]">
+        <TopBar />
+        <div className="flex gap-5 flex-col lg:flex-row items-stretch">
+          <main className="flex-1 flex flex-col gap-5 min-w-0">
+            <FieldGrid />
+            <ActionPanel />
+          </main>
+          <DayLog />
+        </div>
       </div>
 
       {/* 弹层：全屏层（任务堂）独占；月末定额强制置顶，不可关闭 */}

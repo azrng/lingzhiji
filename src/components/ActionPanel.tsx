@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { GONGFA_COST, GONGFA_NAMES, HERBS } from '../game/constants'
+import { GONGFA_COST, GONGFA_NAMES } from '../game/constants'
+import { emergencyEligible } from '../game/economy'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -16,58 +17,54 @@ export default function ActionPanel() {
   const [failHint, setFailHint] = useState<string | null>(null)
 
   const noGrowing = !g.fields.some((f) => f.status === 'growing')
-  const canEmergency =
-    g.fields.every((f) => f.status === 'empty') &&
-    HERBS.every((h) => g.inventory[h.id] === 0) &&
-    !HERBS.some((h) => g.realm >= h.realm && g.seeds[h.id] > 0) &&
-    g.resources.stones < Math.min(...HERBS.filter((h) => g.realm >= h.realm).map((h) => h.price))
+  const canEmergency = emergencyEligible(g)
 
   // 带失败提示的行动：reason 转文案短暂显示在面板底部
   const tryAct = (run: () => { ok: boolean; reason?: string }) => {
     const r = run()
     setFailHint(r.ok ? null : (r.reason ? REASON_TEXT[r.reason] ?? r.reason : '无法执行'))
-    if (r.ok) setTimeout(() => setFailHint(null), 2500)
+    if (!r.ok) setTimeout(() => setFailHint(null), 2500)
   }
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-2xl shadow-md px-5 py-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 tracking-widest">行动力</span>
+    <section className="bg-gray-50/95 border border-gray-50 rounded-3xl shadow-lg px-5 py-5 sm:px-7">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
+        <div><h2 className="font-serif text-xl tracking-widest text-info-600">今日修行</h2><p className="mt-1 text-xs text-gray-600">照料灵田，积累修为</p></div>
+        <div className="flex items-center gap-2 rounded-full bg-warning-50 px-4 py-2">
+          <span className="text-xs text-gray-600 tracking-widest">行动力</span>
           <span className="flex gap-1">
             {[0, 1, 2].map((i) => (
               <span key={i} className={`w-3 h-3 rotate-45 rounded-sm border ${i < g.ap ? 'bg-gold border-warning-400' : 'bg-transparent border-gray-300'}`} />
             ))}
           </span>
-          <span className="text-xs text-gray-500">{g.ap}/3</span>
+          <span className="text-sm font-semibold text-gold-ink">{g.ap}/3</span>
         </div>
-        <div className="h-5 w-px bg-gray-200" />
-        <Btn onClick={() => setQuizOpen(true)} variant={g.quizDaily.done ? 'secondary' : 'primary'}>
-          任务堂 {g.quizDaily.done ? '· 今日已完成 ✓' : '· 今日未完成'}
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Btn className="!min-h-11 !px-5" onClick={() => setQuizOpen(true)} variant={g.quizDaily.done ? 'secondary' : 'primary'}>
+          任务堂 {g.quizDaily.done ? '· 已完成 ✓' : '· 今日未完成'}
         </Btn>
-        <Btn variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday}
-          title={g.wateredToday ? '今日已浇灌' : '消耗 1 AP，全田今日免缺水'}>
-          💧 浇灌
+        <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday}
+          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 AP，全田今日免缺水'}>
+          浇灌 <span className="text-xs opacity-70">1 AP</span>
         </Btn>
-        <Btn variant="secondary" onClick={() => tryAct(() => act({ type: 'IRRIGATE' }))} disabled={g.resources.qi < 1 || noGrowing}
+        <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'IRRIGATE' }))} disabled={g.resources.qi < 1 || noGrowing}
           title={noGrowing ? REASON_TEXT.NO_CROP : g.resources.qi < 1 ? REASON_TEXT.NO_QI : '消耗 1 灵气，加速生长中灵田'}>
-          🔮 灌注
+          灌注 <span className="text-xs opacity-70">1 灵气</span>
         </Btn>
-        <Btn variant="secondary" onClick={() => tryAct(() => act({ type: 'TUNA' }))} disabled={g.tunaUsedToday || g.ap < 1}
-          title={g.tunaUsedToday ? '今日已修炼' : '消耗 1 AP，修为 +1'}>
-          🧘 吐纳
+        <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'TUNA' }))} disabled={g.tunaUsedToday || g.ap < 1}
+          title={g.tunaUsedToday ? '今日已修炼' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 AP，修为 +1'}>
+          吐纳 <span className="text-xs opacity-70">1 AP</span>
         </Btn>
-        <Btn variant="secondary" onClick={() => setMarketOpen(true)}>🏛 坊市</Btn>
-        {g.gongfa < 5 && (
-          <Btn variant="secondary" onClick={() => setGongfaOpen(true)}>
-            📖 功法 Lv{g.gongfa}
-          </Btn>
-        )}
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)}>坊市</Btn>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setGongfaOpen(true)}>
+          功法 Lv{g.gongfa}
+        </Btn>
         {canEmergency && (
-          <Btn variant="gold" onClick={() => act({ type: 'EMERGENCY_SEED' })}>🎁 应急领种</Btn>
+          <Btn className="!min-h-11" variant="gold" onClick={() => tryAct(() => act({ type: 'EMERGENCY_SEED' }))}>应急领种</Btn>
         )}
         <div className="ml-auto">
-          <Btn variant="gold" onClick={() => (g.quizDaily.done ? tryAct(() => act({ type: 'END_DAY' })) : setGateOpen(true))}>
+          <Btn className="!min-h-11 !px-5" variant="gold" onClick={() => (g.quizDaily.done ? tryAct(() => act({ type: 'END_DAY' })) : setGateOpen(true))}>
             结束这一天 →
           </Btn>
         </div>
@@ -93,7 +90,7 @@ export default function ActionPanel() {
       )}
 
       {gongfaOpen && <GongfaModal onClose={() => setGongfaOpen(false)} />}
-    </div>
+    </section>
   )
 }
 
@@ -102,25 +99,26 @@ function GongfaModal({ onClose }: { onClose: () => void }) {
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const next = g.gongfa + 1
+  const maxed = g.gongfa >= 5
   const cost = GONGFA_COST[g.gongfa]
   const effect = ['', '', '所有灵草生长期永久 −1 天', '收获 +15%（向上取整）', '测验合格时灵气 +1', '灌注效果 +1 天（1 灵气 = +2 天）'][next]
-  const ok = g.resources.insight >= 100 && g.resources.contribution >= cost
+  const ok = !maxed && g.resources.insight >= 100 && g.resources.contribution >= cost
   return (
     <Modal title="功法进阶" onClose={onClose}>
       <div className="text-sm text-gray-700 space-y-2">
         <p>当前：<b>Lv{g.gongfa}</b>（Lv3 {GONGFA_NAMES[3]} · Lv4 {GONGFA_NAMES[4]} · Lv5 {GONGFA_NAMES[5]}）</p>
-        <p>下一级：<b>Lv{next}</b> —— {effect}</p>
-        <p className="text-xs text-gray-500">消耗：心得 100{cost ? ` + 贡献 ${cost}` : ''}；心得余额保留</p>
-        <div className="flex gap-4 text-xs text-gray-500">
+        {maxed ? <p>功法已修至最高等级。</p> : <p>下一级：<b>Lv{next}</b> —— {effect}</p>}
+        {!maxed && <p className="text-xs text-gray-500">消耗：心得 100{cost ? ` + 贡献 ${cost}` : ''}；心得余额保留</p>}
+        {!maxed && <div className="flex gap-4 text-xs text-gray-500">
           <span>心得 {g.resources.insight}/100</span>
           <span className={g.resources.contribution < cost ? 'text-error-400' : ''}>贡献 {g.resources.contribution}/{cost}</span>
-        </div>
+        </div>}
       </div>
       <div className="flex justify-end gap-3 mt-5">
         <Btn variant="secondary" onClick={onClose}>关闭</Btn>
-        <Btn disabled={!ok} onClick={() => { act({ type: 'GONGFA_UP' }); onClose() }}>进阶</Btn>
+        {!maxed && <Btn disabled={!ok} onClick={() => { act({ type: 'GONGFA_UP' }); onClose() }}>进阶</Btn>}
       </div>
-      {!ok && <p className="text-xs text-error-400 mt-2">心得或贡献不足，完成任务堂可获得心得与贡献。</p>}
+      {!ok && !maxed && <p className="text-xs text-error-400 mt-2">心得或贡献不足，完成任务堂可获得心得与贡献。</p>}
     </Modal>
   )
 }

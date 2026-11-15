@@ -1,7 +1,7 @@
-// 引擎与种植单测：日结算五步顺序、门控、事件权重、缺水减产、播种零消耗（对齐 PRD §14/§16）
+// 引擎与种植单测：日结算五步顺序、门控、事件权重与灵潮、效果解释器、缺水减产、收获上品、播种零消耗（对齐 PRD §14/§16）
 import { describe, expect, it } from 'vitest'
-import { DAILY_AP, EVENTS, EVENT_CHANCE } from '../constants'
-import { applyAction, dispatch, createInitialState } from '../engine'
+import { DAILY_AP, EVENTS, EVENT_CHANCE, HARVEST_PRIME_CHANCE, tideOf } from '../constants'
+import { applyAction, applyEvent, dispatch, createInitialState, drawEvent } from '../engine'
 import { createRng } from '../rng'
 import type { GameState } from '../types'
 
@@ -56,12 +56,11 @@ describe('播种校验与零消耗', () => {
 
 describe('日结算管线（core-loop.md 五步）', () => {
   it('次日事件跨日和月末结算保留一天，并在下一次日结算时失效', () => {
-    const total = EVENTS.reduce((sum, event) => sum + event.weight, 0)
+    // 用真实的 drawEvent（含当月灵潮调制）构造必然抽中灵泉的种子，避免复制轮盘逻辑漂移
     const seed = Array.from({ length: 10000 }, (_, i) => i).find((i) => {
       const rng = createRng(i)
       if (rng.next() >= EVENT_CHANCE) return false
-      let roll = rng.next() * total
-      return EVENTS.find((event) => (roll -= event.weight) <= 0)?.id === 'spring'
+      return drawEvent(rng, 1).id === 'spring'
     })!
     for (const day of [1, 30]) {
       let s = started(seed)
@@ -126,23 +125,22 @@ describe('日结算管线（core-loop.md 五步）', () => {
     expect(r.state!.day).toBe(30) // 等待定额结算后才推进
   })
 
-  it('灵雨事件使全田 +2 天（事件 +1 与自然生长 +1 叠加）', () => {
+  it('灵雨事件使全田生长 +1 并可达成熟（事件 +1 与日终管线 +1 合计 +2）', () => {
+    // 直接验证 applyEvent 效果解释器：种子 42 初始状态播 1 块青灵草后触发灵雨
     let s = started()
-    s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
     s.resources.qi = 5
-    // 构造确定序列：跳过事件判定 → 灵雨
-    const rng = createRng(s.rngState)
-    rng.next() // 事件判定位（< EVENT_CHANCE 成立）
-    // 找到灵雨在权重轮盘上的位置不可控——直接测 applyEvent 级别由 quiz/economy 以外单独验证，
-    // 这里验证统计意义上的事件分布
-    void rng
-    s = finishQuiz(s)
-    const r = dispatch(s, { type: 'END_DAY' })
-    expect(r.ok).toBe(true)
+    s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
+    const rain = EVENTS.find((e) => e.id === 'rain')!
+    applyEvent(s, rain, createRng(1))
+    expect(s.fields[0].progress).toBe(1) // 事件 +1，日终管线随后再 +1
+    // 进度达生长期时事件步直接成熟停驻
+    s.fields[0].progress = 14
+    applyEvent(s, rain, createRng(1))
+    expect(s.fields[0].status).toBe('mature')
   })
 
   it('事件触发率与权重分布接近设计值（固定种子统计，容忍随机波动）', () => {
-    // 固定种子跑 2000 次「事件是否触发」判定与类型分布
+    // 固定种子统计基础权重表（不含灵潮调制，灵潮分布见独立用例）
     const rng = createRng(2026)
     let fired = 0
     const counts = new Map<string, number>()
@@ -157,11 +155,124 @@ describe('日结算管线（core-loop.md 五步）', () => {
     }
     const rate = fired / 20000
     expect(Math.abs(rate - EVENT_CHANCE)).toBeLessThan(0.02)
-    // 灵雨与虫害的期望占比：10/99 与 13/99（在事件发生内）
+    // 灵雨与虫害的期望占比按权重表动态计算（在事件发生内）
+    const weightOf = (id: string) => EVENTS.find((e) => e.id === id)!.weight
     const rain = counts.get('rain')! / fired
     const pest = counts.get('pest')! / fired
-    expect(Math.abs(rain - 10 / 99)).toBeLessThan(0.03)
-    expect(Math.abs(pest - 13 / 99)).toBeLessThan(0.03)
+    expect(Math.abs(rain - weightOf('rain') / total)).toBeLessThan(0.03)
+    expect(Math.abs(pest - weightOf('pest') / total)).toBeLessThan(0.03)
+  })
+})
+
+describe('事件效果解释器与月度灵潮（core-loop.md §3.4 / PRD §11）', () => {
+  const eventOf = (id: string) => EVENTS.find((e) => e.id === id)!
+
+  it('灵兽来访：随机生长中田产量 +2；无生长中田则无事发生', () => {
+    let s = started()
+    applyEvent(s, eventOf('beast'), createRng(1))
+    expect(s.log[0].title).toBe('事件 · 灵兽来访')
+    s.resources.qi = 5
+    s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
+    applyEvent(s, eventOf('beast'), createRng(1))
+    expect(s.fields[0].curYield).toBe(7) // 5 + 2
+  })
+
+  it('仙人残梦：心得 +5；灵气涌动：灵气 +2 受上限截断', () => {
+    const s = started()
+    applyEvent(s, eventOf('dream'), createRng(1))
+    expect(s.resources.insight).toBe(5)
+    applyEvent(s, eventOf('surge'), createRng(1))
+    expect(s.resources.qi).toBe(2) // 上限 5 内正常入账
+    s.resources.qi = 4
+    applyEvent(s, eventOf('surge'), createRng(1))
+    expect(s.resources.qi).toBe(5) // 溢出丢弃
+  })
+
+  it('灵石失窃：灵石 −5；不足时经 dispatch 出口钳制到 0', () => {
+    let s = started()
+    s.resources.stones = 10
+    applyEvent(s, eventOf('theft'), createRng(1))
+    expect(s.resources.stones).toBe(5)
+    s.resources.stones = 3
+    applyEvent(s, eventOf('theft'), createRng(1)) // 3 − 5 = −2（applyEvent 层面允许负值）
+    // 任一动作（此处吐纳成功）后 applyAction 出口统一钳制资源下限
+    const r = dispatch(s, { type: 'TUNA' })
+    expect(r.ok).toBe(true)
+    expect(r.state!.resources.stones).toBe(0)
+  })
+
+  it('阵法波动：进度 −1 钳制 0；灵雀偷食：仓库随机灵草 −1，无库存无事发生', () => {
+    let s = started()
+    s.resources.qi = 5
+    s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
+    s.fields[0].progress = 0
+    applyEvent(s, eventOf('formation'), createRng(1))
+    expect(s.fields[0].progress).toBe(0)
+    applyEvent(s, eventOf('bird'), createRng(1))
+    expect(Object.values(s.inventory).every((n) => n === 0)).toBe(true)
+  })
+
+  it('灵潮 6 月周期轮转：tideOf 第 7 月回到灵雨之月', () => {
+    expect(tideOf(1).name).toBe('灵雨之月')
+    expect(tideOf(3).name).toBe('虫潮之月')
+    expect(tideOf(6).name).toBe('灾劫之月')
+    expect(tideOf(7).name).toBe('灵雨之月')
+  })
+
+  it('灵雨之月灵雨权重翻倍、虫潮之月虫害减半（drawEvent 固定种子统计）', () => {
+    const stat = (month: number, id: string) => {
+      const rng = createRng(month * 7919)
+      let hit = 0
+      for (let i = 0; i < 20000; i++) if (drawEvent(rng, month).id === id) hit++
+      return hit / 20000
+    }
+    // 基础权重 10×2=20，灵雨之月总权重 = 98 + 10 = 108
+    expect(Math.abs(stat(1, 'rain') - 20 / 108)).toBeLessThan(0.02)
+    // 虫害 13×1.5=19.5，虫潮之月总权重 = 98 + 6.5 + 6.5 = 111
+    expect(Math.abs(stat(3, 'pest') - 19.5 / 111)).toBeLessThan(0.02)
+  })
+
+  it('开局第 1 天与跨入新月时记录灵潮日志', () => {
+    const s = started()
+    expect(s.log[0].title).toBe('灵潮 · 灵雨之月')
+    // 进入第 31 天（第 2 月灵蝶之月）：月末定额完成后推进
+    let cur = started()
+    cur.day = 30
+    cur = finishQuiz(cur)
+    cur = dispatch(cur, { type: 'END_DAY' }).state
+    expect(cur.phase).toBe('quota')
+    cur = dispatch(cur, { type: 'QUOTA_RESOLVE', pay: false, plan: {} }).state
+    expect(cur.day).toBe(31)
+    expect(cur.log[0].title).toBe('灵潮 · 灵蝶之月')
+  })
+})
+
+describe('收获上品（farming.md §3.5 / PRD §6）', () => {
+  function matured(seed = 42): GameState {
+    let s = started(seed)
+    s.resources.qi = 5
+    s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
+    s.fields[0].progress = 15
+    s.fields[0].status = 'mature'
+    return s
+  }
+
+  it('命中上品：产量 +1 且日志注明灵性涌现', () => {
+    // 找首个使 rng.next() < 0.2 的种子（首个随机位即上品判定）
+    const primeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() < HARVEST_PRIME_CHANCE)!
+    const r = dispatch(matured(primeSeed), { type: 'HARVEST', fieldId: 1 })
+    expect(r.ok).toBe(true)
+    expect(r.state!.inventory.qingling).toBe(6) // 5 + 1
+    expect(r.state!.log[0].text).toContain('上品')
+    expect(r.state!.cultivation).toBe(6) // 修为按最终株数计
+  })
+
+  it('未命中上品：产量为功法加成取整基础值', () => {
+    const noPrimeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= HARVEST_PRIME_CHANCE)!
+    const r = dispatch(matured(noPrimeSeed), { type: 'HARVEST', fieldId: 1 })
+    expect(r.ok).toBe(true)
+    expect(r.state!.inventory.qingling).toBe(5)
+    expect(r.state!.log[0].text).not.toContain('上品')
   })
 })
 

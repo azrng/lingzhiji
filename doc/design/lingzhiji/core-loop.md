@@ -4,7 +4,7 @@ doc_type: design
 module: lingzhiji
 feature: core-loop
 status: approved
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 relations:
   - doc/requirements/lingzhiji/v0.1-prd.md
   - doc/design/architecture.md
@@ -55,12 +55,12 @@ relations:
 ```text
 endDay(state):
   1. 前置门控：quizDaily.done != true → 拒绝（reason: QUIZ_NOT_DONE）
-  2. 随机事件（§3.4）：30% 触发 1 个，按权重抽取；即时类立即结算，持续类写入 pendingTomorrow
+  2. 随机事件（§3.4）：30% 触发 1 个，按当月灵潮调制后的权重抽取；即时类立即结算，持续类写入 pendingTomorrow
   3. 全田自然生长 +1 天；功法 Lv2 生长期 -1 已在常量表生效；推进后逐田检查成熟（成熟停驻，farming.md）
   4. 缺水结算：!wateredToday 且仍生长中的田 dryStreak +1；达 3 触发当茬减产（farming.md）
   5. 月末判定：monthDay == 30 → phase = 'quota'，进入定额结算交互（economy.md）；
      玩家在弹窗完成缴纳/放弃后 monthSettle() 收尾
-  6. 推进：day + 1，重置 ap / wateredToday / tunaUsedToday / 当日任务堂状态，清空消费 pendingTomorrow
+  6. 推进：day + 1，重置 ap / wateredToday / tunaUsedToday / 当日任务堂状态，清空消费 pendingTomorrow；跨入新月（dayInMonth == 1）时记录本月灵潮日志（§3.4）
   7. 自动存档（含中间态：步骤 5 玩家未完成交互时，phase='quota' 直接入档，恢复后继续）
 ```
 
@@ -69,13 +69,16 @@ endDay(state):
 
 ### 3.4 随机事件
 
-- 事件表、权重与效果常量集中在 `constants.ts`（PRD §11：正 60 / 负 39 / 行情 1）
+- 事件表、权重与效果描述常量集中在 `constants.ts`（PRD §11：正 56 / 负 41 / 行情 1）；`EventDef.effect` 为判别联合的效果描述，`applyEvent` 是通用解释器，**新增事件只加数据条目，不改结算管线**（2026-11-15 数据化改造）
+- 效果种类（`EventEffect`）：当茬产量增减（随机生长中田）、全田生长进度增减、资源增减（灵石 / 贡献 / 心得 / 灵气，灵气走 `farming.gainQi` 上限截断，其余受出口钳制）、修为入账（统一走 `gainCultivation`）、仓库随机灵草增减、持续类（灵泉 `infusionDouble`、行情 `marketMult`）
 - 触发判定与目标选取（随机田 / 随机灵草）全部走 PRNG；无有效目标时按 PR §5.4「无事发生」处理，不顺延、不替换
-- 即时类（灵雨 / 灵蝶 / 师姐 / 拾灵石 / 长老 / 虫害 / 偷食 / 阵法波动）在步骤 2 直接结算并入日志
+- 即时类（灵雨 / 灵蝶 / 师姐 / 拾灵石 / 长老 / 灵兽来访 / 仙人残梦 / 灵气涌动 / 虫害 / 偷食 / 阵法波动 / 灵石失窃）在步骤 2 直接结算并入日志
 - 持续类写入 `pendingTomorrow`，在**下一个游戏日**生效：
   - 灵泉涌出 → `pendingTomorrow.infusionDouble = true`：明日灌注基础效果 ×2（farming.md 计算时消费）
   - 坊市行情 → `pendingTomorrow.marketMult = 1.5 | 0.7`：明日出售单价按此折算（economy.md 消费）
 - `pendingTomorrow` 在下一次日终事件判定前清空；本次事件产生的效果保留到下一日（跨月时也经过定额结算保留），效果只覆盖一日，不叠加历史。
+- 事件图标：原 10 事件用 5×2 素材 sheet（`evPos`）；新增 4 事件（灵兽来访 / 仙人残梦 / 灵气涌动 / 灵石失窃，权重各 2）暂用 emoji `icon` 兜底，素材补做见 TASK.md T24
+- **月度灵潮**（PRD §11.1）：`tideOf(month)` 按 6 月周期返回主题（灵雨 / 灵蝶 / 虫潮 / 悟道 / 灵泉 / 灾劫），事件抽取权重 = 基础权重 × 主题调制系数；灵潮为派生值不入档。月初（第 1 / 31 / 61…天）记录灵潮日志（kind `settle`），开局第 1 天由初始状态直接携带当日灵潮日志
 
 ### 3.5 当日日志
 
@@ -122,5 +125,5 @@ endDay(state):
 
 ## 6. 验证方式
 
-- vitest：五步结算顺序（事件→生长→缺水→月末→推进）；30% 触发与权重分布（固定种子统计）；持续效果次日生效且仅一日；月末中间态存档恢复；门控拒绝路径
+- vitest：五步结算顺序（事件→生长→缺水→月末→推进）；30% 触发与权重分布（固定种子统计，含灵潮调制后的有效权重）；效果解释器逐事件用例（含无目标「无事发生」）；持续效果次日生效且仅一日；月初灵潮日志与 6 月周期轮转；月末中间态存档恢复；门控拒绝路径
 - smoke test：完成 10 题 → 结束当天 → 观察日志顺序与资源变化；未完成时结束当天被拦截

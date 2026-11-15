@@ -1,7 +1,7 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, type EventDef } from './constants'
-import { convertRate } from './economy'
+import { EVENTS, EVENT_CHANCE, DAILY_AP, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, tideOf, type EventDef } from './constants'
+import { convertRate, dayInMonth, monthOf } from './economy'
 import * as economy from './economy'
 import * as farming from './farming'
 import { addLog } from './log'
@@ -24,7 +24,7 @@ export function quizStartStat() {
 }
 
 export function createInitialState(seed: number): GameState {
-  return {
+  const s: GameState = {
     day: 1,
     phase: 'day',
     ap: DAILY_AP,
@@ -50,53 +50,77 @@ export function createInitialState(seed: number): GameState {
     log: [],
     rngState: seed >>> 0,
   }
+  // 开局提示本月灵潮（PRD §11.1），后续每月月初在 advanceDay 记录
+  addTideLog(s)
+  return s
 }
 
-// 随机事件结算（core-loop.md §3.4）：即时类立即生效，持续类写入 pendingTomorrow 次日生效
-function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
-  switch (ev.id) {
-    case 'rain':
-      // 灵雨 = 全田 +2 天：这里先 +1，日终管线随后再 +1
-      farming.applyGrowth(s)
-      break
-    case 'butterfly': {
+// 随机事件结算（core-loop.md §3.4）：按 EventDef.effect 通用执行（数据驱动，新增事件只加表项）。
+// 即时类立即生效，持续类写入 pendingTomorrow 次日生效；无有效目标时「无事发生」，不顺延不替换。
+export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
+  const eff = ev.effect
+  switch (eff.kind) {
+    case 'yield': {
+      // 目标选取走 PRNG；无生长中田则无事发生
       const growing = s.fields.filter((f) => f.status === 'growing')
-      const t = growing.length ? pick(rng, growing) : null
-      if (t) t.curYield! += 1
+      const t = eff.randomField && growing.length ? pick(rng, growing) : null
+      if (t) t.curYield = Math.max(0, t.curYield! + eff.delta)
       break
     }
-    case 'senior':
-      gainCultivation(s, 3)
+    case 'growth':
+      // 全部生长中田进度增减（灵雨 +1 与日终管线 +1 合计 +2；阵法波动 −1）；
+      // 生长中田 progress 恒小于生长期，成熟停驻检查只对 +delta 生效，对 −delta 是空操作
+      for (const f of s.fields) {
+        if (f.status !== 'growing') continue
+        f.progress = Math.max(0, f.progress! + eff.delta)
+        if (f.progress! >= farming.effDays(f.herb!, s.gongfa)) {
+          f.progress = farming.effDays(f.herb!, s.gongfa)
+          f.status = 'mature'
+        }
+      }
       break
-    case 'stones':
-      s.resources.stones += 8
+    case 'resource':
+      // 灵气走 gainQi 统一上限截断；其余资源受 applyAction 出口钳制（下限 0）
+      if (eff.resource === 'qi') {
+        farming.gainQi(s, eff.amount)
+      } else {
+        s.resources[eff.resource] += eff.amount
+      }
       break
-    case 'spring':
+    case 'cultivation':
+      gainCultivation(s, eff.amount)
+      break
+    case 'inventory': {
+      // 仓库随机灵草增减：减只在有库存时选目标（无事发生）；增从全部灵草随机
+      const owned = Object.entries(s.inventory).filter(([, n]) => n > 0)
+      const pool: [string, number][] = eff.delta < 0 ? owned : Object.entries(s.inventory)
+      const t = pool.length ? pick(rng, pool) : null
+      if (t) s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
+      break
+    }
+    case 'infusionDouble':
       s.pendingTomorrow.infusionDouble = true
       break
-    case 'elder':
-      s.resources.contribution += 5
-      break
-    case 'pest': {
-      const growing = s.fields.filter((f) => f.status === 'growing')
-      const t = growing.length ? pick(rng, growing) : null
-      if (t) t.curYield = Math.max(0, t.curYield! - 1)
-      break
-    }
-    case 'bird': {
-      const owned = Object.entries(s.inventory).filter(([, n]) => n > 0)
-      const t = owned.length ? pick(rng, owned) : null
-      if (t) s.inventory[t[0] as keyof typeof s.inventory] -= 1
-      break
-    }
-    case 'formation':
-      for (const f of s.fields) if (f.status === 'growing') f.progress = Math.max(0, f.progress! - 1)
-      break
-    case 'market':
+    case 'marketMult':
       s.pendingTomorrow.marketMult = rng.next() < 0.5 ? MARKET_UP : MARKET_DOWN
       break
   }
-  addLog(s, { kind: 'event', evPos: ev.pos, title: `事件 · ${ev.name}`, text: ev.desc, neg: ev.negative })
+  addLog(s, { kind: 'event', evPos: ev.pos, icon: ev.icon, title: `事件 · ${ev.name}`, text: ev.desc, neg: ev.negative })
+}
+
+// 月初灵潮日志（PRD §11.1）：第 1/31/61… 天开始时提示本月灵潮
+function addTideLog(s: GameState): void {
+  const tide = tideOf(monthOf(s.day))
+  addLog(s, { kind: 'settle', icon: '🌗', title: `灵潮 · ${tide.name}`, text: tide.desc })
+}
+
+// 按当月灵潮调制后的权重抽取事件（core-loop.md §3.4）：基础权重 × 灵潮系数后走轮盘
+export function drawEvent(rng: Rng, month: number): EventDef {
+  const tide = tideOf(month)
+  const weighted = EVENTS.map((e) => ({ e, w: e.weight * (tide.weightMult[e.id] ?? 1) }))
+  const total = weighted.reduce((a, x) => a + x.w, 0)
+  let roll = rng.next() * total
+  return (weighted.find((x) => (roll -= x.w) <= 0) ?? weighted[weighted.length - 1]).e
 }
 
 // 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定
@@ -104,12 +128,9 @@ function endDay(s: GameState, rng: Rng): ReasonCode | null {
   if (!s.quizDaily.done) return 'QUIZ_NOT_DONE'
   // 当日效果到此结束；本次事件产生的效果需要保留到下一日。
   s.pendingTomorrow = {}
-  // 1. 随机事件：30% 触发 1 个，按权重抽取
+  // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）
   if (rng.next() < EVENT_CHANCE) {
-    const total = EVENTS.reduce((a, e) => a + e.weight, 0)
-    let roll = rng.next() * total
-    const ev = EVENTS.find((e) => (roll -= e.weight) <= 0) ?? EVENTS[EVENTS.length - 1]
-    applyEvent(s, ev, rng)
+    applyEvent(s, drawEvent(rng, monthOf(s.day)), rng)
   }
   // 2. 全田自然生长 +1（灵雨已在事件步 +1，合计 +2）
   farming.applyGrowth(s)
@@ -132,6 +153,8 @@ function advanceDay(s: GameState): void {
   farming.resetDaily(s)
   s.quizDaily.done = false
   s.quizDaily.session = null
+  // 跨入新月时提示本月灵潮（core-loop.md 步骤 6 / PRD §11.1）
+  if (dayInMonth(s.day) === 1) addTideLog(s)
 }
 
 // 功法升级：心得 100 + 贡献消耗；Lv2 生长期缩短后立即检查成熟状态（farming.md）。
@@ -175,7 +198,7 @@ export function applyAction(state: GameState, action: GameAction): { ok: boolean
         err = farming.water(state)
         break
       case 'HARVEST':
-        err = farming.harvest(state, action.fieldId)
+        err = farming.harvest(state, action.fieldId, rng)
         break
       case 'IRRIGATE':
         err = farming.irrigate(state)

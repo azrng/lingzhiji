@@ -1,7 +1,8 @@
 // 灵田种植（farming.md）：全部函数在 engine 已克隆的 draft 上就地修改，返回失败原因或 null
-import { DAILY_AP, FIELD_CAP, HERB_BY_ID } from './constants'
+import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID } from './constants'
 import { addLog } from './log'
 import { gainCultivation, qiCap } from './progression'
+import type { Rng } from './rng'
 import type { GameState, HerbId, ReasonCode } from './types'
 
 // 生长期 = 基础天数 −（Lv2 凝神诀 1 天），最低 1 天
@@ -40,17 +41,20 @@ export function water(s: GameState): ReasonCode | null {
   return null
 }
 
-// 收获：1 AP/块；产量顺序（farming.md §3.7）：事件→缺水已在日终处理，收获时应用功法加成
-export function harvest(s: GameState, fieldId: number): ReasonCode | null {
+// 收获：1 AP/块；产量顺序（farming.md §3.7）：事件→缺水已在日终处理，收获时应用功法加成；
+// 取整后掷上品（PRD §6）：20% 概率灵性涌现额外 +1 株
+export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | null {
   const field = s.fields.find((f) => f.id === fieldId)
   if (!field || field.status !== 'mature') return 'NOT_MATURE'
   if (s.ap < 1) return 'NO_AP'
   s.ap -= 1
   const def = HERB_BY_ID[field.herb!]
   const bonus = s.gongfa >= 3 ? 1.15 : 1
-  const got = Math.ceil(field.curYield! * bonus)
+  const base = Math.ceil(field.curYield! * bonus)
+  const prime = rng.next() < HARVEST_PRIME_CHANCE ? HARVEST_PRIME_BONUS : 0
+  const got = base + prime
   s.inventory[field.herb!] += got
-  addLog(s, { kind: 'action', icon: '🌾', title: `收获 · ${def.name}`, text: `+${got} 株，修为 +${def.exp * got}` })
+  addLog(s, { kind: 'action', icon: '🌾', title: `收获 · ${def.name}`, text: `+${got} 株，修为 +${def.exp * got}${prime ? '，灵性涌现 +1 上品' : ''}` })
   gainCultivation(s, def.exp * got)
   s.fields[s.fields.indexOf(field)] = { id: field.id, status: 'empty' }
   return null

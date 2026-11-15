@@ -58,4 +58,27 @@ describe('题目选项', () => {
       LIBS.cet4 = original
     }
   })
+
+  it('真实词库 group 配对：同组词的释义不作为彼此的干扰项（固定种子扫描）', () => {
+    // 从已填充的真实词库中找一个同组词对（word-groups.ts 生成，契约 CON-LINGZHIJI-WLIB-001）
+    const bank = LIBS.cet4
+    let a: WordEntry | null = null
+    let b: WordEntry | null = null
+    for (const w of bank) {
+      if (!w.group.length) continue
+      const partner = bank.find((o) => o !== w && o.group.some((g) => w.group.includes(g)))
+      if (partner) {
+        a = w
+        b = partner
+        break
+      }
+    }
+    expect(a).not.toBeNull()
+    // 固定种子多次出题，同组词释义绝不与正确释义同时出现
+    for (let seed = 1; seed <= 100; seed++) {
+      const opts = buildOptions(createRng(seed), a!, 'cet4')
+      expect(opts).not.toBeNull()
+      expect(opts).not.toContain(b!.meaning)
+    }
+  })
 })

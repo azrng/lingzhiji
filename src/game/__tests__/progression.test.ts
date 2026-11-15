@@ -16,6 +16,14 @@ function memoryStorage() {
   } as Storage
 }
 
+// 与 save.exportCode 相同的 UTF-8 → Base64 编码（初始状态含中文灵潮日志，btoa 直接编码会抛错）
+function encode(data: unknown): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(data))
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return btoa(bin)
+}
+
 describe('修为与突破（progression.md）', () => {
   it('累计只增不减；跨阈值自动突破并连跳合并', () => {
     const s = createInitialState(1)
@@ -77,7 +85,7 @@ describe('存档（save.md）', () => {
     expect(importCode('!!!not-base64!!!').reason).toBe('BAD_BASE64')
     expect(importCode(btoa('not json')).reason).toBe('BAD_JSON')
     const badVersion = JSON.stringify({ version: 99, savedAt: 1, game: createInitialState(1) })
-    expect(importCode(btoa(badVersion)).reason).toBe('BAD_VERSION')
+    expect(importCode(encode(JSON.parse(badVersion))).reason).toBe('BAD_VERSION')
     const badShape = JSON.stringify({ version: 1, savedAt: 1, game: { day: -5 } })
     expect(importCode(btoa(badShape)).reason).toBe('BAD_SHAPE')
   })
@@ -101,8 +109,7 @@ describe('存档（save.md）', () => {
     const badInventory = { ...s, inventory: {} }
     const badCharacter = { ...s, characterId: 'unknown' }
     for (const game of [badInventory, badCharacter]) {
-      const code = btoa(JSON.stringify({ version: 1, savedAt: 1, game }))
-      expect(importCode(code).reason).toBe('BAD_SHAPE')
+      expect(importCode(encode({ version: 1, savedAt: 1, game })).reason).toBe('BAD_SHAPE')
     }
   })
 

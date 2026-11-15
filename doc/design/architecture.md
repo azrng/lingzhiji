@@ -3,7 +3,7 @@ doc_id: DES-LINGZHIJI-ARCH
 doc_type: design
 module: lingzhiji
 status: approved
-last_updated: 2026-11-14
+last_updated: 2026-11-15
 relations:
   - doc/requirements/lingzhiji/v0.1-prd.md
   - doc/design/lingzhiji/core-loop.md
@@ -108,8 +108,9 @@ UI dispatch(action) → store 调 engine 纯函数 → { ok, state?, logs?, reas
 
 | 层 | 手段 | 覆盖点 |
 |---|---|---|
-| game 层 | vitest 单测 | 日结算五步顺序、定额结算、境界突破与解锁、判分与抽题（补题 / 跨库 / 耗尽）、事件权重与钳制、存档往返与导入校验（对齐 PRD §14 测试行、§16 验收） |
+| game 层 | vitest 单测 | 日结算五步顺序、定额结算、境界突破与解锁、判分与抽题（补题 / 跨库 / 耗尽）、事件权重与钳制（含月度灵潮调制）、存档往返与导入校验（对齐 PRD §14 测试行、§16 验收） |
 | 平衡 | `scripts/balance-sim.ts` | 500 局 × 3 策略（策略定义 PRD §14）：筑基天数分布、未达成比例、逐月欠缴率、资源曲线、功法达成率、错词池变化 |
+| 数据维护 | `scripts/word-groups.ts`（npm run words:groups） | 词库近义组 `group` 生成：释义片段包含关系直接配对，幂等全量写回（口径见契约 CON-LINGZHIJI-WLIB-001） |
 | UI 层 | 手动 smoke test | 浏览器完整路径清单见 `lingzhiji/ui.md` 验证小节 |
 
 - 模拟器与单测直接驱动 game 层，不启动 React；具体用例清单归各功能文档「验证方式」小节

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360" role="img" aria-label="可爱小师妹">
+  <ellipse cx="151" cy="337" rx="82" ry="12" fill="#315F4D" opacity=".12"/>
+  <path d="M91 192Q47 224 58 308l35 23h119l34-23q10-83-37-116z" fill="#54836F"/>
+  <path d="M119 192l31 43 31-43-11-14h-40z" fill="#FFFDF8"/>
+  <path d="M92 301h116l-8 32H101z" fill="#D9B45B"/>
+  <path d="M95 108q-15-58 31-73 46-21 78 17 19 21 7 65l-12 57H96z" fill="#302D2A"/>
+  <circle cx="150" cy="119" r="59" fill="#F2D5B8"/>
+  <path d="M91 111q4-66 59-67 54 1 60 64-20-21-30-40-26 26-88 31z" fill="#302D2A"/>
+  <circle cx="93" cy="121" r="9" fill="#F2D5B8"/><circle cx="207" cy="121" r="9" fill="#F2D5B8"/>
+  <path d="M111 115q12-9 23 0m32 0q12-9 23 0" fill="none" stroke="#302D2A" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="125" cy="133" rx="8" ry="10" fill="#fff"/><ellipse cx="175" cy="133" rx="8" ry="10" fill="#fff"/>
+  <circle cx="127" cy="134" r="5" fill="#302D2A"/><circle cx="177" cy="134" r="5" fill="#302D2A"/>
+  <path d="M143 158q8 8 16 0" fill="none" stroke="#C06A58" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="107" cy="151" rx="10" ry="5" fill="#E99D8A" opacity=".5"/><ellipse cx="193" cy="151" rx="10" ry="5" fill="#E99D8A" opacity=".5"/>
+  <path d="M102 54q-23-14-17-35 24 2 28 25m85 0q5-23 29-26 3 22-19 37" fill="#302D2A"/>
+  <path d="M150 237q-18 28-2 43 16-15 3-43" fill="#7FBF7F"/><path d="M150 261q-35-24-34 1 21 15 34-1m3-5q30-26 34-3-14 19-34 3" fill="#9BCF9B"/>
+  <circle cx="79" cy="205" r="5" fill="#D9B45B"/><circle cx="224" cy="221" r="4" fill="#7FBF7F"/>
+</svg>

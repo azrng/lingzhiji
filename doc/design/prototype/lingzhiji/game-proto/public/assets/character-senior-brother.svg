@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 360" role="img" aria-label="帅气师兄">
+  <ellipse cx="151" cy="337" rx="82" ry="12" fill="#315F4D" opacity=".12"/>
+  <path d="M91 190Q49 221 59 308l34 23h118l32-23q9-85-37-117z" fill="#365F61"/>
+  <path d="M120 190l30 47 31-47-11-14h-40z" fill="#FFFDF8"/>
+  <path d="M94 300h112l-7 32H101z" fill="#B8913C"/>
+  <path d="M94 110q-7-65 45-79 54-16 80 34l-11 95H94z" fill="#282B2B"/>
+  <circle cx="150" cy="119" r="57" fill="#F0CFAD"/>
+  <path d="M94 108q10-62 57-60 42 1 61 49-35-16-52-37-25 30-66 32z" fill="#282B2B"/>
+  <path d="M190 47q36-21 51 6l-14 8-35-3z" fill="#282B2B"/><path d="M210 52l36-21" stroke="#B8913C" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="94" cy="122" r="8" fill="#F0CFAD"/><circle cx="206" cy="122" r="8" fill="#F0CFAD"/>
+  <path d="M111 115q11-7 22 0m34 0q11-7 22 0" fill="none" stroke="#282B2B" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="125" cy="133" rx="8" ry="9" fill="#fff"/><ellipse cx="175" cy="133" rx="8" ry="9" fill="#fff"/>
+  <circle cx="127" cy="134" r="5" fill="#282B2B"/><circle cx="177" cy="134" r="5" fill="#282B2B"/>
+  <path d="M142 157q8 6 16 0" fill="none" stroke="#A85F50" stroke-width="3" stroke-linecap="round"/>
+  <path d="M219 210l27 102m-10 2 29-8" stroke="#8F6B3D" stroke-width="7" stroke-linecap="round"/>
+  <path d="M123 246l27 26 27-26" fill="none" stroke="#9BCF9B" stroke-width="4"/>
+  <circle cx="80" cy="205" r="4" fill="#D9B45B"/><circle cx="221" cy="188" r="5" fill="#D9B45B"/>
+</svg>

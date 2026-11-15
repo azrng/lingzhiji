@@ -43,11 +43,13 @@ export interface Toast {
 }
 
 export type QuizStep = 'entry' | 'learning' | 'testing' | 'result'
+export type CharacterId = 'junior-sister' | 'senior-brother' | 'senior-sister'
 
 let toastSeq = 1
 
 interface GameState {
   started: boolean
+  characterId: CharacterId
   day: number
   ap: number
   stones: number
@@ -88,6 +90,7 @@ interface GameState {
 
   // 行动
   start: () => void
+  setCharacter: (characterId: CharacterId) => void
   plant: (fieldId: number, herb: HerbId) => void
   water: () => void
   harvest: (fieldId: number) => void
@@ -123,6 +126,7 @@ interface GameState {
 
 const initial = () => ({
   started: false,
+  characterId: 'junior-sister' as CharacterId,
   day: 1,
   ap: 3,
   stones: 50,
@@ -210,7 +214,8 @@ export const useGame = create<GameState>((set, get) => {
   return {
     ...initial(),
 
-    start: () => set({ ...initial(), started: true, tutorialStep: 1 }),
+    start: () => set({ ...initial(), characterId: get().characterId, started: true, tutorialStep: 1 }),
+    setCharacter: (characterId) => set({ characterId }),
 
     plant: (fieldId, herbId) => {
       const s = get()

@@ -1,6 +1,6 @@
 ---
 rule_id: frontend-agents
-version: 3.7.1
+version: 3.8.0
 last_updated: 2026-11-15
 dependencies: [agents-root]
 ---
@@ -18,11 +18,14 @@ dependencies: [agents-root]
 
 ### 前端
 - React + TypeScript + Vite；版本以仓库锁定为准，不主动升级，新项目先联网检索当前最新正式版
-- Tailwind CSS 4；必要的复杂画面样式可使用引用同一 token 的局部 CSS
-- Ant Design Icons（@ant-design/icons，唯一图标库）
-- React Router 6（路由管理）
+- Tailwind CSS 4（唯一样式体系：CSS-first 配置，主题 token 集中在 `src/styles/globals.css` 的 `@theme`，不使用 tailwind.config.js）
+- shadcn/ui（基于 Radix Primitive 的复制式组件，组件源码落在 `src/components/ui/`）+ `class-variance-authority` + `clsx` / `tailwind-merge`
+- shadcn/ui 组件优先用 CLI（`npx shadcn@latest add <component>`）拉取到本地后按需定制，不手写已被 shadcn 覆盖的基础组件
+- lucide-react（唯一图标库）
+- React Router（页面与导航）
 - Zustand（全局状态管理：用户信息、权限、通知等跨组件共享状态）
 - Axios（HTTP 客户端）
+- 图表库（ECharts / recharts 等）仅在实际存在图表需求时引入，默认不安装；引入后统一封装并接入 `design-system.yaml` token 主题
 - Axios 仅用于第三方 / 远端 API，同站数据无后端可调
 
 ### 数据来源
@@ -41,11 +44,11 @@ dependencies: [agents-root]
   - 仓库已有样式实现：从现有代码反向提炼产品 token 回填 `design-system.yaml`，不强行套用基线值
   - 资料缺失：先向用户询问品牌色、明暗主题、密度等偏好，禁止把基线色默认当作产品主色
 - `meta.status` 为「已定制」后，`use-ai-rule` 重新生成会保留本地 `design-system.yaml` 不覆盖；定制后忘记改状态，下次生成会被基线覆盖
-- `meta.tech_stack` 与界面子规则声明的技术栈不一致（如规则为 Blazor 而文件仍是 React + Ant Design 基线，或基线组件库与项目实际引用的组件库不同）时，该文件视为过期基线：框架 / 组件库专属章节（组件主题映射、状态管理、构建环境变量、前端端口）一律不适用，仅可参考与框架无关的色彩 / 间距 token；先按上述定制流程重建或用 `use-ai-rule` 重新生成正确技术栈的基线再开始界面任务，并把不一致作为待确认项提请用户
+- `meta.tech_stack` 与界面子规则声明的技术栈不一致（如规则为 Tailwind + shadcn/ui 而文件仍是 React + Ant Design 旧基线，或基线组件库与项目实际引用的组件库不同）时，该文件视为过期基线：框架 / 组件库专属章节（组件主题映射、状态管理、构建环境变量、前端端口）一律不适用，仅可参考与框架无关的色彩 / 间距 token；先按上述定制流程重建或用 `use-ai-rule` 重新生成正确技术栈的基线再开始界面任务，并把不一致作为待确认项提请用户
 - 调整 token 的固定顺序：先改 `design-system.yaml`，再同步文件中声明的实现资源（样式资源 / 主题配置 / 图表主题），最后改界面
 - 语义 token 的命名、分层与「token → 实现资源 → 组件」引用管线属于结构契约：可以改值、增删 token，不得另建平行 token 体系或在界面绕过 token 硬编码
-- 使用 Ant Design 主题系统（ConfigProvider + Design Token），所有视觉规范在 `design-system.yaml` 中定义
-- 优先使用 Ant Design 组件和样式，禁止 inline style，禁止硬编码颜色/间距/圆角
+- 使用 Tailwind CSS 4 + shadcn/ui 体系：所有视觉规范在 `design-system.yaml` 中定义，落地为 `src/styles/globals.css` 的 `@theme` token 与 shadcn CSS 变量
+- 优先复用 `src/components/ui/` 下 shadcn 组件与 Radix 能力，再考虑自定义组件；禁止 inline style，禁止硬编码颜色/间距/圆角
 
 ### UI 规范锁定
 
@@ -195,6 +198,7 @@ project-root/
 ├── src/
 │   ├── api/               # 按业务域拆分的请求模块（第三方 / 远端 API）
 │   ├── components/
+│   │   ├── ui/            # shadcn/ui 组件（复制进来，可定制）
 │   │   ├── common/        # 通用业务组件
 │   │   └── layout/        # 布局组件
 │   ├── pages/             # 页面级组件（按业务域拆分）
@@ -204,11 +208,12 @@ project-root/
 │   ├── stores/            # Zustand stores（按业务域拆分）
 │   ├── hooks/             # 自定义 Hooks（useXxx）
 │   ├── types/             # TypeScript 类型定义
-│   ├── utils/             # 纯工具函数
-│   ├── config/
-│   │   └── antd-theme.ts  # Ant Design 主题配置
+│   ├── utils/             # 纯工具函数（含 cn 类名合并）
+│   ├── styles/
+│   │   └── globals.css    # Tailwind CSS 4 @theme + shadcn CSS 变量
 │   ├── App.tsx
 │   └── main.tsx
+├── components.json        # shadcn 配置
 ├── index.html
 ├── package.json
 ├── vite.config.ts
@@ -249,11 +254,12 @@ project-root/
 - 异步操作直接在 store actions 或组件中通过 async/await 处理
 
 ### 样式规则
-- 优先使用 Ant Design 组件内置样式和 Design Token
-- 自定义样式使用 CSS Modules 或全局 CSS，变量来自 `design-system.yaml`
+- 唯一样式引擎为 Tailwind CSS 4；颜色、间距、圆角、阴影统一使用 Tailwind 工具类或 shadcn CSS 变量，禁止硬编码
+- 组件变体统一用 `class-variance-authority`，类名合并统一用 `cn()`（clsx + tailwind-merge）
+- 确需全局或复杂样式时写进 `globals.css`，变量来自 `design-system.yaml`
 - 禁止 inline style，禁止硬编码颜色值（如 `#1677ff`）
-- 主题定制统一通过 `ConfigProvider` 的 `theme` 属性配置
-- 响应式设计遵循移动优先原则，使用 Ant Design 的 Grid 系统（Row / Col）；存量样式文件已是桌面优先写法（max-width 查询）时，增量改动沿用该文件既有约定，不整体重写扩大 diff，新增文件仍遵循移动优先
+- 主题定制统一通过 `globals.css` 的 `@theme` token 与 shadcn CSS 变量配置
+- 响应式设计遵循移动优先原则，使用 Tailwind 断点（`sm:` / `md:` / `lg:` ...）；存量样式文件已是桌面优先写法（max-width 查询）时，增量改动沿用该文件既有约定，不整体重写扩大 diff，新增文件仍遵循移动优先
 
 ### 组件规则
 - 优先复用仓库已有的通用组件和业务域组件，禁止重复创建同类组件

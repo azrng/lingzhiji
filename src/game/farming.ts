@@ -31,6 +31,7 @@ export function plant(s: GameState, fieldId: number, herb: HerbId): ReasonCode |
 
 // 浇灌：1 AP，全田当日免缺水并清零缺水计数（含当日新播种的田）
 export function water(s: GameState): ReasonCode | null {
+  if (s.wateredToday) return 'ALREADY_DONE'
   if (s.ap < 1) return 'NO_AP'
   s.ap -= 1
   s.wateredToday = true

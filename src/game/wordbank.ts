@@ -12,9 +12,25 @@ export interface WordEntry {
   group: string[]
 }
 
+// 同一词性下完全重复的整段释义只展示一次；不同词性或不同释义都保留。
+export function cleanMeaning(meaning: string): string {
+  const seen = new Set<string>()
+  return meaning.split(/(?=\b(?:n|v|vt|vi|adj|adv|prep|conj|pron|art|num|int|aux|pl)\.)/i)
+    .map((part) => part.trim().replace(/[；;]+$/, '').trim())
+    .filter((part) => {
+      if (!part) return false
+      const key = part.replace(/\s+/g, '').replace(/[，,]/g, ',').replace(/[；;]/g, ';').toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).join('；')
+}
+
+const prepareBank = (entries: WordEntry[]) => entries.map((entry) => ({ ...entry, meaning: cleanMeaning(entry.meaning) }))
+
 export const LIBS: Record<LibId, WordEntry[]> = {
-  cet4: cet4Json as WordEntry[],
-  cet6: cet6Json as WordEntry[],
+  cet4: prepareBank(cet4Json as WordEntry[]),
+  cet6: prepareBank(cet6Json as WordEntry[]),
 }
 
 // 同词识别：去首尾空格并忽略大小写（PRD §8.1 跨库口径）

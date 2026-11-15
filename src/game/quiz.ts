@@ -83,7 +83,7 @@ export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
 // 先学后测：看完新词进入测验
 export function learned(s: GameState): ReasonCode | null {
   const session = s.quizDaily.session
-  if (!session) return 'INVALID_TARGET'
+  if (!session || session.phase !== 'learning') return 'INVALID_TARGET'
   session.phase = 'testing'
   return null
 }
@@ -93,8 +93,9 @@ export function answer(s: GameState, choice: string): ReasonCode | null {
   const session = s.quizDaily.session
   if (!session || session.phase !== 'testing') return 'INVALID_TARGET'
   if (session.answers[session.idx] !== null) return 'ALREADY_DONE'
-  session.answers[session.idx] = choice
   const q = session.questions[session.idx]
+  if (!q.opts.includes(choice)) return 'INVALID_TARGET'
+  session.answers[session.idx] = choice
   const norm = normalize(q.word)
   const stat = s.learning.libs[session.lib]
   if (q.from === 'review') {

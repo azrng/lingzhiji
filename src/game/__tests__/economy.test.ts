@@ -173,6 +173,27 @@ describe('月末定额与欠缴（economy.md §3.4）', () => {
 })
 
 describe('应急领种（economy.md §3.2）', () => {
+  it('灵田部分被收回时，仍可在剩余空田领种恢复', () => {
+    const s = createInitialState(1)
+    s.fields[0].status = 'confiscated'
+    s.seeds.qingling = 0
+    s.resources.stones = 0
+    const r = dispatch(s, { type: 'EMERGENCY_SEED' })
+    expect(r.ok).toBe(true)
+    expect(r.state.seeds.qingling).toBe(1)
+    expect(dispatch(r.state, { type: 'EMERGENCY_SEED' }).ok).toBe(false)
+  })
+
+  it('已有作物或没有可用空田时不能领种', () => {
+    const s = createInitialState(1)
+    s.seeds.qingling = 0
+    s.resources.stones = 0
+    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 0, curYield: 5, dry: 0, halved: false }
+    expect(dispatch(s, { type: 'EMERGENCY_SEED' }).ok).toBe(false)
+    s.fields.forEach((field) => { field.status = 'confiscated' })
+    expect(dispatch(s, { type: 'EMERGENCY_SEED' }).ok).toBe(false)
+  })
+
   it('全空田 + 无库存 + 无可种种子 + 买不起最便宜可种种子 → 可领 1 枚青灵草种', () => {
     let s = createInitialState(1)
     s.seeds = { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 }

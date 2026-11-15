@@ -56,6 +56,11 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   const herb = f.herb ? HERB_BY_ID[f.herb] : null
   const eff = f.herb ? effDays(f.herb, g.gongfa) : 0
   const herbIdx = f.herb ? HERBS.findIndex((h) => h.id === f.herb) : 0
+  const herbPortrait = herb && (
+    <span className="absolute right-3 top-3 overflow-hidden rounded-full border-2 border-gray-50 shadow-md" aria-label={herb.name} role="img">
+      <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={52} />
+    </span>
+  )
 
   let body: ReactNode
   if (f.status === 'empty') {
@@ -69,6 +74,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     const pct = Math.round((f.progress! / eff) * 100)
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
+        {herbPortrait}
         <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={f.progress! / eff >= 0.5 ? 0 : 1} row={f.progress! / eff >= 0.5 ? 1 : 0} size={140} />
         <div className="flex items-center gap-1.5">
           <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
@@ -77,7 +83,8 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         <div className="w-4/5 h-2 bg-gray-200 rounded-full overflow-hidden">
           <div className="h-full bg-herb rounded-full" style={{ width: `${pct}%` }} />
         </div>
-        <div className="text-xs text-gray-500">{f.progress}/{eff} 天 · 产量 {f.curYield}</div>
+        <div className="text-xs text-gray-600">生长 {f.progress}/{eff} 天 · 预计产量 {f.curYield} 株</div>
+        <div className="text-xs text-primary-700">{g.wateredToday ? '今日已浇灌' : '今日尚未浇灌'}</div>
         {f.dry! > 0 && !f.halved && <div className="text-xs text-warning-500">⚠ 缺水 {f.dry} 天</div>}
         {f.halved && <div className="text-xs text-error-400">已减产</div>}
       </div>
@@ -85,7 +92,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   } else if (f.status === 'mature') {
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative">
-        <span className="absolute top-2 right-3 text-gold">✦</span>
+        {herbPortrait}
         <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={140} />
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{g.gongfa >= 3 ? '（收获另有加成）' : ''}</div>
@@ -137,14 +144,13 @@ function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
                   : null
           return (
             <div key={h.id}>
-              <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
+              <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
                 <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={40} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-800">{h.name}</div>
-                  <div className="text-xs text-gray-500">播种灵气 {h.qi} · 生长期 {effDays(h.id, g.gongfa)} 天 · 收获 {h.yield} 株 · 售 {h.sell} 灵石</div>
+                  <div className="flex flex-wrap items-baseline gap-x-2"><span className="text-sm font-medium text-gray-800">{h.name}</span><span className="text-xs text-gray-600">库存 {g.seeds[h.id]}</span></div>
+                  <div className="mt-1 text-xs leading-5 text-gray-600">灵气 {h.qi} · 生长 {effDays(h.id, g.gongfa)} 天<br />收获 {h.yield} 株 · 售价 {h.sell} 灵石</div>
                 </div>
-                <div className="text-xs text-gray-500 whitespace-nowrap">库存 {g.seeds[h.id]}</div>
-                <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!py-1.5">
+                <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!min-h-11 !px-3">
                   播种
                 </Btn>
               </div>

@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { convertRate, monthOf } from '../game/economy'
 import { QUOTA_TARGET, HERBS } from '../game/constants'
 import { quotaConverted } from '../game/engine'
 import { useGameStore } from '../stores/useGameStore'
-import { Btn, Sprite } from './ui'
+import { Btn, Sprite, useModalFocus } from './ui'
 
 // 月末定额弹窗（economy.md §3.3）：按折算值选择整数株，足额才能缴纳；放弃按规则处罚。
 // 由 GameScreen 在 game.phase === 'quota' 时渲染，不允许关闭（必须结算后推进）
 export default function QuotaModal() {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef)
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const [plan, setPlan] = useState<Partial<Record<string, number>>>({})
@@ -41,7 +43,7 @@ export default function QuotaModal() {
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center p-4">
-      <div role="dialog" aria-modal="true" aria-label={`宗门定额，第 ${month} 月`} className="bg-gray-50 rounded-2xl shadow-lg max-w-lg w-full flex flex-col max-h-[88vh]">
+      <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label={`宗门定额，第 ${month} 月`} className="bg-gray-50 rounded-2xl shadow-lg max-w-lg w-full flex flex-col max-h-[88vh]">
         <div className="px-6 py-5 bg-primary-800 text-gray-50 rounded-t-2xl">
           <p className="text-xs text-primary-200 tracking-widest">灵植堂 · 月末清点</p>
           <h3 className="mt-1 font-serif text-xl tracking-widest">宗门定额 · 第 {month} 月</h3>

@@ -130,4 +130,20 @@ describe('存档（save.md）', () => {
     expect(restored.quizDaily.session!.answers[0]).not.toBeNull()
     expect(restored.quizDaily.session!.idx).toBe(0)
   })
+
+  it('拒绝缺少正确答案、重复选项、无效作答和重复田地编号', () => {
+    const sessionState = dispatch(createInitialState(3), { type: 'QUIZ_BEGIN' }).state
+    expect(importCode(exportCode(sessionState)).ok).toBe(true)
+    const question = sessionState.quizDaily.session!.questions[0]
+    question.opts = ['甲', '乙', '丙', '丁']
+    expect(importCode(exportCode(sessionState)).reason).toBe('BAD_SHAPE')
+    question.opts = [question.meaning, question.meaning, '丙', '丁']
+    expect(importCode(exportCode(sessionState)).reason).toBe('BAD_SHAPE')
+    question.opts = [question.meaning, '乙', '丙', '丁']
+    sessionState.quizDaily.session!.answers[0] = '不在选项中'
+    expect(importCode(exportCode(sessionState)).reason).toBe('BAD_SHAPE')
+    const duplicateFields = createInitialState(1)
+    duplicateFields.fields[1].id = duplicateFields.fields[0].id
+    expect(importCode(exportCode(duplicateFields)).reason).toBe('BAD_SHAPE')
+  })
 })

@@ -1,20 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QUIZ_PASS, QUIZ_SIZE } from '../game/constants'
 import { reviewQuota } from '../game/constants'
 import { canFormSession, entryOf, LIBS } from '../game/wordbank'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
-import { Btn } from './ui'
+import { Btn, useModalFocus } from './ui'
 
 // 任务堂：全屏弹层，四相位 入口 → 先学（新词）→ 测验 → 结果（quiz.md）
 export default function QuizModal() {
   const session = useGameStore((s) => s.game.quizDaily.session)
   const done = useGameStore((s) => s.game.quizDaily.done)
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, () => setQuizOpen(false))
 
   return (
-    <div className="fixed inset-0 z-50 game-world overflow-y-auto">
+    <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label="任务堂" className="fixed inset-0 z-50 game-world overflow-y-auto">
       <div className="max-w-3xl mx-auto min-h-full flex flex-col px-4 py-5 sm:px-6 sm:py-8">
         <div className="rounded-t-3xl bg-primary-800 px-6 py-5 sm:px-8 flex items-center justify-between gap-4 text-gray-50">
           <div><p className="text-xs tracking-widest text-primary-200">青云宗 · 每日功课</p><h2 className="mt-1 font-serif text-2xl tracking-widest">任务堂 · 辨灵识字</h2></div>
@@ -125,6 +127,12 @@ function Testing() {
   const act = useGameStore((s) => s.act)
   const q = session.questions[session.idx]
   const chosen = session.answers[session.idx]
+  const optionsRef = useRef<HTMLDivElement>(null)
+  const nextRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const target = chosen === null ? optionsRef.current : nextRef.current
+    target?.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus()
+  }, [session.idx, chosen])
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -137,7 +145,7 @@ function Testing() {
         <div className="text-xs text-primary-700 tracking-widest mb-3">选出正确释义</div>
         <div className="font-serif text-4xl text-info-600 tracking-wide break-words">{q.word}</div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div ref={optionsRef} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {q.opts.map((opt) => {
           const isAnswer = opt === q.meaning
           const picked = chosen === opt
@@ -160,8 +168,8 @@ function Testing() {
         })}
       </div>
       {chosen !== null && (
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <div className="text-sm">
+        <div ref={nextRef} className="flex flex-wrap gap-4 items-center justify-between">
+          <div role="status" className="text-sm">
             {chosen === q.meaning ? (
               <span className="text-success-500">✓ 正确</span>
             ) : (

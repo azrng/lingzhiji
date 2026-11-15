@@ -4,7 +4,7 @@
 // 不派发该事件，叠加 3s 轮询 savedAt 比对兜底。
 import { create } from 'zustand'
 import { createInitialState, dispatch } from '../game/engine'
-import { SAVE_KEY, load, persist } from '../game/save'
+import { SAVE_KEY, importCode, load, persist } from '../game/save'
 import type { CharacterId, GameAction, GameState } from '../game/types'
 
 interface GameStore {
@@ -16,6 +16,7 @@ interface GameStore {
 
   startNew: (characterId?: CharacterId) => void
   continueSaved: () => { ok: boolean; reason?: string }
+  importSaved: (code: string) => { ok: boolean; reason?: string }
   act: (action: GameAction) => { ok: boolean; reason?: string }
   hideTabBanner: () => void
   reloadFromDisk: () => void
@@ -61,6 +62,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       const r = load()
       if (!r.ok) return { ok: false, reason: r.reason }
       set({ game: r.state, started: true, lastSavedAt: r.savedAt ?? 0, saveError: null })
+      return { ok: true }
+    },
+
+    importSaved: (code) => {
+      const result = importCode(code)
+      if (!result.ok || !result.state) return { ok: false, reason: result.reason }
+      // 必须先写入成功再切换游戏，保存失败时保留当前页面和旧存档。
+      const savedAt = persist(result.state)
+      if (!savedAt) return { ok: false, reason: 'SAVE_FAILED' }
+      set({ game: result.state, started: true, lastSavedAt: savedAt, saveError: null, tabBanner: false })
       return { ok: true }
     },
 

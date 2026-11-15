@@ -1,6 +1,6 @@
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
-import { Btn } from './ui'
+import { Btn, useModalFocus } from './ui'
 
 // 新手引导（ui.md §4.3）：3 步 overlay；完成或跳过落档 tutorialDone 不再显示
 const STEPS = [
@@ -19,6 +19,8 @@ const STEPS = [
 ]
 
 export default function Tutorial() {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef)
   const step = useUiStore((s) => s.tutorialStep)
   const setStep = useUiStore((s) => s.setTutorialStep)
   const act = useGameStore((s) => s.act)
@@ -30,7 +32,7 @@ export default function Tutorial() {
   }
   return (
     <div className="fixed inset-0 z-[55] bg-gray-900/50 flex items-center justify-center p-4">
-      <div className="bg-gray-50 rounded-2xl shadow-lg max-w-md w-full p-7">
+      <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label="入门指引" className="bg-gray-50 rounded-2xl shadow-lg max-w-md w-full p-7">
         <div className="text-xs text-gold tracking-[0.3em] mb-2">入门指引 {step}/3</div>
         <h3 className="font-serif text-xl text-info-600 tracking-wider mb-3">{cur.title}</h3>
         <p className="text-sm text-gray-700 leading-relaxed">{cur.text}</p>
@@ -49,3 +51,4 @@ export default function Tutorial() {
     </div>
   )
 }
+import { useRef } from 'react'

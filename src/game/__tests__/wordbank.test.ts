@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createRng } from '../rng'
-import { buildOptions, LIBS, type WordEntry } from '../wordbank'
+import { buildOptions, cleanMeaning, LIBS, type WordEntry } from '../wordbank'
 
 describe('题目选项', () => {
+  it('清理完全重复的词性释义，保留不同词性与不同释义', () => {
+    expect(cleanMeaning('n. 图解， 图表， 简图；n. 图解，图表，简图')).toBe('n. 图解， 图表， 简图')
+    expect(cleanMeaning('n. 滥用；v. 滥用；n. 虐待')).toBe('n. 滥用；v. 滥用；n. 虐待')
+  })
+
   it('固定种子可复现，且正确释义与三个干扰项互不重复', () => {
     const entry = LIBS.cet4[0]
     const first = buildOptions(createRng(42), entry, 'cet4')

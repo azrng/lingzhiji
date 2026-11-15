@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { exportCode, importCode, persist } from '../game/save'
+import { exportCode } from '../game/save'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -9,6 +9,7 @@ import { Btn, Modal } from './ui'
 export default function SettingsModal() {
   const game = useGameStore((s) => s.game)
   const startNew = useGameStore((s) => s.startNew)
+  const importSaved = useGameStore((s) => s.importSaved)
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
   const pushToasts = useUiStore((s) => s.pushToasts)
   const [importCodeText, setImportCodeText] = useState('')
@@ -56,16 +57,14 @@ export default function SettingsModal() {
             variant="secondary"
             className="mt-2"
             onClick={() => {
-              const r = importCode(importCodeText)
-              if (r.ok && r.state) {
-                const savedAt = persist(r.state)
-                useGameStore.setState({ game: r.state, lastSavedAt: savedAt || useGameStore.getState().lastSavedAt, saveError: savedAt ? null : '存档保存失败，进度暂存于本页' })
-                setImportResult(savedAt
-                  ? { ok: true, msg: '导入成功，存档已覆盖' }
-                  : { ok: false, msg: '导入内容已载入本页，但保存失败；请保留导码。' })
-                if (savedAt) pushToasts([{ day: r.state.day, kind: 'settle', icon: '📥', title: '存档导入成功', text: `已恢复到第 ${r.state.day} 天` }])
+              if (!window.confirm('导入会覆盖当前存档，确定继续吗？')) return
+              const r = importSaved(importCodeText)
+              if (r.ok) {
+                setImportResult({ ok: true, msg: '导入成功，存档已覆盖' })
+                const day = useGameStore.getState().game.day
+                pushToasts([{ day, kind: 'settle', icon: '📥', title: '存档导入成功', text: `已恢复到第 ${day} 天` }])
               } else {
-                setImportResult({ ok: false, msg: `${REASON_TEXT[r.reason ?? 'BAD_SHAPE'] ?? '导码无效'}（原档已保留）` })
+                setImportResult({ ok: false, msg: r.reason === 'SAVE_FAILED' ? '保存失败，请保留导码并检查浏览器存储（原档已保留）' : `${REASON_TEXT[r.reason ?? 'BAD_SHAPE'] ?? '导码无效'}（原档已保留）` })
               }
             }}
           >

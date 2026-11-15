@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { characters } from '../game/characters'
 import { REASON_TEXT } from '../components/reasonText'
-import { Btn } from '../components/ui'
+import { Btn, Modal } from '../components/ui'
 import { useGameStore } from '../stores/useGameStore'
 
 // 启动页负责选择本局形象；所选立绘会同步到游戏中的弟子头像与结算画面。
 export default function StartScreen() {
   const [characterId, setCharacter] = useState(characters[0].id)
+  const [importOpen, setImportOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [importError, setImportError] = useState('')
   const startNew = useGameStore((s) => s.startNew)
   const continueSaved = useGameStore((s) => s.continueSaved)
+  const importSaved = useGameStore((s) => s.importSaved)
   let hasSave = false
   try {
     hasSave = typeof localStorage !== 'undefined' && localStorage.getItem('lingzhiji.save.v1') !== null
@@ -86,9 +90,26 @@ export default function StartScreen() {
               }} className="!min-h-12 !px-5 !py-2.5">继续修行</Btn>}
             </div>
             {hasSave && <p className="mt-3 text-center text-xs text-gray-500">继续修行将使用已有存档中的形象</p>}
+            <button type="button" onClick={() => setImportOpen(true)} className="mt-3 min-h-11 self-center px-4 text-sm text-primary-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-primary-600">导入存档码</button>
           </div>
         </section>
       </div>
+      {importOpen && (
+        <Modal title="导入存档" onClose={() => setImportOpen(false)} wide>
+          <p className="text-sm leading-6 text-gray-700">粘贴之前导出的存档码。导入成功后会覆盖此浏览器中的现有存档。</p>
+          <label htmlFor="start-save-code" className="mt-4 block text-sm text-gray-700">存档码</label>
+          <textarea id="start-save-code" value={code} onChange={(e) => { setCode(e.target.value); setImportError('') }} placeholder="粘贴灵植记存档码" className="mt-2 h-28 w-full rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm" />
+          {importError && <p role="alert" className="mt-2 text-sm text-error-500">{importError}</p>}
+          <div className="mt-4 flex flex-wrap justify-end gap-3">
+            <Btn variant="secondary" onClick={() => setImportOpen(false)}>取消</Btn>
+            <Btn disabled={!code.trim()} onClick={() => {
+              if (hasSave && !window.confirm('导入成功后会覆盖浏览器中的现有存档，确定继续吗？')) return
+              const result = importSaved(code)
+              if (!result.ok) setImportError(result.reason === 'SAVE_FAILED' ? '保存失败，请检查浏览器存储并保留存档码。原存档未被覆盖。' : `${REASON_TEXT[result.reason ?? 'BAD_SHAPE'] ?? '存档码无效'}，原存档未被覆盖。`)
+            }}>导入并继续</Btn>
+          </div>
+        </Modal>
+      )}
     </main>
   )
 }

@@ -54,7 +54,9 @@ export function emergencyEligible(s: GameState): boolean {
   const hasUsable = HERBS.some((h) => s.realm >= h.realm && s.seeds[h.id] > 0)
   const cheapest = Math.min(...HERBS.filter((h) => s.realm >= h.realm).map((h) => h.price))
   return (
-    s.fields.every((f) => f.status === 'empty') &&
+    // 被收回的田没有作物，不应阻止玩家在剩余空田恢复经营。
+    s.fields.some((f) => f.status === 'empty') &&
+    s.fields.every((f) => f.status === 'empty' || f.status === 'confiscated') &&
     HERBS.every((h) => s.inventory[h.id] === 0) &&
     !hasUsable &&
     s.resources.stones < cheapest

@@ -205,4 +205,13 @@ describe('缺水减产（farming.md）', () => {
     s = finishQuiz(s)
     expect(s.fields[0].dry).toBe(0)
   })
+
+  it('同一天不能重复浇灌并消耗行动力', () => {
+    const first = dispatch(started(), { type: 'WATER' })
+    expect(first.ok).toBe(true)
+    const second = dispatch(first.state, { type: 'WATER' })
+    expect(second.ok).toBe(false)
+    expect(second.reason).toBe('ALREADY_DONE')
+    expect(second.state.ap).toBe(first.state.ap)
+  })
 })

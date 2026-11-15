@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode } from 'react'
+import { CSSProperties, ReactNode, RefObject, useEffect, useRef } from 'react'
 
 // 原型通用小组件：按钮、弹层壳、素材雪碧图、AP 点阵。
 // 视觉取值全部来自 theme.css 的 token，禁止硬编码色值。
@@ -33,6 +33,41 @@ export function Btn({
   )
 }
 
+// 可关闭与强制结算弹层共用焦点约束；仅最上层响应键盘。
+export function useModalFocus(dialogRef: RefObject<HTMLDivElement | null>, onClose?: () => void) {
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const selector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(selector)).filter((item) => item.getClientRects().length > 0)
+    ;(focusable()[0] ?? dialog).focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      const dialogs = document.querySelectorAll('[data-game-modal]')
+      if (dialogs[dialogs.length - 1] !== dialog) return
+      if (event.key === 'Escape' && closeRef.current) {
+        event.preventDefault()
+        closeRef.current()
+      } else if (event.key === 'Tab') {
+        const items = focusable()
+        if (!items.length) { event.preventDefault(); dialog.focus(); return }
+        const first = items[0]
+        const last = items[items.length - 1]
+        if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+          event.preventDefault(); last.focus()
+        } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+          event.preventDefault(); first.focus()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => { document.removeEventListener('keydown', onKeyDown); if (previous?.isConnected) previous.focus() }
+  }, [dialogRef])
+}
+
 export function Modal({
   title, onClose, children, wide = false,
 }: {
@@ -41,9 +76,12 @@ export function Modal({
   children: ReactNode
   wide?: boolean
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, onClose)
+
   return (
     <div className="fixed inset-0 z-40 bg-gray-900/40 flex items-center justify-center p-4">
-      <div role="dialog" aria-modal="true" aria-label={title} className={`bg-gray-50 rounded-2xl shadow-lg w-full ${wide ? 'max-w-2xl' : 'max-w-md'} flex flex-col max-h-[88vh]`}>
+      <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={`bg-gray-50 rounded-2xl shadow-lg w-full ${wide ? 'max-w-2xl' : 'max-w-md'} flex flex-col max-h-[88vh]`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 className="font-serif text-lg text-info-600 tracking-widest">{title}</h3>
           <button onClick={onClose} aria-label={`关闭${title}`} className="text-gray-500 hover:text-gray-700 text-xl leading-none min-w-11 min-h-11">

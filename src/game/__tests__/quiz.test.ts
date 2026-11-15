@@ -117,6 +117,15 @@ describe('抽题与补足链', () => {
 })
 
 describe('错词池与奖励', () => {
+  it('拒绝不属于题目的选项及重复进入测验', () => {
+    let s = dispatch(createInitialState(7), { type: 'QUIZ_BEGIN' }).state
+    s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
+    expect(dispatch(s, { type: 'QUIZ_LEARNED' }).reason).toBe('INVALID_TARGET')
+    const bad = dispatch(s, { type: 'QUIZ_ANSWER', choice: '不在选项中' })
+    expect(bad.reason).toBe('INVALID_TARGET')
+    expect(bad.state.quizDaily.session!.answers[0]).toBeNull()
+  })
+
   it('答错入池、重现答对移出、再答错排到队尾', () => {
     let s = createInitialState(7)
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state

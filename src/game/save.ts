@@ -99,6 +99,7 @@ function validate(game: unknown): ReasonCode | null {
     isInt(g.realm) && g.realm >= 0 && g.realm <= 9 &&
     isInt(g.gongfa) && g.gongfa >= 1 && g.gongfa <= 5 &&
     Array.isArray(g.fields) && g.fields.length >= 1 && g.fields.every(validField) &&
+    new Set(g.fields.map((f) => f.id)).size === g.fields.length &&
     typeof g.seeds === 'object' && g.seeds !== null &&
     HERBS.every((h) => nonNegInt(g.seeds[h.id])) &&
     Object.entries(g.seeds).every(([k, v]) => isHerbId(k) && nonNegInt(v)) &&
@@ -127,10 +128,11 @@ function validate(game: unknown): ReasonCode | null {
       (q.lib === 'cet4' || q.lib === 'cet6') &&
       Array.isArray(q.questions) && q.questions.length === 10 &&
       q.questions.every((x) => typeof x === 'object' && x !== null && isStr(x.word) && isStr(x.meaning) &&
-        (x.from === 'new' || x.from === 'review') && Array.isArray(x.opts) && x.opts.length === 4 && x.opts.every(isStr)) &&
+        (x.from === 'new' || x.from === 'review') && Array.isArray(x.opts) && x.opts.length === 4 && x.opts.every(isStr) &&
+        new Set(x.opts).size === 4 && x.opts.includes(x.meaning)) &&
       (q.phase === 'learning' || q.phase === 'testing' || q.phase === 'result') &&
       Array.isArray(q.answers) && q.answers.length === 10 &&
-      q.answers.every((a) => a === null || isStr(a)) &&
+      q.answers.every((a, i) => a === null || (isStr(a) && q.questions[i].opts.includes(a))) &&
       isInt(q.idx) && q.idx >= 0 && q.idx < 10
     if (!okQ) return 'BAD_SHAPE'
   }

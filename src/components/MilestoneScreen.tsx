@@ -2,16 +2,18 @@ import { monthOf } from '../game/economy'
 import { characterImage } from '../game/characters'
 import { LIBS } from '../game/wordbank'
 import { useGameStore } from '../stores/useGameStore'
-import { Btn } from './ui'
+import { Btn, useModalFocus } from './ui'
 
 // 筑基结算（progression.md §3.4）：一次性全屏成绩单；恢复后未标记仍会重新展示
 export default function MilestoneScreen() {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef)
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const c4 = g.learning.libs.cet4
   const c6 = g.learning.libs.cet6
   return (
-    <div className="fixed inset-0 z-[65] bg-info-600 overflow-y-auto">
+    <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label="突破筑基" className="fixed inset-0 z-[65] bg-info-600 overflow-y-auto">
       <img src="/assets/breakthrough-aura.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />
       <div className="relative z-10 max-w-xl mx-auto min-h-full flex flex-col items-center justify-center px-6 py-12">
         <div className="text-[12px] text-gold-pale tracking-[0.42em] mb-3">FOUNDATION ESTABLISHED</div>
@@ -48,3 +50,4 @@ function Row({ k, v }: { k: string; v: string }) {
     </div>
   )
 }
+import { useRef } from 'react'

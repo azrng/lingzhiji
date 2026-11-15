@@ -52,19 +52,19 @@ export default function MarketPanel() {
             const poor = g.resources.stones < price
             return (
               <div key={h.id}>
-                <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-3">
+                <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
                   <Sprite sheet="market-goods-sheet.png" cols={4} rows={2} col={GOODS_POS[h.id][0]} row={GOODS_POS[h.id][1]} size={48} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-800">
                       {h.name}种
                       {g.realm >= 5 && <span className="text-xs text-gold-ink ml-1.5">九折</span>}
+                      <span className="ml-2 text-xs font-normal text-gray-600">持有 {g.seeds[h.id]}</span>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      种子 {price} 灵石 · 播种需 {REALM_NAMES[h.realm]} + {h.qi} 灵气<br />每株灵草可折算 {convertRate(h)} 株定额
+                    <div className="mt-1 text-xs leading-5 text-gray-600">
+                      {price} 灵石 · 播种 {h.qi} 灵气<br />需{REALM_NAMES[h.realm]} · 定额折算 {convertRate(h)}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 whitespace-nowrap">持有 {g.seeds[h.id]}</div>
-                  <Btn className="!py-1.5" disabled={poor}
+                  <Btn className="!min-h-11 !px-3" disabled={poor}
                     onClick={() => (locked ? setConfirmLocked(h.id) : act({ type: 'BUY_SEED', herb: h.id }))}>
                     购买
                   </Btn>
@@ -94,7 +94,7 @@ export default function MarketPanel() {
           {HERBS.filter((h) => g.inventory[h.id] > 0).map((h) => {
             const unit = Math.max(1, Math.floor(h.sell * (mult ?? 1)))
             return (
-              <div key={h.id} className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
+              <div key={h.id} className="flex flex-wrap items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
                 <Sprite sheet="market-goods-sheet.png" cols={4} rows={2} col={3} row={1} size={38} />
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-800">{h.name} ×{g.inventory[h.id]}</div>
@@ -110,8 +110,7 @@ export default function MarketPanel() {
       )}
 
       {confirmLocked && (
-        <div className="fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center p-4">
-          <div className="bg-gray-50 rounded-2xl shadow-lg max-w-sm w-full p-6">
+        <Modal title="确认购买" onClose={() => setConfirmLocked(null)}>
             <div className="text-sm text-gray-700 leading-relaxed">
               <b>{HERBS.find((h) => h.id === confirmLocked)!.name}种</b>需{REALM_NAMES[HERBS.find((h) => h.id === confirmLocked)!.realm]}才可播种，当前境界无法使用。仍要购买？
             </div>
@@ -119,8 +118,7 @@ export default function MarketPanel() {
               <Btn variant="secondary" onClick={() => setConfirmLocked(null)}>取消</Btn>
               <Btn onClick={() => { act({ type: 'BUY_SEED', herb: confirmLocked }); setConfirmLocked(null) }}>仍要购买</Btn>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </Modal>
   )

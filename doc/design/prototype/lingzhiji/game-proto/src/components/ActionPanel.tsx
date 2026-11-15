@@ -10,8 +10,10 @@ export default function ActionPanel() {
   const [gongfaOpen, setGongfaOpen] = useState(false)
 
   const noGrowing = !s.fields.some((f) => f.status === 'growing')
+  // 至少一块空田、其余田只能为空或被收回（与正式工程 economy.ts emergencyEligible 同口径）
   const canEmergency =
-    s.fields.every((f) => f.status === 'empty') &&
+    s.fields.some((f) => f.status === 'empty') &&
+    s.fields.every((f) => f.status === 'empty' || f.status === 'confiscated') &&
     Object.values(s.inventory).every((v) => v === 0) &&
     !HERBS.some((h) => s.realm >= h.realm && s.seeds[h.id] > 0) &&
     s.stones < Math.min(...HERBS.filter((h) => s.realm >= h.realm).map((h) => h.price))

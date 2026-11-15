@@ -339,8 +339,10 @@ export const useGame = create<GameState>((set, get) => {
       const s = get()
       const hasUsable = HERBS.some((h) => s.realm >= h.realm && s.seeds[h.id] > 0)
       const cheapest = Math.min(...HERBS.filter((h) => s.realm >= h.realm).map((h) => h.price))
+      // 被收回的田没有作物，不应阻止玩家在剩余空田恢复经营（与正式工程 economy.ts 同口径）
       const ok =
-        s.fields.every((f) => f.status === 'empty') &&
+        s.fields.some((f) => f.status === 'empty') &&
+        s.fields.every((f) => f.status === 'empty' || f.status === 'confiscated') &&
         Object.values(s.inventory).every((v) => v === 0) &&
         !hasUsable && s.stones < cheapest
       if (!ok) return

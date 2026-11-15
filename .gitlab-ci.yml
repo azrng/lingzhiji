@@ -1,0 +1,18 @@
+# GitLab Pages 发布流水线：默认分支推送后构建并发布到 Pages。
+# 存档为浏览器 localStorage，无需任何后端服务。
+image: node:22-alpine
+
+pages:
+  stage: deploy
+  script:
+    - npm ci
+    - npm run build
+    # 仓库源码本身有 public/（Vite 静态资产目录），构建时已复制进 dist/；
+    # GitLab Pages 固定要求产物目录名为 public，故先移除源码目录再改名。
+    - rm -rf public
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

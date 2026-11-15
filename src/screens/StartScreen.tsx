@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { assetUrl } from '../assetUrl'
 import { characters } from '../game/characters'
 import { REASON_TEXT } from '../components/reasonText'
 import { Btn, Modal } from '../components/ui'
@@ -23,7 +24,7 @@ export default function StartScreen() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-primary-100 text-gray-800">
-      <img src="/assets/environment-spirit-field.svg" alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <img src={assetUrl('environment-spirit-field.svg')} alt="" className="absolute inset-0 h-full w-full object-cover" />
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-primary-50/80 via-gray-100/50 to-primary-100/55" />
       <div className="relative mx-auto flex min-h-screen max-w-7xl items-center px-5 py-8 sm:px-8 lg:px-12">
         <section className="grid w-full overflow-hidden rounded-[2rem] border border-white/75 bg-gray-50/90 shadow-[0_28px_90px_rgba(42,69,57,.2)] backdrop-blur-sm lg:min-h-[650px] lg:grid-cols-[.92fr_1.08fr]">

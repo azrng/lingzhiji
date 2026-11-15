@@ -1,4 +1,5 @@
 import { CSSProperties, ReactNode, RefObject, useEffect, useRef } from 'react'
+import { assetUrl } from '../assetUrl'
 
 // 原型通用小组件：按钮、弹层壳、素材雪碧图、AP 点阵。
 // 视觉取值全部来自 theme.css 的 token，禁止硬编码色值。
@@ -111,7 +112,7 @@ export function Sprite({
     height: size,
     display: 'inline-block',
     flex: 'none',
-    backgroundImage: `url(/assets/${sheet})`,
+    backgroundImage: `url(${assetUrl(sheet)})`,
     backgroundRepeat: 'no-repeat',
     backgroundSize: `${cols * 100}% ${rows * 100}%`,
     backgroundPosition: `${cols > 1 ? (col / (cols - 1)) * 100 : 0}% ${rows > 1 ? (row / (rows - 1)) * 100 : 0}%`,

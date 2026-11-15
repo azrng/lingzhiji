@@ -1,3 +1,4 @@
+import { assetUrl } from '../assetUrl'
 import { monthOf } from '../game/economy'
 import { characterImage } from '../game/characters'
 import { LIBS } from '../game/wordbank'
@@ -14,7 +15,7 @@ export default function MilestoneScreen() {
   const c6 = g.learning.libs.cet6
   return (
     <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label="突破筑基" className="fixed inset-0 z-[65] bg-info-600 overflow-y-auto">
-      <img src="/assets/breakthrough-aura.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+      <img src={assetUrl('breakthrough-aura.png')} alt="" className="absolute inset-0 w-full h-full object-cover opacity-80" />
       <div className="relative z-10 max-w-xl mx-auto min-h-full flex flex-col items-center justify-center px-6 py-12">
         <div className="text-[12px] text-gold-pale tracking-[0.42em] mb-3">FOUNDATION ESTABLISHED</div>
         <h1 className="font-serif text-5xl text-gold-pale tracking-[0.14em] font-bold">突破筑基</h1>

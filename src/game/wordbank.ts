@@ -31,20 +31,25 @@ export const entryOf = (lib: LibId, norm: string) => INDEX[lib].get(norm)
 // 干扰项：从当前词库抽取，跳过本词与同一非空近义组（PRD §8.1）；
 // 凑不齐 3 个合法干扰项返回 null，调用方按「词库问题」处理，不出歧义题
 export function buildOptions(rng: Rng, entry: WordEntry, lib: LibId): string[] | null {
-  const pool = LIBS[lib].filter(
-    (w) => normalize(w.word) !== normalize(entry.word) && w.meaning !== entry.meaning &&
-      !(entry.group.length && w.group.some((g) => entry.group.includes(g))),
-  )
+  const bank = LIBS[lib]
   const seen = new Set<string>([entry.meaning])
   const picked: string[] = []
-  for (const w of shuffled(rng, pool)) {
-    if (seen.has(w.meaning)) continue
+  const addCandidate = (w: WordEntry) => {
+    if (normalize(w.word) === normalize(entry.word) || seen.has(w.meaning) ||
+      (entry.group.length && w.group.some((g) => entry.group.includes(g)))) return
     seen.add(w.meaning)
     picked.push(w.meaning)
+  }
+  // 大词库通常几次即可抽足；有限次数后顺序补齐，避免小词库陷入死循环。
+  for (let attempt = 0; attempt < 30 && picked.length < 3 && bank.length; attempt++) {
+    addCandidate(bank[Math.floor(rng.next() * bank.length)])
+  }
+  if (picked.length < 3) for (const word of bank) {
+    addCandidate(word)
     if (picked.length === 3) break
   }
   if (picked.length < 3) return null
-  return [...picked, entry.meaning].sort(() => rng.next() - 0.5)
+  return shuffled(rng, [...picked, entry.meaning])
 }
 
 // 词库可用性：能否组成 n 个不同单词（开始前校验，PRD §8.1 / §18 P0）

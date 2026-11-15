@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { QUIZ_PASS, QUIZ_SIZE } from '../game/constants'
 import { reviewQuota } from '../game/constants'
-import { canFormSession, LIBS } from '../game/wordbank'
+import { canFormSession, entryOf, LIBS } from '../game/wordbank'
+import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import { Btn } from './ui'
@@ -12,16 +14,18 @@ export default function QuizModal() {
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-100 overflow-y-auto">
-      <div className="max-w-2xl mx-auto min-h-full flex flex-col px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-serif text-2xl text-info-600 tracking-[0.14em]">任务堂 · 辨灵识字</h2>
-          <button onClick={() => setQuizOpen(false)} aria-label="关闭任务堂" className="text-gray-500 hover:text-gray-700 text-2xl leading-none min-w-11 min-h-11">×</button>
+    <div className="fixed inset-0 z-50 game-world overflow-y-auto">
+      <div className="max-w-3xl mx-auto min-h-full flex flex-col px-4 py-5 sm:px-6 sm:py-8">
+        <div className="rounded-t-3xl bg-primary-800 px-6 py-5 sm:px-8 flex items-center justify-between gap-4 text-gray-50">
+          <div><p className="text-xs tracking-widest text-primary-200">青云宗 · 每日功课</p><h2 className="mt-1 font-serif text-2xl tracking-widest">任务堂 · 辨灵识字</h2></div>
+          <button onClick={() => setQuizOpen(false)} aria-label="关闭任务堂" className="rounded-full border border-primary-300 text-gray-50 hover:bg-primary-700 text-2xl leading-none min-w-11 min-h-11">×</button>
         </div>
+        <div className="flex-1 rounded-b-3xl bg-gray-50/95 px-5 py-6 sm:px-8 sm:py-8 shadow-lg">
         {!session && <Entry done={done} />}
         {session?.phase === 'learning' && <Learning />}
         {session?.phase === 'testing' && <Testing />}
         {session?.phase === 'result' && <Result />}
+        </div>
       </div>
     </div>
   )
@@ -33,6 +37,9 @@ function Entry({ done }: { done: boolean }) {
   const quota = reviewQuota(g.realm)
   const lib = g.learning.currentLib
   const usable = canFormSession(lib, QUIZ_SIZE)
+  const [showWrong, setShowWrong] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const wrongWords = g.learning.libs[lib].wrongQueue
 
   if (!usable) {
     return (
@@ -55,13 +62,14 @@ function Entry({ done }: { done: boolean }) {
           今日任务已完成 ✓ 明日再来。可切换词库或查看错词池，今日不再重复计奖。
         </div>
       )}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-        <div className="text-sm text-gray-600 mb-3">选择词库（进度与错词分开记录，可随时切换）</div>
+      <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5 sm:p-6">
+        <div className="font-serif text-xl text-primary-900">今日功课</div>
+        <div className="text-sm text-gray-600 mt-2 mb-4">选择词库，学过的词和错词会为你保留。</div>
         <div className="flex gap-3">
           {(['cet4', 'cet6'] as const).map((id) => (
             <button
               key={id}
-              onClick={() => act({ type: 'QUIZ_SET_LIB', lib: id })}
+              onClick={() => { act({ type: 'QUIZ_SET_LIB', lib: id }); setShowWrong(false); setError(null) }}
               className={`px-5 py-2.5 rounded-xl text-sm border transition-colors ${lib === id ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-primary-400'}`}
             >
               {id === 'cet4' ? '英语四级' : '英语六级'}{lib === id && ' ✓'}
@@ -69,14 +77,21 @@ function Entry({ done }: { done: boolean }) {
             </button>
           ))}
         </div>
-        <div className="text-xs text-gray-500 mt-4">今日比例：新词 {QUIZ_SIZE - quota} + 复习 {quota}（按当前境界分配）</div>
-        <div className="text-xs text-gray-500">错词池：{g.learning.libs[lib].wrongQueue.length} 个待复习</div>
+        <div className="text-sm text-gray-700 mt-5">每次学习 {QUIZ_SIZE} 词，优先复习最多 {quota} 词；词量不足时补入其他可用单词。</div>
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-gray-700">
+          <span>错词池：{wrongWords.length} 个待复习</span>
+          <button type="button" aria-expanded={showWrong} onClick={() => setShowWrong(!showWrong)} className="min-h-11 px-3 text-primary-700 underline underline-offset-4">{showWrong ? '收起错词' : '查看错词'}</button>
+        </div>
+        {showWrong && (wrongWords.length === 0
+          ? <p className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">暂时没有错词，继续保持。</p>
+          : <ul className="max-h-60 overflow-y-auto rounded-xl bg-gray-50 divide-y divide-gray-200">{wrongWords.map((word) => <li key={word} className="px-4 py-3 text-sm"><strong className="text-info-600">{word}</strong><span className="ml-3 text-gray-600">{entryOf(lib, word)?.meaning ?? '词条暂不可用'}</span></li>)}</ul>)}
       </div>
       {!done && (
         <div className="flex justify-center">
-          <Btn className="!px-10 !py-3" onClick={() => act({ type: 'QUIZ_BEGIN' })}>开始今日任务</Btn>
+          <Btn className="!px-10 !py-3" onClick={() => { const result = act({ type: 'QUIZ_BEGIN' }); setError(result.ok ? null : REASON_TEXT[result.reason ?? 'LIBRARY_INSUFFICIENT'] ?? '当前词库无法开始任务') }}>开始今日任务</Btn>
         </div>
       )}
+      {error && <p role="alert" className="text-center text-sm text-error-500">{error}</p>}
       <p className="text-xs text-gray-400 text-center">完成 10 题并确认结果后才能结束当天；答错也能继续</p>
     </div>
   )
@@ -88,12 +103,12 @@ function Learning() {
   const news = session.questions.filter((q) => q.from === 'new')
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-sm text-gray-600">本场新词 {news.length} 个 · 复习 {QUIZ_SIZE - news.length} 个（复习词不提前展示答案）</div>
+      <div><div className="font-serif text-2xl text-info-600">先识新词</div><div className="mt-2 text-sm text-gray-600">本场新词 {news.length} 个 · 复习 {QUIZ_SIZE - news.length} 个（复习词不提前展示答案）</div></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {news.map((q) => (
-          <div key={q.word} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-            <div className="font-serif text-xl text-info-600">{q.word}</div>
-            <div className="text-sm text-gray-700 mt-1">{q.meaning}</div>
+          <div key={q.word} className="bg-primary-50/70 border border-primary-100 rounded-2xl p-5">
+            <div className="font-serif text-2xl text-info-600 break-words">{q.word}</div>
+            <div className="text-sm text-gray-700 mt-2 leading-6">{q.meaning}</div>
           </div>
         ))}
         {news.length === 0 && <div className="text-sm text-gray-500">本场以复习为主，直接开始测验</div>}
@@ -118,9 +133,9 @@ function Testing() {
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap">{session.idx + 1}/{QUIZ_SIZE}</span>
       </div>
-      <div className="text-center">
-        <div className="text-xs text-gray-400 tracking-widest mb-2">选出正确释义</div>
-        <div className="font-serif text-4xl text-info-600 tracking-wide">{q.word}</div>
+      <div className="rounded-2xl bg-primary-50 border border-primary-100 px-5 py-8 text-center">
+        <div className="text-xs text-primary-700 tracking-widest mb-3">选出正确释义</div>
+        <div className="font-serif text-4xl text-info-600 tracking-wide break-words">{q.word}</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {q.opts.map((opt) => {
@@ -137,7 +152,7 @@ function Testing() {
               key={opt}
               disabled={chosen !== null}
               onClick={() => act({ type: 'QUIZ_ANSWER', choice: opt })}
-              className={`px-4 py-3.5 rounded-xl text-sm border transition-colors text-left ${cls}`}
+              className={`min-h-16 px-5 py-4 rounded-xl text-sm leading-6 border transition-colors text-left focus-visible:outline-2 focus-visible:outline-primary-600 ${cls}`}
             >
               {opt}
             </button>
@@ -145,7 +160,7 @@ function Testing() {
         })}
       </div>
       {chosen !== null && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="text-sm">
             {chosen === q.meaning ? (
               <span className="text-success-500">✓ 正确</span>
@@ -171,7 +186,7 @@ function Result() {
   const pass = score >= QUIZ_PASS
   return (
     <div className="flex flex-col gap-5">
-      <div className="text-center py-4">
+      <div className="text-center py-6 rounded-2xl bg-primary-50 border border-primary-100">
         <div className={`font-serif text-6xl ${pass ? 'text-success-500' : 'text-warning-500'}`}>{score}<span className="text-2xl text-gray-400">/{QUIZ_SIZE}</span></div>
         <div className="text-sm text-gray-600 mt-2">{pass ? '合格 · 灵气充盈' : '未达合格线 · 仍可结束当天，错词将排队复习'}</div>
       </div>

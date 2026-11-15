@@ -42,8 +42,9 @@ export default function QuotaModal() {
   return (
     <div className="fixed inset-0 z-50 bg-gray-900/40 flex items-center justify-center p-4">
       <div role="dialog" aria-modal="true" aria-label={`宗门定额，第 ${month} 月`} className="bg-gray-50 rounded-2xl shadow-lg max-w-lg w-full flex flex-col max-h-[88vh]">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="font-serif text-lg text-info-600 tracking-widest">宗门定额 · 第 {month} 月</h3>
+        <div className="px-6 py-5 bg-primary-800 text-gray-50 rounded-t-2xl">
+          <p className="text-xs text-primary-200 tracking-widest">灵植堂 · 月末清点</p>
+          <h3 className="mt-1 font-serif text-xl tracking-widest">宗门定额 · 第 {month} 月</h3>
         </div>
         <div className="px-6 py-5 overflow-y-auto flex flex-col gap-4">
           <div className="bg-gold-pale border border-gold rounded-xl p-4 text-sm text-gold-ink">
@@ -77,8 +78,9 @@ export default function QuotaModal() {
             <button onClick={autofill} className="text-xs text-primary-500 hover:text-primary-600 text-left">按折算值从低到高自动预填 →</button>
           )}
 
-          <div className="text-sm text-gray-700">
+          <div className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-gray-700">
             已选折算合计：<b className={ok ? 'text-success-500' : 'text-warning-500'}>{converted}</b> / {QUOTA_TARGET} 株
+            <span className="ml-2">{ok ? (converted > QUOTA_TARGET ? `超额 ${converted - QUOTA_TARGET} 株，不找零` : '已足额') : `还差 ${QUOTA_TARGET - converted} 株`}</span>
           </div>
 
           {firstMonth ? (

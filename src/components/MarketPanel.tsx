@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { convertRate, seedPrice } from '../game/economy'
-import { HERBS, REALM_NAMES } from '../game/constants'
+import { HERBS, QUOTA_TARGET, REALM_NAMES } from '../game/constants'
 import type { HerbId } from '../game/types'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -18,18 +18,24 @@ export default function MarketPanel() {
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [confirmLocked, setConfirmLocked] = useState<HerbId | null>(null)
   const mult = g.pendingTomorrow.marketMult
+  const inventoryValue = HERBS.reduce((sum, herb) => sum + convertRate(herb) * g.inventory[herb.id], 0)
 
   return (
     <Modal title="坊市" onClose={() => setMarketOpen(false)} wide>
+      <div className="mb-5 rounded-2xl bg-primary-50 border border-primary-100 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div><p className="font-serif text-lg tracking-wider text-primary-900">灵物往来</p><p className="mt-1 text-sm text-gray-600">种子与灵草，在这里各得其所。</p></div>
+        <div className="text-sm text-primary-800">持有灵石 <b className="text-lg">{g.resources.stones}</b></div>
+      </div>
       {mult && (
         <div className={`text-xs rounded-lg px-3 py-2 mb-4 border ${mult > 1 ? 'bg-success-50 border-success-200 text-success-500' : 'bg-warning-50 border-warning-200 text-warning-500'}`}>
           今日行情：灵草售价 {mult > 1 ? '+50%' : '−30%'}（明日起恢复）
         </div>
       )}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4" role="group" aria-label="坊市交易类型">
         {(['buy', 'sell'] as const).map((t) => (
           <button
             key={t}
+            aria-pressed={tab === t}
             onClick={() => setTab(t)}
             className={`px-5 py-2 rounded-lg text-sm border ${tab === t ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-600 border-gray-300'}`}
           >
@@ -46,15 +52,15 @@ export default function MarketPanel() {
             const poor = g.resources.stones < price
             return (
               <div key={h.id}>
-                <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
-                  <Sprite sheet="market-goods-sheet.png" cols={4} rows={2} col={GOODS_POS[h.id][0]} row={GOODS_POS[h.id][1]} size={38} />
+                <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-3">
+                  <Sprite sheet="market-goods-sheet.png" cols={4} rows={2} col={GOODS_POS[h.id][0]} row={GOODS_POS[h.id][1]} size={48} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-800">
                       {h.name}种
                       {g.realm >= 5 && <span className="text-xs text-gold-ink ml-1.5">九折</span>}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {price} 灵石 · 播种需 {REALM_NAMES[h.realm]} + {h.qi} 灵气 · 折算定额 {convertRate(h)} 株/茬
+                      种子 {price} 灵石 · 播种需 {REALM_NAMES[h.realm]} + {h.qi} 灵气<br />每株灵草可折算 {convertRate(h)} 株定额
                     </div>
                   </div>
                   <div className="text-xs text-gray-500 whitespace-nowrap">持有 {g.seeds[h.id]}</div>
@@ -81,6 +87,7 @@ export default function MarketPanel() {
 
       {tab === 'sell' && (
         <div className="flex flex-col gap-2.5">
+          <div className="rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-gray-700">当前库存可折算 <b>{inventoryValue}</b> 株，月末定额为 {QUOTA_TARGET} 株；出售后库存会减少。</div>
           {HERBS.filter((h) => g.inventory[h.id] > 0).length === 0 && (
             <div className="text-sm text-gray-400 text-center py-8">暂无灵草可出售 · 去灵田收获吧</div>
           )}

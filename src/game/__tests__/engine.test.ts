@@ -168,11 +168,14 @@ describe('日结算管线（core-loop.md 五步）', () => {
 describe('缺水减产（farming.md）', () => {
   it('连续缺水 3 天当茬减半一次，之后不再重复减半；成熟后不累计', () => {
     let s = started()
+    // 固定为不触发随机事件，单独验证缺水而非虫害等事件的影响。
+    const noEventSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= EVENT_CHANCE)!
     s.resources.qi = 5 // 开局灵气 0，先给足播种灵气
     s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state // curYield 5
     s = finishQuiz(s)
     // 连续 3 天不浇灌
     for (let d = 0; d < 3; d++) {
+      s.rngState = noEventSeed
       s = dispatch(s, { type: 'END_DAY' }).state
       s = finishQuiz(s)
     }
@@ -182,6 +185,7 @@ describe('缺水减产（farming.md）', () => {
     expect(f1.dry).toBe(0)
     // 再缺水 3 天不重复减产
     for (let d = 0; d < 3; d++) {
+      s.rngState = noEventSeed
       s = dispatch(s, { type: 'END_DAY' }).state
       s = finishQuiz(s)
     }

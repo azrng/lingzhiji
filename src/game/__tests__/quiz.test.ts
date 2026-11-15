@@ -86,6 +86,7 @@ describe('抽题与补足链', () => {
     const q = s.quizDaily.session!
     expect(q.questions.length).toBe(10)
     expect(new Set(q.questions.map((x) => x.word)).size).toBe(10)
+    expect(q.questions.every((x) => x.from === 'review')).toBe(true)
   })
 
   it('词库不足以组成 10 个不同词时拒绝开始（cet6 只给 5 词）', () => {
@@ -96,7 +97,7 @@ describe('抽题与补足链', () => {
     expect(r.reason).toBe('LIBRARY_INSUFFICIENT')
   })
 
-  it('按境界分配复习配额：练气一层 7 新 + 3 复习（有错词与已见词时）', () => {
+  it('新词不足时在复习配额之外补入已见词，并保留复习标记', () => {
     let s = createInitialState(7)
     // 第一场全答错制造错词池
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
@@ -110,8 +111,8 @@ describe('抽题与补足链', () => {
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
     const q = s.quizDaily.session!
     const reviews = q.questions.filter((x) => x.from === 'review').length
-    expect(reviews).toBeLessThanOrEqual(3)
-    expect(q.questions.filter((x) => x.from === 'new').length).toBeGreaterThanOrEqual(7)
+    expect(reviews).toBe(8)
+    expect(q.questions.filter((x) => x.from === 'new').length).toBe(2)
   })
 })
 

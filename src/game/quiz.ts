@@ -42,7 +42,7 @@ export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
   // 新词：当前库未见随机
   let news = shuffled(
     rng,
-    bank.map((w) => normalize(w.word)).filter((w) => !(w in seen) && !chosen.includes(w)),
+    bank.map((w) => normalize(w.word)).filter((w) => !Object.hasOwn(seen, w) && !chosen.includes(w)),
   ).slice(0, QUIZ_SIZE - chosen.length)
   // 补足链：新词不足 → 尚未选入的已见词补（同场 10 词不重复）
   if (chosen.length + news.length < QUIZ_SIZE) {
@@ -63,7 +63,8 @@ export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
     questions.push({
       word: entry.word,
       meaning: entry.meaning,
-      from: chosen.includes(norm) ? 'review' : 'new',
+      // 补题可能使用已见词，它仍是复习词，不能在学习页提前展示答案。
+      from: chosen.includes(norm) || Object.hasOwn(seen, norm) ? 'review' : 'new',
       opts,
     })
   }

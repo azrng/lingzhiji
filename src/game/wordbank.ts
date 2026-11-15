@@ -28,15 +28,31 @@ const INDEX: Record<LibId, Map<string, WordEntry>> = {
 
 export const entryOf = (lib: LibId, norm: string) => INDEX[lib].get(norm)
 
+// 词库没有近义分组时，只用完全相同的释义片段识别明确重合，避免猜测同义关系。
+const meaningCache = new WeakMap<WordEntry, Set<string>>()
+function meaningParts(entry: WordEntry): Set<string> {
+  const cached = meaningCache.get(entry)
+  if (cached) return cached
+  const parts = new Set(entry.meaning
+    .replace(/\b(?:n|v|vt|vi|adj|adv|prep|conj|pron|art|num|int|aux|pl)\./gi, '')
+    .split(/[；;，,、/]/)
+    .map((part) => part.replace(/\s+/g, '').trim())
+    .filter(Boolean))
+  meaningCache.set(entry, parts)
+  return parts
+}
+
 // 干扰项：从当前词库抽取，跳过本词与同一非空近义组（PRD §8.1）；
 // 凑不齐 3 个合法干扰项返回 null，调用方按「词库问题」处理，不出歧义题
 export function buildOptions(rng: Rng, entry: WordEntry, lib: LibId): string[] | null {
   const bank = LIBS[lib]
+  const answerParts = meaningParts(entry)
   const seen = new Set<string>([entry.meaning])
   const picked: string[] = []
   const addCandidate = (w: WordEntry) => {
     if (normalize(w.word) === normalize(entry.word) || seen.has(w.meaning) ||
-      (entry.group.length && w.group.some((g) => entry.group.includes(g)))) return
+      (entry.group.length && w.group.some((g) => entry.group.includes(g))) ||
+      [...meaningParts(w)].some((part) => answerParts.has(part))) return
     seen.add(w.meaning)
     picked.push(w.meaning)
   }

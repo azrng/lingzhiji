@@ -1,0 +1,46 @@
+# GitHub Pages 自动发布：推送到 main 或手动触发时构建并部署。
+# 一次性前置（仓库网页设置）：Settings → Pages → Build and deployment → Source 选「GitHub Actions」，
+# 未开启时 deploy 作业会失败，开启后可 Re-run。
+# 站点地址：https://azrng.github.io/lingzhiji/（与 vite base '/lingzhiji/' 对应）。
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只保留一次部署，新推送取消仍在进行的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # GitHub Pages 直接上传 dist 即可，无 GitLab 那种「目录必须叫 public」的约定
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

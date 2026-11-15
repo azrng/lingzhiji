@@ -1,7 +1,7 @@
 ---
 rule_id: infra-agents
-version: 3.0.8
-last_updated: 2026-11-07
+version: 3.7.1
+last_updated: 2026-11-15
 dependencies: [agents-root]
 ---
 

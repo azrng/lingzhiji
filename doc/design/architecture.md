@@ -58,6 +58,8 @@ src/
 │  ├─ types.ts           # GameState / Action / Result 等类型（CON-LINGZHIJI-SAVE-001 落地点）
 │  ├─ constants.ts       # 全部数值表：灵草 / 境界 / 事件 / 奖励 / 功法（对应 PRD §12）
 │  ├─ engine.ts          # 动作分发与日结算管线（core-loop.md）
+│  ├─ clock.ts           # 现实时钟：日切 4 点、realDayIndex、syncRealDay 跨日同步（real-day.md）；
+│  │                     #   现实时间只允许出现在本模块（注入参数）与应用层，引擎其余部分零时间依赖
 │  ├─ farming.ts         # 种植规则（farming.md）
 │  ├─ quiz.ts            # 抽题 / 判分 / 错词池（quiz.md）
 │  ├─ economy.ts         # 坊市 / 定额 / 资源钳制（economy.md）

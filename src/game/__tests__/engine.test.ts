@@ -326,3 +326,109 @@ describe('缺水减产（farming.md）', () => {
     expect(second.state.ap).toBe(first.state.ap)
   })
 })
+
+describe('地力透支（real-day.md §3.5，罚经营不罚学习）', () => {
+  // 首个使 rng.next() < 0.2 / ≥ 0.2 / ≥ 0.3 的种子（沿用收获上品用例的找种子手法）
+  const primeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() < HARVEST_PRIME_CHANCE)!
+  const noPrimeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= HARVEST_PRIME_CHANCE)!
+  const noEventSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= EVENT_CHANCE)!
+
+  function matured(seed: number): GameState {
+    let s = started(seed)
+    s.resources.qi = 5
+    s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
+    s.fields[0].progress = 15
+    s.fields[0].status = 'mature'
+    return s
+  }
+
+  // 统计事件触发率：全空田、清空日志后逐日推进，看当日是否出现 event 条目
+  function eventRate(diminished: boolean): number {
+    let s = started(2026)
+    let fired = 0
+    const N = 4000
+    for (let i = 0; i < N; i++) {
+      s.quizDaily.done = true
+      s.day = 5 // 固定月中：避开月末 quota 交互与月初灵潮日志
+      s.realDay.gamesToday = diminished ? 1 : 0
+      s.log = [] // 只看本日新增条目
+      s = dispatch(s, { type: 'END_DAY' }).state
+      if (s.log.some((l) => l.kind === 'event')) fired++
+    }
+    return fired / N
+  }
+
+  it('当日第 2+ 游戏日事件触发率降为 0.15（固定种子统计）', () => {
+    const rate = eventRate(true)
+    expect(Math.abs(rate - 0.15)).toBeLessThan(0.025)
+    // 对照组：当日第 1 个游戏日仍为 0.3，且递减期显著更低
+    const base = eventRate(false)
+    expect(Math.abs(base - 0.3)).toBeLessThan(0.03)
+    expect(rate).toBeLessThan(base)
+  })
+
+  it('递减期收获修为减半向上取整（含上品株数），灵草株数不减', () => {
+    // 对照：非递减期 5 株 → 修为 +5
+    const ctrl = dispatch(matured(noPrimeSeed), { type: 'HARVEST', fieldId: 1 })
+    expect(ctrl.state!.inventory.qingling).toBe(5)
+    expect(ctrl.state!.cultivation).toBe(5)
+    expect(ctrl.state!.log[0].text).not.toContain('地力透支')
+    // 递减期：5 株照常入库，修为 ⌈5×1×0.5⌉ = 3
+    const dimState = matured(noPrimeSeed)
+    dimState.realDay.gamesToday = 1
+    const r = dispatch(dimState, { type: 'HARVEST', fieldId: 1 })
+    expect(r.ok).toBe(true)
+    expect(r.state!.inventory.qingling).toBe(5) // 株数不减
+    expect(r.state!.cultivation).toBe(3)
+    expect(r.state!.log[0].text).toContain('地力透支')
+  })
+
+  it('递减期上品株数计入减半基数：6 株修为 ⌈6×0.5⌉ = 3', () => {
+    const s = matured(primeSeed)
+    s.realDay.gamesToday = 1
+    const r = dispatch(s, { type: 'HARVEST', fieldId: 1 })
+    expect(r.ok).toBe(true)
+    expect(r.state!.inventory.qingling).toBe(6) // 5 + 1 上品，株数不减
+    expect(r.state!.cultivation).toBe(3)
+  })
+
+  it('测验奖励与打卡不受递减影响（同种子差分）', () => {
+    const run = (gamesToday: number) => {
+      const s = started(42)
+      s.realDay.gamesToday = gamesToday
+      return finishQuiz(s)
+    }
+    const base = run(0)
+    const dim = run(1)
+    expect(dim.resources).toEqual(base.resources)
+    expect(dim.cultivation).toBe(base.cultivation)
+    expect(dim.streak.count).toBe(base.streak.count) // 首次打卡同样计数
+  })
+
+  it('自然生长与缺水不受递减影响（同种子差分）', () => {
+    const grow = (gamesToday: number) => {
+      let s = started(noEventSeed)
+      s.resources.qi = 5
+      s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
+      s.realDay.gamesToday = gamesToday
+      s.quizDaily.done = true
+      return dispatch(s, { type: 'END_DAY' }).state!
+    }
+    const base = grow(0)
+    const dim = grow(1)
+    expect(dim.fields[0].progress).toBe(base.fields[0].progress) // 均 +1 天
+    expect(dim.fields[0].dry).toBe(base.fields[0].dry) // 未浇灌同样缺水 +1
+  })
+
+  it('第 2 个游戏日推进时记录地力透支说明日志（仅首次）', () => {
+    let s = started(noEventSeed)
+    s.quizDaily.done = true
+    s = dispatch(s, { type: 'END_DAY' }).state
+    expect(s.log.some((l) => l.title === '地力透支')).toBe(true)
+    // 后续游戏日不再重复说明
+    s.quizDaily.done = true
+    s.log = []
+    s = dispatch(s, { type: 'END_DAY' }).state
+    expect(s.log.some((l) => l.title === '地力透支')).toBe(false)
+  })
+})

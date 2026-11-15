@@ -1,10 +1,12 @@
 // 存档（save.md）：localStorage 唯一读写点；版本校验、Base64 导码、损坏恢复。
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
-import { HERB_BY_ID, HERBS } from './constants'
+import { realDayIndex } from './clock'
+import { FREEZE_CAP, HERB_BY_ID, HERBS, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
 import type { GameState, ReasonCode } from './types'
 
+// 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 
 export interface SaveData {
   version: number
@@ -116,6 +118,18 @@ function validate(game: unknown): ReasonCode | null {
     typeof g.month === 'object' && g.month !== null &&
     nonNegInt(g.month.unpaidStreak) && Array.isArray(g.month.ledger) &&
     g.month.ledger.every((entry) => typeof entry === 'object' && entry !== null && nonNegInt(entry.month) && entry.month >= 1 && isBool(entry.paid) && isStr(entry.detail)) &&
+    // 现实日锚与道心连胜（real-day.md §3.6，存档 v2 新增）：数值范围、history 升序去重、milestones 合法、freezes ≤ 上限
+    typeof g.realDay === 'object' && g.realDay !== null &&
+    nonNegInt(g.realDay.today) && nonNegInt(g.realDay.gamesToday) &&
+    typeof g.streak === 'object' && g.streak !== null &&
+    nonNegInt(g.streak.count) && nonNegInt(g.streak.best) && nonNegInt(g.streak.checkins) &&
+    isInt(g.streak.lastCheckinDay) && g.streak.lastCheckinDay >= -1 &&
+    nonNegInt(g.streak.freezes) && g.streak.freezes <= FREEZE_CAP &&
+    Array.isArray(g.streak.milestones) && g.streak.milestones.every((m) => (STREAK_MILESTONES as number[]).includes(m)) &&
+    new Set(g.streak.milestones).size === g.streak.milestones.length &&
+    Array.isArray(g.streak.history) && g.streak.history.length <= STREAK_HISTORY_MAX &&
+    g.streak.history.every((v) => nonNegInt(v)) &&
+    g.streak.history.every((v, i) => i === 0 || v > g.streak!.history[i - 1]) &&
     isBool(g.milestoneShown) && isBool(g.tutorialDone) &&
     Array.isArray(g.log) && g.log.length <= 50 &&
     g.log.every((l) => typeof l === 'object' && l !== null && nonNegInt(l.day) && isStr(l.title) && isStr(l.text)) &&
@@ -155,10 +169,12 @@ export function load(storage: Storage | null = getStorage()): LoadResult {
     return { ok: false, reason: 'BAD_JSON' }
   }
   if (!data || typeof data !== 'object') return { ok: false, reason: 'BAD_SHAPE' }
-  if (data.version !== SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
-  const shapeErr = validate(data.game)
+  // 版本为正整数且不超前于当前 → 顺序迁移升格后校验（real-day.md §3.6）；当前版本迁移链为空，等价直接验
+  if (!isInt(data.version) || data.version < 1 || data.version > SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
+  const migrated = applyMigrations(data)
+  const shapeErr = validate(migrated.game)
   if (shapeErr) return { ok: false, reason: shapeErr }
-  return { ok: true, state: data.game, savedAt: data.savedAt }
+  return { ok: true, state: migrated.game, savedAt: data.savedAt }
 }
 
 // 导出：JSON(UTF-8) → Base64（save.md §3.4）
@@ -188,14 +204,30 @@ export function importCode(code: string): ImportResult {
     return { ok: false, reason: 'BAD_JSON' }
   }
   if (!data || typeof data !== 'object') return { ok: false, reason: 'BAD_SHAPE' }
-  if (data.version !== SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
-  const shapeErr = validate(data.game)
+  // 与 load 同口径：正整数且不超前于当前 → 顺序迁移升格后校验，v1 导码可导入（real-day.md §3.6）
+  if (!isInt(data.version) || data.version < 1 || data.version > SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
+  const migrated = applyMigrations(data)
+  const shapeErr = validate(migrated.game)
   if (shapeErr) return { ok: false, reason: shapeErr }
-  return { ok: true, state: data.game }
+  return { ok: true, state: migrated.game }
 }
 
-// 未来结构变更在此追加顺序迁移链（save.md §3.3）；v1 无迁移
-export const migrations: ((data: SaveData) => SaveData)[] = []
+// 顺序迁移链（save.md §3.3）：每项只把自家源版本升一格，按 data.version 判定是否命中
+export const migrations: ((data: SaveData) => SaveData)[] = [
+  // v1 → v2（real-day.md §3.6）：补现实日锚与道心连胜默认值；realDay.today 用迁移时刻的当前现实日，旧档连胜从 0 起算
+  (data) => {
+    if (data.version !== 1) return data
+    return {
+      ...data,
+      version: 2,
+      game: {
+        ...data.game,
+        realDay: { today: realDayIndex(Date.now()), gamesToday: 0 },
+        streak: { count: 0, best: 0, lastCheckinDay: -1, checkins: 0, freezes: 0, milestones: [], history: [] },
+      },
+    }
+  },
+]
 
 export function applyMigrations(data: SaveData): SaveData {
   let cur = data

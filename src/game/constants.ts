@@ -121,6 +121,18 @@ export const REDEEM_COST = 100
 export const QUOTA_FAIL_CONTRIBUTION = 20
 export const QUOTA_FAIL_STONES = 10
 
+// 现实日锚（real-day.md §3.7，PRD §12 同步）：晨露 / 地力透支 / 道心连胜全部数值入口
+export const DAY_CUT_HOUR = 4 // 日切凌晨 4 点（照顾夜猫子，4 点前算前一现实日）
+export const MORNING_GIFT = { stones: 8, insight: 5 } // 晨露礼包（不碰灵气，避开上限溢出口径）
+export const DIMINISH_EVENT_CHANCE = 0.15 // 地力透支期（当日第 2+ 游戏日）日终事件触发率
+export const DIMINISH_EXP_MULT = 0.5 // 地力透支期收获修为系数（向上取整，灵草株数与售价不减）
+export const STREAK_MILESTONES = [7, 30, 100, 365] // 道心里程碑天数
+export const MILESTONE_REWARD: Record<number, number> = { 7: 30, 30: 80, 100: 200, 365: 888 } // 里程碑灵石奖励
+export const MILESTONE_TITLES: Record<number, string> = { 7: '初萌道心', 30: '渐入佳境', 100: '道心弥坚', 365: '大道可期' } // 称号不存档，由已达成最高里程碑派生
+export const FREEZE_CAP = 2 // 护道符上限
+export const FREEZE_GRANT_EVERY = 7 // 每累计 7 次打卡自动 +1 护道符
+export const STREAK_HISTORY_MAX = 370 // 打卡历史环形保留条数（日历热力图数据源）
+
 // 开局家当（PRD §3）
 export const INITIAL = {
   stones: 50,

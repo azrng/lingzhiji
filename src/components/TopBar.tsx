@@ -1,16 +1,20 @@
+import { useState } from 'react'
 import { monthOf } from '../game/economy'
 import { QI_CAP, REALM_EXP, REALM_NAMES } from '../game/constants'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
+import CalendarModal from './CalendarModal'
 import { Pips, Sprite } from './ui'
 
-// 顶部状态栏：日期、境界与修为进度、资源、设置入口
+// 顶部状态栏：日期、境界与修为进度、资源、道心入口、设置入口
 export default function TopBar() {
   const g = useGameStore((s) => s.game)
   const next = REALM_EXP[g.realm + 1] ?? REALM_EXP[g.realm]
   const cur = REALM_EXP[g.realm]
   const pct = g.realm >= 9 ? 100 : Math.min(100, Math.round(((g.cultivation - cur) / (next - cur)) * 100))
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const checkedToday = g.streak.lastCheckinDay === g.realDay.today
 
   return (
     <header className="bg-gray-50/95 border border-gray-50 rounded-2xl shadow-lg px-4 py-4 mb-5 grid grid-cols-2 items-center gap-3 sm:px-5 md:flex md:gap-5 lg:gap-8 md:flex-wrap">
@@ -23,6 +27,12 @@ export default function TopBar() {
         <div className="mt-1 text-base text-info-600 font-semibold tracking-wide">
           第 {monthOf(g.day)} 月 · 第 {((g.day - 1) % 30) + 1} 天
         </div>
+        {/* 地力透支标签（real-day.md §4）：当日第 2+ 游戏日起附在日期区 */}
+        {g.realDay.gamesToday >= 1 && (
+          <span className="mt-1 inline-block rounded-md border border-warning-200 bg-warning-50 px-1.5 py-0.5 text-[11px] text-warning-500">
+            地力透支 · 今日第 {g.realDay.gamesToday + 1} 个游戏日
+          </span>
+        )}
       </div>
       <div className="order-3 md:order-none min-w-0 md:min-w-40">
         <div className="text-xs text-gray-500 tracking-widest">当前境界</div>
@@ -47,10 +57,23 @@ export default function TopBar() {
       </div>
       <div className="order-4 md:order-none ml-auto flex items-center gap-3">
         <span className="text-xs text-gray-600">功法 Lv{g.gongfa}</span>
+        {/* 道心徽标（real-day.md §4）：🕯 + 连胜数，当日已打卡 ✓ / 未打卡 ⚠，点击开修行日历 */}
+        <button
+          onClick={() => setCalendarOpen(true)}
+          title={checkedToday ? '今日已打卡 · 点击查看修行日历' : '今日未打卡：完成 10 题即算，答错也算 · 点击查看修行日历'}
+          className={`min-h-11 px-3 py-2 rounded-xl text-sm font-medium border flex items-center gap-1.5 ${
+            checkedToday ? 'bg-success-50 border-success-200 text-success-500' : 'bg-warning-50 border-warning-200 text-warning-500'
+          }`}
+        >
+          <span aria-hidden>🕯</span>
+          <span>道心 {g.streak.count}</span>
+          <span aria-label={checkedToday ? '今日已打卡' : '今日未打卡'}>{checkedToday ? '✓' : '⚠'}</span>
+        </button>
         <button onClick={() => setSettingsOpen(true)} className="min-h-11 px-4 py-2 rounded-xl text-sm font-medium bg-gray-50 text-gray-700 border border-gray-300 hover:bg-gray-150">
           设置
         </button>
       </div>
+      {calendarOpen && <CalendarModal onClose={() => setCalendarOpen(false)} />}
     </header>
   )
 }

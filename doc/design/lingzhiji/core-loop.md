@@ -11,6 +11,7 @@ relations:
   - doc/design/lingzhiji/farming.md
   - doc/design/lingzhiji/economy.md
   - doc/design/lingzhiji/quiz.md
+  - doc/design/lingzhiji/real-day.md
 ---
 
 # 核心循环设计（时间 / AP / 日结算 / 随机事件）
@@ -30,9 +31,10 @@ relations:
 ### 3.1 时间与每日状态
 
 - `day`：1 起算整数；月份与月内日为派生值：`month = ⌈day/30⌉`、`monthDay = ((day-1) mod 30) + 1`，不单独存档
+- **现实日锚（2026-11-15 新增，详见 real-day.md）**：`realDay.today`（现实日索引，日切凌晨 4 点，store 在 dispatch 前经 `clock.syncRealDay` 同步）与 `realDay.gamesToday`（当日已推进游戏日数）入档；引擎零时间依赖，只读状态中的现实日字段
 - `phase`：`'day'`（白天自由行动）| `'quota'`（月末定额结算交互中）
-- 每日重置标记（在日终推进时重置）：`ap = 3`、`wateredToday = false`、`tunaUsedToday = false`、当日任务堂状态（quiz.md）
-- 离线不推进；调试面板 `?debug=1` 提供「跳天（等效完成当日最低条件）/ 加资源」，仅验证用，正常入口不可见
+- 每日重置标记（在日终推进时重置）：`ap = 3`、`wateredToday = false`、`tunaUsedToday = false`、当日任务堂状态（quiz.md）；`gamesToday` 在游戏日推进时 +1、跨现实日时归零
+- 离线不推进；调试面板 `?debug=1` 提供「跳天（等效完成当日最低条件）/ 加资源 / 跳现实日 +1」，仅验证用，正常入口不可见
 
 ### 3.2 行动分发
 
@@ -55,12 +57,12 @@ relations:
 ```text
 endDay(state):
   1. 前置门控：quizDaily.done != true → 拒绝（reason: QUIZ_NOT_DONE）
-  2. 随机事件（§3.4）：30% 触发 1 个，按当月灵潮调制后的权重抽取；即时类立即结算，持续类写入 pendingTomorrow
+  2. 随机事件（§3.4）：触发 1 个——概率 gamesToday >= 1 时 0.15（地力透支，real-day.md §3.5），否则 0.3；按当月灵潮调制后的权重抽取；即时类立即结算，持续类写入 pendingTomorrow
   3. 全田自然生长 +1 天；功法 Lv2 生长期 -1 已在常量表生效；推进后逐田检查成熟（成熟停驻，farming.md）
   4. 缺水结算：!wateredToday 且仍生长中的田 dryStreak +1；达 3 触发当茬减产（farming.md）
   5. 月末判定：monthDay == 30 → phase = 'quota'，进入定额结算交互（economy.md）；
      玩家在弹窗完成缴纳/放弃后 monthSettle() 收尾
-  6. 推进：day + 1，重置 ap / wateredToday / tunaUsedToday / 当日任务堂状态，清空消费 pendingTomorrow；跨入新月（dayInMonth == 1）时记录本月灵潮日志（§3.4）
+  6. 推进：day + 1，重置 ap / wateredToday / tunaUsedToday / 当日任务堂状态，清空消费 pendingTomorrow；gamesToday +1（advanceDay 内，月末 QUOTA_RESOLVE 推进同样计入）；跨入新月（dayInMonth == 1）时记录本月灵潮日志（§3.4）
   7. 自动存档（含中间态：步骤 5 玩家未完成交互时，phase='quota' 直接入档，恢复后继续）
 ```
 
@@ -70,6 +72,7 @@ endDay(state):
 ### 3.4 随机事件
 
 - 事件表、权重与效果描述常量集中在 `constants.ts`（PRD §11：正 56 / 负 41 / 行情 1）；`EventDef.effect` 为判别联合的效果描述，`applyEvent` 是通用解释器，**新增事件只加数据条目，不改结算管线**（2026-11-15 数据化改造）
+- 触发概率基础 0.3；地力透支期（当日第 2+ 个游戏日，`gamesToday >= 1`）降为 0.15，只改出现频率不改效果与权重抽取（real-day.md §3.5）
 - 效果种类（`EventEffect`）：当茬产量增减（随机生长中田）、全田生长进度增减、资源增减（灵石 / 贡献 / 心得 / 灵气，灵气走 `farming.gainQi` 上限截断，其余受出口钳制）、修为入账（统一走 `gainCultivation`）、仓库随机灵草增减、持续类（灵泉 `infusionDouble`、行情 `marketMult`）
 - 触发判定与目标选取（随机田 / 随机灵草）全部走 PRNG；无有效目标时按 PR §5.4「无事发生」处理，不顺延、不替换
 - 即时类（灵雨 / 灵蝶 / 师姐 / 拾灵石 / 长老 / 灵兽来访 / 仙人残梦 / 灵气涌动 / 虫害 / 偷食 / 阵法波动 / 灵石失窃）在步骤 2 直接结算并入日志
@@ -121,7 +124,7 @@ endDay(state):
 | 月末结算中断（刷新/关页） | 恢复后停留在 `phase='quota'`，重新打开定额弹窗继续，当日不重复扣资源 |
 | 事件无有效目标 | 日志记「无事发生」类简述，不弹错误 |
 | AP 不足点击消耗类行动 | 条件不足态：按钮禁用 + 原因「行动力不足（今日剩 0/3）」 |
-| 连续游玩多游戏日 | 无现实日限制；每个游戏日均需完成一组题（PRD §4） |
+| 连续游玩多游戏日 | 无现实日限制；每个游戏日均需完成一组题（PRD §4）；当日第 2+ 个游戏日进入地力透支（事件率 0.15、收获修为减半，real-day.md），跨现实日恢复；测验奖励、生长与定额永不受影响 |
 
 ## 6. 验证方式
 

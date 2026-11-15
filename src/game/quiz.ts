@@ -1,7 +1,8 @@
 // 任务堂背单词（quiz.md）：抽题与补题链、先学后测、错词池、跨库记录、奖励与学习统计
 // 全部函数在 engine 克隆的 draft 上就地修改，返回失败原因或 null
 import {
-  HERBS, QUIZ_PASS, QUIZ_SIZE, REWARD_FAIL, REWARD_FULL, REWARD_PASS, reviewQuota,
+  FREEZE_CAP, FREEZE_GRANT_EVERY, HERBS, MILESTONE_REWARD, MILESTONE_TITLES, QUIZ_PASS, QUIZ_SIZE,
+  REWARD_FAIL, REWARD_FULL, REWARD_PASS, STREAK_HISTORY_MAX, STREAK_MILESTONES, reviewQuota,
 } from './constants'
 import { addLog } from './log'
 import { qiCap } from './progression'
@@ -170,7 +171,43 @@ export function confirm(s: GameState): ReasonCode | null {
   }
   s.quizDaily.done = true
   s.quizDaily.session = null
+  // 打卡（real-day.md §3.4）：确认结果即算，不看正确率；同现实日多次完成测验只记一次
+  checkinStreak(s)
   return null
+}
+
+// 道心打卡：QUIZ_CONFIRM 成功且今日未打卡时计数、发护道符、结里程碑（通知走日志派生 toast）
+function checkinStreak(s: GameState): void {
+  if (s.streak.lastCheckinDay === s.realDay.today) return
+  s.streak.lastCheckinDay = s.realDay.today
+  s.streak.count += 1
+  s.streak.checkins += 1
+  if (s.streak.count > s.streak.best) s.streak.best = s.streak.count
+  s.streak.history.push(s.realDay.today)
+  // 环形保留最近 STREAK_HISTORY_MAX 条（日历热力图数据源）
+  if (s.streak.history.length > STREAK_HISTORY_MAX) s.streak.history.splice(0, s.streak.history.length - STREAK_HISTORY_MAX)
+  // 护道符：每累计 FREEZE_GRANT_EVERY 次打卡 +1，不超上限（已满则本次不补发）
+  if (s.streak.checkins % FREEZE_GRANT_EVERY === 0 && s.streak.freezes < FREEZE_CAP) {
+    s.streak.freezes += 1
+    addLog(s, {
+      kind: 'settle',
+      icon: '🧿',
+      title: '得护道符',
+      text: `累计打卡 ${s.streak.checkins} 次，护道符 +1（余 ${s.streak.freezes}/${FREEZE_CAP}）；漏签时自动护住道心`,
+    })
+  }
+  // 里程碑：count 命中 7/30/100/365 且未发放过 → 灵石奖励 + breakthrough 日志（称号由已达成最高里程碑派生，不存档）
+  const hit = STREAK_MILESTONES.find((m) => m === s.streak.count && !s.streak.milestones.includes(m))
+  if (hit !== undefined) {
+    s.streak.milestones.push(hit)
+    s.resources.stones += MILESTONE_REWARD[hit]
+    addLog(s, {
+      kind: 'breakthrough',
+      icon: '🌕',
+      title: `道心 ${hit} 天 · ${MILESTONE_TITLES[hit]}`,
+      text: `灵石 +${MILESTONE_REWARD[hit]}，获称号「${MILESTONE_TITLES[hit]}」`,
+    })
+  }
 }
 
 // 切换词库：不增加当天任务次数或奖励；进行中的测验固定词库不可切（quiz.md §3.4）

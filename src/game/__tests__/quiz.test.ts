@@ -216,3 +216,114 @@ describe('错词池与奖励', () => {
     expect(wordbankMod.normalize(' Abandon ')).toBe('abandon')
   })
 })
+
+describe('道心打卡（real-day.md §3.4）', () => {
+  // 全错完成一场测验：确认结果即打卡，不看正确率（Duolingo 口径）
+  function finishAllWrong(s: GameState): GameState {
+    let cur = dispatch(s, { type: 'QUIZ_BEGIN' }).state
+    cur = dispatch(cur, { type: 'QUIZ_LEARNED' }).state
+    const session = cur.quizDaily.session!
+    for (let i = 0; i < 10; i++) {
+      const wrong = session.questions[i].opts.find((o) => o !== session.questions[i].meaning)!
+      cur = dispatch(cur, { type: 'QUIZ_ANSWER', choice: wrong }).state
+      cur = dispatch(cur, { type: 'QUIZ_NEXT' }).state
+    }
+    return dispatch(cur, { type: 'QUIZ_CONFIRM' }).state
+  }
+
+  it('确认结果即打卡：全错也计数，history 记录当日索引', () => {
+    let s = createInitialState(7)
+    const today = s.realDay.today
+    s = finishAllWrong(s)
+    expect(s.streak.count).toBe(1)
+    expect(s.streak.best).toBe(1)
+    expect(s.streak.checkins).toBe(1)
+    expect(s.streak.lastCheckinDay).toBe(today)
+    expect(s.streak.history).toEqual([today])
+  })
+
+  it('同现实日多次完成测验只记一次', () => {
+    let s = createInitialState(7)
+    const today = s.realDay.today
+    s = finishAllWrong(s)
+    // 同现实日推进一个游戏日后再完成测验（现实日未变）
+    s.quizDaily.done = true
+    s = dispatch(s, { type: 'END_DAY' }).state
+    s = finishAllWrong(s)
+    expect(s.streak.count).toBe(1)
+    expect(s.streak.checkins).toBe(1)
+    expect(s.streak.history).toEqual([today])
+  })
+
+  it('跨现实日打卡 count 递增、best 跟随', () => {
+    let s = createInitialState(7)
+    s = finishAllWrong(s)
+    // 模拟次日：现实日索引 +1（等价于 syncRealDay 已推进 today）
+    s.realDay.today += 1
+    s.quizDaily.done = true
+    s = dispatch(s, { type: 'END_DAY' }).state
+    s = finishAllWrong(s)
+    expect(s.streak.count).toBe(2)
+    expect(s.streak.best).toBe(2)
+    expect(s.streak.history.length).toBe(2)
+    expect(s.streak.history[1]).toBeGreaterThan(s.streak.history[0])
+  })
+
+  it('里程碑：count 命中 7 发 30 灵石与 breakthrough 日志，断签重练不重复发放', () => {
+    let s = createInitialState(7)
+    s.streak.count = 6
+    s.realDay.today += 1
+    const stones = s.resources.stones
+    s = finishAllWrong(s)
+    expect(s.streak.milestones).toEqual([7])
+    expect(s.resources.stones).toBe(stones + 30)
+    expect(s.log.some((l) => l.kind === 'breakthrough' && l.title.includes('道心 7 天'))).toBe(true)
+    // 断签后连胜归零再练回 7：不重复发放
+    s.streak.count = 6
+    s.realDay.today += 1
+    const stones2 = s.resources.stones
+    s.quizDaily.done = true
+    s = dispatch(s, { type: 'END_DAY' }).state
+    s = finishAllWrong(s)
+    expect(s.streak.count).toBe(7)
+    expect(s.streak.milestones).toEqual([7])
+    expect(s.resources.stones).toBe(stones2)
+  })
+
+  it('里程碑 30 天发 80 灵石', () => {
+    let s = createInitialState(7)
+    s.streak.count = 29
+    s.realDay.today += 1
+    const stones = s.resources.stones
+    s = finishAllWrong(s)
+    expect(s.streak.milestones).toEqual([30])
+    expect(s.resources.stones).toBe(stones + 80)
+  })
+
+  it('护道符：每 7 次打卡 +1，封顶 2 不再发放', () => {
+    let s = createInitialState(7)
+    const freezesAt: number[] = []
+    for (let i = 0; i < 16; i++) {
+      s.realDay.today += 1 // 每场换一个现实日，保证都能打卡
+      s.quizDaily.done = false
+      s = finishAllWrong(s)
+      freezesAt.push(s.streak.freezes)
+    }
+    expect(s.streak.checkins).toBe(16)
+    expect(freezesAt[6]).toBe(1) // 第 7 次打卡 → 1 符
+    expect(freezesAt[13]).toBe(2) // 第 14 次 → 2 符
+    expect(s.streak.freezes).toBe(2) // 已满后不发放（第 21 次前不会再到 7 的倍数）
+  })
+
+  it('打卡历史环形保留 370 条', () => {
+    let s = createInitialState(7)
+    for (let i = 0; i < 375; i++) {
+      s.realDay.today += 1
+      s.quizDaily.done = false
+      s = finishAllWrong(s)
+    }
+    expect(s.streak.history.length).toBe(370)
+    // 队首被裁掉最旧的，仍严格升序
+    expect(s.streak.history[0]).toBeGreaterThan(s.realDay.today - 370)
+  })
+})

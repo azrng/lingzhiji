@@ -1,6 +1,7 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, tideOf, type EventDef } from './constants'
+import { EVENTS, EVENT_CHANCE, DAILY_AP, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, DIMINISH_EVENT_CHANCE, tideOf, type EventDef } from './constants'
+import { realDayIndex } from './clock'
 import { convertRate, dayInMonth, monthOf } from './economy'
 import * as economy from './economy'
 import * as farming from './farming'
@@ -23,7 +24,8 @@ export function quizStartStat() {
   }
 }
 
-export function createInitialState(seed: number): GameState {
+// nowMs 默认 Date.now()：store 传当前时间，测试传固定值；不传的旧测试自动落到今天
+export function createInitialState(seed: number, nowMs: number = Date.now()): GameState {
   const s: GameState = {
     day: 1,
     phase: 'day',
@@ -44,6 +46,9 @@ export function createInitialState(seed: number): GameState {
       seenMap: {},
       libs: { cet4: quizStartStat(), cet6: quizStartStat() },
     },
+    // 现实日锚（real-day.md §3.6）：开局 today = 创建当日，连胜全零值（lastCheckinDay -1 = 从未打卡）
+    realDay: { today: realDayIndex(nowMs), gamesToday: 0 },
+    streak: { count: 0, best: 0, lastCheckinDay: -1, checkins: 0, freezes: 0, milestones: [], history: [] },
     month: { unpaidStreak: 0, ledger: [] },
     milestoneShown: false,
     tutorialDone: false,
@@ -128,8 +133,10 @@ function endDay(s: GameState, rng: Rng): ReasonCode | null {
   if (!s.quizDaily.done) return 'QUIZ_NOT_DONE'
   // 当日效果到此结束；本次事件产生的效果需要保留到下一日。
   s.pendingTomorrow = {}
-  // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）
-  if (rng.next() < EVENT_CHANCE) {
+  // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）；
+  //    地力透支期（当日第 2+ 游戏日，real-day.md §3.5）触发率降为 DIMINISH_EVENT_CHANCE
+  const eventChance = s.realDay.gamesToday >= 1 ? DIMINISH_EVENT_CHANCE : EVENT_CHANCE
+  if (rng.next() < eventChance) {
     applyEvent(s, drawEvent(rng, monthOf(s.day)), rng)
   }
   // 2. 全田自然生长 +1（灵雨已在事件步 +1，合计 +2）
@@ -148,6 +155,16 @@ function endDay(s: GameState, rng: Rng): ReasonCode | null {
 }
 
 function advanceDay(s: GameState): void {
+  // 地力透支（real-day.md §3.5）：游戏日成功推进计入当日；第 2+ 个游戏日递减，首次出现时日志说明规则
+  if (s.realDay.gamesToday === 0) {
+    addLog(s, {
+      kind: 'settle',
+      icon: '⛰️',
+      title: '地力透支',
+      text: '今日再推游戏日：日终事件触发与收获修为减半；灵草株数、测验奖励与自然生长不受影响',
+    })
+  }
+  s.realDay.gamesToday += 1
   s.day += 1
   s.phase = 'day'
   farming.resetDaily(s)

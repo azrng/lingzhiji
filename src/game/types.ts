@@ -87,6 +87,23 @@ export interface Resources {
   insight: number
 }
 
+// 现实日锚（real-day.md §3.2，随存档 v2）：索引由 clock.realDayIndex 派生，日切凌晨 4 点
+export interface RealDayState {
+  today: number // 最近一次同步的现实日索引（开局 = 创建当日）
+  gamesToday: number // 当日已推进的游戏日数（跨日重置 0；END_DAY 成功推进后 +1）
+}
+
+// 道心连胜（real-day.md §3.4，随存档 v2）
+export interface StreakState {
+  count: number // 当前道心连胜（现实日）
+  best: number // 历史最高
+  lastCheckinDay: number // 最近打卡的现实日索引（= 今天则已打卡）；-1 表示从未打卡
+  checkins: number // 累计打卡次数（护道符发放依据）
+  freezes: number // 护道符余量（0-2）
+  milestones: number[] // 已发放的里程碑天数（7/30/100/365，防重复）
+  history: number[] // 打卡现实日索引（升序，环形保留最近 370 条，日历热力图数据源）
+}
+
 export interface GameState {
   characterId?: CharacterId // 旧存档没有该字段，继续显示原有弟子形象
   day: number // 从 1 起算；月份派生计算
@@ -104,6 +121,8 @@ export interface GameState {
   inventory: Record<HerbId, number>
   quizDaily: { done: boolean; session: QuizSession | null }
   learning: Learning
+  realDay: RealDayState
+  streak: StreakState
   month: { unpaidStreak: number; ledger: MonthRecord[] }
   milestoneShown: boolean
   tutorialDone: boolean

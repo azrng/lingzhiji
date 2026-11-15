@@ -8,6 +8,7 @@ last_updated: 2026-11-15
 relations:
   - doc/requirements/lingzhiji/v0.1-prd.md
   - doc/design/architecture.md
+  - doc/design/lingzhiji/real-day.md
   - doc/contracts/lingzhiji/save-data.md
 ---
 
@@ -29,7 +30,7 @@ relations:
 
 ### 3.1 读写封装（`src/game/save.ts`）
 
-- localStorage 唯一读写点（UI 与 store 禁止直用，对齐 frontend-AGENTS.md 无后端数据口径）；键名常量 `lingzhiji.save.v1`
+- localStorage 唯一读写点（UI 与 store 禁止直用，对齐 frontend-AGENTS.md 无后端数据口径）；键名常量 `lingzhiji.save.v1`——**键名与结构版本解耦**，结构升级不改键（避免玩家丢档），当前结构版本 SAVE_VERSION = 2
 - 接口：`persist(state)` / `load(): Result<GameState>` / `exportCode(): string` / `importCode(code): Result<GameState>`
 - 保存失败（隐私模式 / 容量满）：捕获后返回失败，UI toast「存档保存失败，进度暂存于本页」，游戏状态留在内存继续游玩
 
@@ -41,8 +42,9 @@ relations:
 
 ### 3.3 版本与迁移
 
-- `SaveData.version = 1`；`load` 时未知版本 → 加载失败并提示（不猜测解析）
-- 未来结构变更走 `migrations: ((old) => new)[]` 顺序迁移链；迁移只在新版本代码中追加，旧档读入即升格后入库
+- `SaveData.version`；`load` / `importCode` 接受正整数且 ≤ 当前 SAVE_VERSION 的版本，顺序走 `migrations` 升格后校验；高于当前的版本 → 拒绝（不猜测解析）
+- **v1 → v2（2026-11-15 现实日锚，已落地）**：补 `realDay`（today = 迁移时刻现实日 / gamesToday = 0）与 `streak` 全零值字段，旧进度无损、连胜从 0 起算；键名不变（§3.1）
+- 后续结构变更继续在 `migrations: ((old) => new)[]` 顺序迁移链追加；迁移只在新版本代码中新增，旧档读入即升格后入库——该链是 M2+ 内容扩展的标准通道
 - 二期境界扩展等按 PRD §5.2 要求保留已有修为、种植、资源与学习记录，不得清空进度
 
 ### 3.4 导出 / 导入（Base64 导码）

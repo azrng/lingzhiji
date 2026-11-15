@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { syncRealDay } from '../game/clock'
 import { QI_CAP } from '../game/constants'
 import { effDays } from '../game/farming'
 import { persist } from '../game/save'
@@ -22,7 +23,13 @@ export default function DebugPanel() {
     persist(g)
   }
 
-  const jumpDay30 = () => patch((g) => { g.day = Math.floor((g.day - 1) / 30) * 30 + 30 })
+  // 跳到本月第 30 天：等效推进若干游戏日，须同步计入当日游戏日数（advanceDay 同款口径），
+  // 否则地力透支判定与真实 END_DAY 路径不一致，调试结论会失真
+  const jumpDay30 = () => patch((g) => {
+    const to = Math.floor((g.day - 1) / 30) * 30 + 30
+    g.realDay.gamesToday += to - g.day
+    g.day = to
+  })
 
   return (
     <div className="fixed bottom-4 left-4 z-[60]">
@@ -41,6 +48,11 @@ export default function DebugPanel() {
             }
           })} />
           <Dbg label="跳到本月第 30 天" onClick={jumpDay30} />
+          <Dbg label="跳现实日 +1" onClick={() => patch((g) => {
+            // 跳现实日（real-day.md §5）：把 realDay.today 回退一天再走一次跨日同步，模拟晨露/漏签检查
+            g.realDay.today -= 1
+            Object.assign(g, syncRealDay(g, Date.now()).state)
+          })} />
           <Dbg label="重置开局" onClick={() => startNew()} />
         </div>
       )}

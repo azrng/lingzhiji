@@ -65,7 +65,7 @@ streak: {
 ### 3.4 道心连胜 / 护道符 / 里程碑
 
 - **打卡**：`QUIZ_CONFIRM` 成功时，若 `streak.lastCheckinDay !== realDay.today` → 打卡一次（完成 10 题确认结果即算，**不看正确率**——门槛极低，Duolingo 口径）：`count+1`、`checkins+1`、`lastCheckinDay = today`、`history` 追加；同现实日多次完成测验只记一次
-- **漏签检查**（跨日 sync 时）：漏签天数 = `today - realDay.today - 1`
+- **漏签检查**（跨日 sync 时）：漏签天数 = `today - realDay.today - 1`；`lastCheckinDay === -1`（从未打卡）时跳过——0 连胜无火可熄，不产生断签日志（2026-11-15 实现修订）
   - 漏签 ≤ `freezes`：自动消耗等量护道符，连胜保持（notice `freeze-used`，日志「护道符护住了道心」）
   - 漏签 > `freezes`：连胜归零（`count = 0`），护道符保留不清，进度无损（notice `streak-lost`，温和文案「道心之火熄了，重新点燃」）
   - 玩家当天已打卡后次日漏签：同样按上式计算（打卡日与今日之间的完整未玩日）

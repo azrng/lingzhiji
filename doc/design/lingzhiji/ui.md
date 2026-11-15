@@ -40,7 +40,8 @@ relations:
 | 坊市 | MarketPanel | economy.md |
 | 定额结算 | QuotaModal | economy.md |
 | 设置 / 存档 | SettingsModal | save.md |
-| 事件与突破提示 | EventToast | core-loop / progression.md |
+| 修行日历（道心连胜） | CalendarModal（TopBar 道心徽标入口；徽标常显连胜数与当日打卡状态，日期区显示「地力透支」标签） | real-day.md §4 |
+| 事件与突破提示 | EventToast（晨露 / 护道符 / 断签 / 里程碑通知走同一日志差量队列） | core-loop / progression / real-day.md |
 | 筑基结算（全屏） | MilestoneScreen | progression.md |
 | 新手引导（overlay） | TutorialOverlay | 本文档 §4.3 |
 

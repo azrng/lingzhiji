@@ -16,7 +16,7 @@ last_updated: 2026-11-14
 
 | 模块 | 功能 | 文档 | 状态 | 说明 |
 |---|---|---|---|---|
-| lingzhiji | 灵植记 PRD v0.1 | `lingzhiji/v0.1-prd.md` | in-review | MVP：灵草种植阶梯 + 定额缴纳 + 任务堂背单词 + 修为境界（目标筑基） |
+| lingzhiji | 灵植记 PRD v0.1 | `lingzhiji/v0.1-prd.md` | approved | MVP：灵草种植阶梯 + 定额缴纳 + 任务堂背单词 + 修为境界（目标筑基） |
 
 ## 跨模块公共约束
 - 背单词为核心学习系统：抽题、判分、奖励口径以 `lingzhiji/v0.1-prd.md` §8 为唯一事实来源。

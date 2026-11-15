@@ -1,5 +1,6 @@
 // 存档（save.md）：localStorage 唯一读写点；版本校验、Base64 导码、损坏恢复。
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
+import { HERB_BY_ID } from './constants'
 import type { GameState, ReasonCode } from './types'
 
 export const SAVE_KEY = 'lingzhiji.save.v1'
@@ -36,36 +37,97 @@ export function persist(state: GameState, storage: Storage | null = getStorage()
   }
 }
 
-// 结构校验（契约草案校验规则第 3 条）：必需字段齐备、数值 ≥0、长度合法
+// 结构校验（契约草案校验规则第 3 条，深化版）：必需字段齐备、枚举合法、数值范围与内部结构逐层校验。
+// 导入是唯一外部数据入口，脏值在此全部拦截，不进引擎。
+const isInt = (v: unknown) => typeof v === 'number' && Number.isInteger(v)
+const nonNegInt = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0
+const isStr = (v: unknown) => typeof v === 'string'
+const isBool = (v: unknown) => typeof v === 'boolean'
+const isHerbId = (v: unknown) => isStr(v) && v in HERB_BY_ID
+
+function validField(f: unknown): boolean {
+  if (typeof f !== 'object' || f === null) return false
+  const x = f as Record<string, unknown>
+  if (!nonNegInt(x.id) || (x.id as number) < 1) return false
+  switch (x.status) {
+    case 'empty':
+      return true
+    case 'growing':
+    case 'mature':
+      return (
+        isHerbId(x.herb) && nonNegInt(x.progress) && nonNegInt(x.curYield) &&
+        nonNegInt(x.dry) && isBool(x.halved)
+      )
+    case 'confiscated':
+      return (x.refundSeed === undefined || isHerbId(x.refundSeed))
+    default:
+      return false
+  }
+}
+
+function validLibStat(s: unknown): boolean {
+  if (typeof s !== 'object' || s === null) return false
+  const x = s as Record<string, unknown>
+  return (
+    nonNegInt(x.attempts) &&
+    Array.isArray(x.distinctWords) && x.distinctWords.every(isStr) &&
+    typeof x.firstCorrect === 'object' && x.firstCorrect !== null &&
+    nonNegInt((x.firstCorrect as Record<string, unknown>).hit) && nonNegInt((x.firstCorrect as Record<string, unknown>).total) &&
+    typeof x.reviewCorrect === 'object' && x.reviewCorrect !== null &&
+    nonNegInt((x.reviewCorrect as Record<string, unknown>).hit) && nonNegInt((x.reviewCorrect as Record<string, unknown>).total) &&
+    nonNegInt(x.sessions) &&
+    Array.isArray(x.wrongQueue) && x.wrongQueue.every(isStr)
+  )
+}
+
 function validate(game: unknown): ReasonCode | null {
   if (typeof game !== 'object' || game === null) return 'BAD_SHAPE'
   const g = game as GameState
   const ok =
-    typeof g.day === 'number' && g.day >= 1 &&
+    nonNegInt(g.day) && g.day >= 1 &&
     (g.phase === 'day' || g.phase === 'quota') &&
-    typeof g.ap === 'number' && g.ap >= 0 &&
-    typeof g.resources?.stones === 'number' && g.resources.stones >= 0 &&
-    typeof g.resources?.contribution === 'number' && g.resources.contribution >= 0 &&
-    typeof g.resources?.qi === 'number' && g.resources.qi >= 0 &&
-    typeof g.resources?.insight === 'number' && g.resources.insight >= 0 &&
-    typeof g.cultivation === 'number' && g.cultivation >= 0 &&
-    typeof g.realm === 'number' && g.realm >= 0 && g.realm <= 9 &&
-    typeof g.gongfa === 'number' && g.gongfa >= 1 && g.gongfa <= 5 &&
-    Array.isArray(g.fields) && g.fields.length >= 1 &&
-    typeof g.learning?.currentLib === 'string' &&
-    typeof g.learning?.seenMap === 'object' &&
-    typeof g.month?.unpaidStreak === 'number' && g.month.unpaidStreak >= 0 &&
-    typeof g.rngState === 'number' &&
-    Array.isArray(g.log)
+    nonNegInt(g.ap) && g.ap <= 3 &&
+    isBool(g.wateredToday) && isBool(g.tunaUsedToday) &&
+    typeof g.pendingTomorrow === 'object' && g.pendingTomorrow !== null &&
+    (g.pendingTomorrow.marketMult === undefined || g.pendingTomorrow.marketMult === 1.5 || g.pendingTomorrow.marketMult === 0.7) &&
+    (g.pendingTomorrow.infusionDouble === undefined || isBool(g.pendingTomorrow.infusionDouble)) &&
+    typeof g.resources === 'object' && g.resources !== null &&
+    nonNegInt(g.resources.stones) && nonNegInt(g.resources.contribution) &&
+    nonNegInt(g.resources.qi) && nonNegInt(g.resources.insight) &&
+    nonNegInt(g.cultivation) &&
+    isInt(g.realm) && g.realm >= 0 && g.realm <= 9 &&
+    isInt(g.gongfa) && g.gongfa >= 1 && g.gongfa <= 5 &&
+    Array.isArray(g.fields) && g.fields.length >= 1 && g.fields.every(validField) &&
+    typeof g.seeds === 'object' && g.seeds !== null &&
+    Object.entries(g.seeds).every(([k, v]) => isHerbId(k) && nonNegInt(v)) &&
+    typeof g.inventory === 'object' && g.inventory !== null &&
+    Object.entries(g.inventory).every(([k, v]) => isHerbId(k) && nonNegInt(v)) &&
+    typeof g.quizDaily === 'object' && g.quizDaily !== null && isBool(g.quizDaily.done) &&
+    typeof g.learning === 'object' && g.learning !== null &&
+    (g.learning.currentLib === 'cet4' || g.learning.currentLib === 'cet6') &&
+    typeof g.learning.seenMap === 'object' && g.learning.seenMap !== null &&
+    Object.values(g.learning.seenMap).every(nonNegInt) &&
+    typeof g.learning.libs === 'object' && g.learning.libs !== null &&
+    validLibStat(g.learning.libs.cet4) && validLibStat(g.learning.libs.cet6) &&
+    typeof g.month === 'object' && g.month !== null &&
+    nonNegInt(g.month.unpaidStreak) && Array.isArray(g.month.ledger) &&
+    isBool(g.milestoneShown) && isBool(g.tutorialDone) &&
+    Array.isArray(g.log) && g.log.length <= 50 &&
+    g.log.every((l) => typeof l === 'object' && l !== null && nonNegInt(l.day) && isStr(l.title) && isStr(l.text)) &&
+    nonNegInt(g.rngState)
   if (!ok) return 'BAD_SHAPE'
   // quiz 会话结构（存在时）
-  if (g.quizDaily?.session) {
+  if (g.quizDaily.session) {
     const q = g.quizDaily.session
     const okQ =
       (q.lib === 'cet4' || q.lib === 'cet6') &&
       Array.isArray(q.questions) && q.questions.length === 10 &&
+      q.questions.every((x) => typeof x === 'object' && x !== null && isStr(x.word) && isStr(x.meaning) &&
+        (x.from === 'new' || x.from === 'review') && Array.isArray(x.opts) && x.opts.length === 4 && x.opts.every(isStr)) &&
+      (q.phase === 'learning' || q.phase === 'testing' || q.phase === 'result') &&
       Array.isArray(q.answers) && q.answers.length === 10 &&
-      typeof q.idx === 'number' && q.idx >= 0 && q.idx < 10
+      q.answers.every((a) => a === null || isStr(a)) &&
+      isInt(q.idx) && q.idx >= 0 && q.idx < 10
     if (!okQ) return 'BAD_SHAPE'
   }
   return null

@@ -5,7 +5,7 @@ import { convertRate } from './economy'
 import * as economy from './economy'
 import * as farming from './farming'
 import { addLog } from './log'
-import { gainCultivation } from './progression'
+import { clampResources, gainCultivation } from './progression'
 import * as quiz from './quiz'
 import { createRng, pick, type Rng } from './rng'
 import type { GameAction, GameState, ReasonCode } from './types'
@@ -146,89 +146,109 @@ function upgradeGongfa(s: GameState): ReasonCode | null {
   return null
 }
 
+// 变异式应用：直接在传入的 state 上就地修改（含 rngState 推进），不克隆。
+// 供平衡模拟器等高频场景使用；UI 走 dispatch（克隆后调用本函数）。
+// 调用方保证传入的是自己持有的可变副本。
+export function applyAction(state: GameState, action: GameAction): { ok: boolean; reason?: ReasonCode } {
+  const rng = createRng(state.rngState)
+  let err: ReasonCode | null
+
+  // 月末定额交互中只允许结算动作（core-loop.md §3.3）
+  if (state.phase === 'quota' && action.type !== 'QUOTA_RESOLVE') {
+    err = 'INVALID_TARGET'
+  } else {
+    switch (action.type) {
+      case 'PLANT':
+        err = farming.plant(state, action.fieldId, action.herb)
+        break
+      case 'WATER':
+        err = farming.water(state)
+        break
+      case 'HARVEST':
+        err = farming.harvest(state, action.fieldId)
+        break
+      case 'IRRIGATE':
+        err = farming.irrigate(state)
+        break
+      case 'TUNA':
+        err = farming.tuna(state)
+        break
+      case 'RECLAIM':
+        err = farming.reclaim(state, action.fieldId)
+        break
+      case 'RECLAIM_LAND':
+        err = farming.reclaimLand(state)
+        break
+      case 'BUY_SEED':
+        err = economy.buySeed(state, action.herb)
+        break
+      case 'BUY_SCROLL':
+        err = economy.buyScroll(state)
+        break
+      case 'SELL_HERB':
+        err = economy.sellHerb(state, action.herb, action.count)
+        break
+      case 'EMERGENCY_SEED':
+        err = economy.emergencySeed(state)
+        break
+      case 'GONGFA_UP':
+        err = upgradeGongfa(state)
+        break
+      case 'QUIZ_BEGIN':
+        err = quiz.beginSession(state, rng)
+        break
+      case 'QUIZ_LEARNED':
+        err = quiz.learned(state)
+        break
+      case 'QUIZ_ANSWER':
+        err = quiz.answer(state, action.choice)
+        break
+      case 'QUIZ_NEXT':
+        err = quiz.next(state)
+        break
+      case 'QUIZ_CONFIRM':
+        err = quiz.confirm(state)
+        break
+      case 'QUIZ_SET_LIB':
+        err = quiz.setLib(state, action.lib)
+        break
+      case 'END_DAY':
+        err = endDay(state, rng)
+        break
+      case 'MILESTONE_SHOWN':
+        state.milestoneShown = true
+        err = null
+        break
+      case 'TUTORIAL_DONE':
+        state.tutorialDone = true
+        err = null
+        break
+      case 'DEBUG_CULTIVATE':
+        // 调试专用（?debug=1）：走 gainCultivation 统一入口，保持突破/里程碑逻辑一致
+        gainCultivation(state, Math.max(0, Math.floor(action.amount)))
+        err = null
+        break
+      case 'QUOTA_RESOLVE': {
+        if (state.phase !== 'quota') {
+          err = 'INVALID_TARGET'
+          break
+        }
+        err = economy.resolveQuota(state, action.pay, action.plan, rng)
+        if (err === null) advanceDay(state)
+        break
+      }
+    }
+  }
+
+  if (err === null) state.rngState = rng.state()
+  clampResources(state)
+  return { ok: err === null, reason: err ?? undefined }
+}
+
 export function dispatch(state: GameState, action: GameAction): { ok: boolean; state: GameState; reason?: ReasonCode } {
   const s: GameState = structuredClone(state)
-  const rng = createRng(s.rngState)
-  const finish = (err: ReasonCode | null) => {
-    if (err === null) s.rngState = rng.state()
-    return { ok: err === null, state: s, reason: err ?? undefined }
-  }
-  // 月末定额交互中只允许结算动作（core-loop.md §3.3）
-  if (s.phase === 'quota' && action.type !== 'QUOTA_RESOLVE') return finish('INVALID_TARGET')
-
-  switch (action.type) {
-    case 'PLANT': {
-      const err = farming.plant(s, action.fieldId, action.herb)
-      return finish(err)
-    }
-    case 'WATER':
-      return finish(farming.water(s))
-    case 'HARVEST': {
-      const err = farming.harvest(s, action.fieldId)
-      return finish(err)
-    }
-    case 'IRRIGATE':
-      return finish(farming.irrigate(s))
-    case 'TUNA':
-      return finish(farming.tuna(s))
-    case 'RECLAIM': {
-      const err = farming.reclaim(s, action.fieldId)
-      return finish(err)
-    }
-    case 'RECLAIM_LAND':
-      return finish(farming.reclaimLand(s))
-    case 'BUY_SEED': {
-      const err = economy.buySeed(s, action.herb)
-      return finish(err)
-    }
-    case 'BUY_SCROLL':
-      return finish(economy.buyScroll(s))
-    case 'SELL_HERB': {
-      const err = economy.sellHerb(s, action.herb, action.count)
-      return finish(err)
-    }
-    case 'EMERGENCY_SEED':
-      return finish(economy.emergencySeed(s))
-    case 'GONGFA_UP':
-      return finish(upgradeGongfa(s))
-    case 'QUIZ_BEGIN': {
-      const err = quiz.beginSession(s, rng)
-      return finish(err)
-    }
-    case 'QUIZ_LEARNED':
-      return finish(quiz.learned(s))
-    case 'QUIZ_ANSWER': {
-      const err = quiz.answer(s, action.choice)
-      return finish(err)
-    }
-    case 'QUIZ_NEXT':
-      return finish(quiz.next(s))
-    case 'QUIZ_CONFIRM':
-      return finish(quiz.confirm(s))
-    case 'QUIZ_SET_LIB': {
-      const err = quiz.setLib(s, action.lib)
-      return finish(err)
-    }
-    case 'END_DAY':
-      return finish(endDay(s, rng))
-    case 'MILESTONE_SHOWN':
-      s.milestoneShown = true
-      return finish(null)
-    case 'TUTORIAL_DONE':
-      s.tutorialDone = true
-      return finish(null)
-    case 'DEBUG_CULTIVATE':
-      // 调试专用（?debug=1）：走 gainCultivation 统一入口，保持突破/里程碑逻辑一致
-      gainCultivation(s, Math.max(0, Math.floor(action.amount)))
-      return finish(null)
-    case 'QUOTA_RESOLVE': {
-      if (s.phase !== 'quota') return finish('INVALID_TARGET')
-      const err = economy.resolveQuota(s, action.pay, action.plan, rng)
-      if (err) return finish(err)
-      advanceDay(s)
-      return finish(null)
-    }
-  }
+  const r = applyAction(s, action)
+  return { ok: r.ok, state: s, reason: r.reason }
 }
 
 // 供 UI 预览定额选择折算合计（economy.md §3.3）

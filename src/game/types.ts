@@ -38,6 +38,7 @@ export interface LogEntry {
   icon?: string
   title: string
   text: string
+  neg?: boolean // 负面事件标记（toast 用红色）
 }
 
 export interface QuizQuestion {
@@ -163,4 +164,5 @@ export type GameAction =
   | { type: 'END_DAY' }
   | { type: 'MILESTONE_SHOWN' } // 筑基结算成绩单已展示（一次性标记）
   | { type: 'TUTORIAL_DONE' } // 新手引导完成/跳过
+  | { type: 'DEBUG_CULTIVATE'; amount: number } // 调试：修为入账（走突破检查，仅 ?debug=1 使用）
   | { type: 'QUOTA_RESOLVE'; pay: boolean; plan: Partial<Record<HerbId, number>> }

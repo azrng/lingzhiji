@@ -96,7 +96,7 @@ function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
       s.pendingTomorrow.marketMult = rng.next() < 0.5 ? MARKET_UP : MARKET_DOWN
       break
   }
-  addLog(s, { kind: 'event', evPos: ev.pos, title: `事件 · ${ev.name}`, text: ev.desc })
+  addLog(s, { kind: 'event', evPos: ev.pos, title: `事件 · ${ev.name}`, text: ev.desc, neg: ev.negative })
 }
 
 // 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定
@@ -216,6 +216,10 @@ export function dispatch(state: GameState, action: GameAction): { ok: boolean; s
       return finish(null)
     case 'TUTORIAL_DONE':
       s.tutorialDone = true
+      return finish(null)
+    case 'DEBUG_CULTIVATE':
+      // 调试专用（?debug=1）：走 gainCultivation 统一入口，保持突破/里程碑逻辑一致
+      gainCultivation(s, Math.max(0, Math.floor(action.amount)))
       return finish(null)
     case 'QUOTA_RESOLVE': {
       if (s.phase !== 'quota') return finish('INVALID_TARGET')

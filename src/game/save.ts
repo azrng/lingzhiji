@@ -12,7 +12,7 @@ export interface SaveData {
 }
 
 // 与 ActionResult 同风格的结果类型，便于测试直接断言 reason
-export type LoadResult = { ok: boolean; state?: GameState; reason?: ReasonCode }
+export type LoadResult = { ok: boolean; state?: GameState; savedAt?: number; reason?: ReasonCode }
 export type ImportResult = { ok: boolean; state?: GameState; reason?: ReasonCode }
 
 function getStorage(): Storage | null {
@@ -23,14 +23,16 @@ function getStorage(): Storage | null {
   }
 }
 
-export function persist(state: GameState, storage: Storage | null = getStorage()): boolean {
-  if (!storage) return false
-  const data: SaveData = { version: SAVE_VERSION, savedAt: Date.now(), game: state }
+// 返回写入的 savedAt（多标签轮询比对用），失败返回 0
+export function persist(state: GameState, storage: Storage | null = getStorage()): number {
+  if (!storage) return 0
+  const savedAt = Date.now()
+  const data: SaveData = { version: SAVE_VERSION, savedAt, game: state }
   try {
     storage.setItem(SAVE_KEY, JSON.stringify(data))
-    return true
+    return savedAt
   } catch {
-    return false // 容量满或被禁用：返回失败由 UI 提示，内存态继续游玩
+    return 0 // 容量满或被禁用：返回失败由 UI 提示，内存态继续游玩
   }
 }
 
@@ -87,7 +89,7 @@ export function load(storage: Storage | null = getStorage()): LoadResult {
   if (data.version !== SAVE_VERSION) return { ok: false, reason: 'BAD_VERSION' }
   const shapeErr = validate(data.game)
   if (shapeErr) return { ok: false, reason: shapeErr }
-  return { ok: true, state: data.game }
+  return { ok: true, state: data.game, savedAt: data.savedAt }
 }
 
 // 导出：JSON(UTF-8) → Base64（save.md §3.4）

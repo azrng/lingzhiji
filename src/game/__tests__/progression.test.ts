@@ -54,10 +54,14 @@ describe('存档（save.md）', () => {
     const storage = memoryStorage()
     const s = createInitialState(42)
     s.resources.stones = 77
-    expect(persist(s, storage)).toBe(true)
+    const savedAt = persist(s, storage)
+    expect(savedAt).toBeGreaterThan(0)
     const r = load(storage)
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.state).toEqual(s)
+    if (r.ok) {
+      expect(r.state).toEqual(s)
+      expect(r.savedAt).toBe(savedAt)
+    }
   })
 
   it('导码往返一致', () => {

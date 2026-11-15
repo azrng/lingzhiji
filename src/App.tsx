@@ -25,6 +25,7 @@ function GameScreen() {
   const phase = game.phase
   const milestonePending = game.realm >= 9 && !game.milestoneShown
   const tutorialDone = game.tutorialDone
+  const saveError = useGameStore((s) => s.saveError)
   const setTutorialStep = useUiStore((s) => s.setTutorialStep)
   const pushToasts = useUiStore((s) => s.pushToasts)
   const quizOpen = useUiStore((s) => s.quizOpen)
@@ -33,14 +34,14 @@ function GameScreen() {
   const tutorialStep = useUiStore((s) => s.tutorialStep)
 
   // 日志差量 → toast：dispatch 更新 game 后，与上次快照比对新增条目
-  const lastLogRef = useRef(0)
+  const lastLogRef = useRef<number | null>(null)
   useEffect(() => {
-    const fresh = game.log.slice(0, Math.max(0, game.log.length - lastLogRef.current)).reverse()
-    // 存档恢复/重置后以当前长度为基线，避免把历史日志全部弹成 toast
-    if (game.log.length < lastLogRef.current) {
+    // 首次渲染（含续档）与日志回退（重置/导入）只建立基线，不把历史日志弹成 toast
+    if (lastLogRef.current === null || game.log.length < lastLogRef.current) {
       lastLogRef.current = game.log.length
       return
     }
+    const fresh = game.log.slice(0, game.log.length - lastLogRef.current).reverse()
     lastLogRef.current = game.log.length
     if (fresh.length) pushToasts(fresh)
   }, [game.log, pushToasts])
@@ -68,6 +69,11 @@ function GameScreen() {
       {phase !== 'quota' && settingsOpen && <SettingsModal />}
       {milestonePending && <MilestoneScreen />}
       {tutorialStep > 0 && phase !== 'quota' && <Tutorial />}
+      {saveError && (
+        <div className="fixed bottom-4 right-4 z-[60] bg-warning-50 border border-warning-200 text-warning-500 text-xs rounded-lg px-3 py-2 shadow-lg">
+          {saveError}
+        </div>
+      )}
       <EventToasts />
       <TabBanner />
       <DebugPanel />

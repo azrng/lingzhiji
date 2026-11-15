@@ -47,7 +47,7 @@ export const useUiStore = create<UiStore>((set) => ({
         icon: e.icon,
         title: e.title,
         text: e.text,
-        tone: e.kind === 'breakthrough' ? ('gold' as const) : e.icon === '⚠️' || e.icon === '🔒' ? ('bad' as const) : ('good' as const),
+        tone: e.neg ? ('bad' as const) : e.kind === 'breakthrough' ? ('gold' as const) : ('good' as const),
       }))
     if (!fresh.length) return
     set((s) => ({ toasts: [...s.toasts, ...fresh] }))

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { loadPrefs, setBgmEnabled, setSfxEnabled } from '../audio'
 import { exportCode } from '../game/save'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
@@ -17,6 +18,7 @@ export default function SettingsModal() {
   const [confirmReset, setConfirmReset] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
+  const [audioPrefs, setAudioPrefs] = useState(loadPrefs)
 
   const code = exportCode(game)
 
@@ -70,6 +72,36 @@ export default function SettingsModal() {
           >
             导入
           </Btn>
+        </div>
+        <div>
+          <div className="text-gray-600 mb-2">声音</div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              aria-pressed={audioPrefs.bgm}
+              onClick={() => {
+                const next = { ...audioPrefs, bgm: !audioPrefs.bgm }
+                setAudioPrefs(next)
+                setBgmEnabled(next.bgm)
+              }}
+              className={`px-5 py-2.5 rounded-xl text-sm border transition-colors ${audioPrefs.bgm ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-primary-400'}`}
+            >
+              ♪ 背景音乐 {audioPrefs.bgm ? '开' : '关'}
+            </button>
+            <button
+              type="button"
+              aria-pressed={audioPrefs.sfx}
+              onClick={() => {
+                const next = { ...audioPrefs, sfx: !audioPrefs.sfx }
+                setAudioPrefs(next)
+                setSfxEnabled(next.sfx)
+              }}
+              className={`px-5 py-2.5 rounded-xl text-sm border transition-colors ${audioPrefs.sfx ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-primary-400'}`}
+            >
+              🔔 音效 {audioPrefs.sfx ? '开' : '关'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">偏好保存在本浏览器，不随存档导码迁移。</p>
         </div>
         <div className="bg-gray-100 rounded-lg p-3 text-xs text-gray-500">
           多标签页：同时游玩多个页面会互相覆盖存档，检测到时会在顶部提示。存档在每次有效操作后自动保存。

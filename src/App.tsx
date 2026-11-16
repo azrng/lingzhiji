@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { installSfxClick, setBgmScene } from './audio'
 import TopBar from './components/TopBar'
 import FieldGrid from './components/FieldGrid'
 import ActionPanel from './components/ActionPanel'
@@ -17,6 +18,10 @@ import { useUiStore } from './stores/useUiStore'
 
 export default function App() {
   const started = useGameStore((s) => s.started)
+  // 全局 UI 点击音与音频手势解锁（audio-impl.md §3.4），整页只装一次
+  useEffect(() => {
+    installSfxClick()
+  }, [])
   return started ? <GameScreen /> : <StartScreen />
 }
 
@@ -57,6 +62,12 @@ function GameScreen() {
   useEffect(() => {
     if (!tutorialDone) setTutorialStep(1)
   }, [tutorialDone, setTutorialStep])
+
+  // 主界面 BGM = 灵田曲（audio-impl.md §3.3）；挂载时用户已从开始页点击进入，手势解锁已成立
+  useEffect(() => {
+    setBgmScene('field')
+    return () => setBgmScene(null)
+  }, [])
 
   return (
     <div className="game-world min-h-screen px-4 py-5 sm:px-6 lg:px-10 lg:py-7">

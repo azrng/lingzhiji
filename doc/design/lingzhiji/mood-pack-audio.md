@@ -2,7 +2,7 @@
 doc_id: DES-LINGZHIJI-AUDIO
 doc_type: design-asset
 module: lingzhiji
-status: draft
+status: approved
 last_updated: 2026-11-16
 relations:
   - doc/requirements/lingzhiji/v0.1-prd.md
@@ -68,8 +68,9 @@ relations:
 ## 4. 接入约定（M3 阶段 1 落地时生效）
 
 - 播放库：howler.js（T25 调研已定）
-- 资产目录：`public/assets/audio/`；建议命名 `bgm-field.ogg`（灵田）、`bgm-study.ogg`（任务堂）、`sfx-<事件名>.ogg`
-- 转码：现候选为 256kbps MP3（每首 5–6.8MB），接入时转 ogg 128k（每首约 1.5MB），两首 BGM + 10 音效可压进 5MB 总预算
+- 资产目录：`public/assets/audio/`；命名 `bgm-field.mp3`（灵田）、`bgm-study.mp3`（任务堂）、`sfx-<事件名>.mp3`
+- 转码：BGM 由 256kbps MP3 转 **mp3 128k**（每首约 2.5MB），音效由 Kenney ogg 源转 mp3（短音效合计约 0.1MB），总预算 ≈5MB 不变
+- **修订（2026-11-16，T26）**：原定「转 ogg 128k」废弃——Kenney 音效源文件是 ogg，而 Safari/iOS 不支持 Ogg Vorbis（真实试玩可能有 iPhone 用户）；mp3 全浏览器兼容、体积同级，改为一律 mp3
 - **替换方式（「真不行了再换」）**：换曲/换音效 = 用新音频覆盖同名文件，或改代码里的资产映射；本文档同步更新「选定」列即可。换 Pixabay 曲时重新走「详情页抽 CDN 直链下载」流程
 
 ## 5. 待确认项

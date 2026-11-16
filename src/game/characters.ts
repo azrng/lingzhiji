@@ -7,7 +7,7 @@ export const characters: { id: CharacterId; name: string; role: string; descript
   { id: 'senior-sister', name: '性感师姐', role: '灵植前辈', description: '从容明艳的灵植堂师姐，衣袂间带着草木清香。', image: assetUrl('character-senior-sister-v2.png'), tone: 'from-error-100 to-gold-pale' },
 ]
 
-// 旧存档没有形象字段，保留原来的弟子立绘。
+// 旧存档没有形象字段：旧弟子立绘已淘汰，回退默认小师妹新立绘（2026-11-16 用户确认旧图废弃）
 export function characterImage(id?: CharacterId): string {
-  return characters.find((character) => character.id === id)?.image ?? assetUrl('character-lingzhi-dizi.svg')
+  return characters.find((character) => character.id === id)?.image ?? characters[0].image
 }

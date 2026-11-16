@@ -22,7 +22,8 @@ relations:
 | lingzhiji | 存档（持久化 / 导入导出 / 多标签页） | `lingzhiji/save.md` | approved | REQ §14 §16 |
 | lingzhiji | 界面结构与状态（布局 / 线框 / 状态映射） | `lingzhiji/ui.md` | approved | REQ §13 |
 | lingzhiji | 现实日锚（晨露 / 地力 / 道心 / 修行日历 / 存档 v2） | `lingzhiji/real-day.md` | approved | REQ §19 |
-| lingzhiji | 氛围包音频候选（M3 前置素材选定：BGM 2 首 + 音效 10 个及备选） | `lingzhiji/mood-pack-audio.md` | draft | REQ §19 / tasks T25 M3 方向 |
+| lingzhiji | 氛围包音频候选（M3 前置素材选定：BGM 2 首 + 音效 10 个及备选） | `lingzhiji/mood-pack-audio.md` | approved | REQ §19 / tasks T25 M3 方向 |
+| lingzhiji | 氛围音频（BGM 场景切换 / 音效映射 / 声音开关） | `lingzhiji/audio-impl.md` | approved | REQ §20 |
 
 契约：存档契约 CON-LINGZHIJI-SAVE-001 已落地为 `src/game/types.ts` + `src/game/save.ts`（代码为事实来源，历史草案 `doc/contracts/lingzhiji/save-data.md` 已标 superseded）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
 

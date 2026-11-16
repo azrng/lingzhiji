@@ -1,5 +1,6 @@
 // UI 状态 store：弹层开关与 toast 队列（不入档，瞬时状态）
 import { create } from 'zustand'
+import { playSfxForEntries } from '../audio'
 import type { LogEntry } from '../game/types'
 
 export type Toast = {
@@ -40,18 +41,18 @@ export const useUiStore = create<UiStore>((set) => ({
   setTutorialStep: (v) => set({ tutorialStep: v }),
   // 新日志条目转 toast：事件/结算/突破需要即时反馈，普通行动不弹（core-loop.md）
   pushToasts: (entries) => {
-    const fresh = entries
-      .filter((e) => e.kind === 'event' || e.kind === 'settle' || e.kind === 'breakthrough')
-      .map((e) => ({
-        id: seq++,
-        evPos: e.evPos,
-        evSheet: e.evSheet,
-        icon: e.icon,
-        title: e.title,
-        text: e.text,
-        tone: e.neg ? ('bad' as const) : e.kind === 'breakthrough' ? ('gold' as const) : ('good' as const),
-      }))
+    const candidates = entries.filter((e) => e.kind === 'event' || e.kind === 'settle' || e.kind === 'breakthrough')
+    const fresh = candidates.map((e) => ({
+      id: seq++,
+      evPos: e.evPos,
+      evSheet: e.evSheet,
+      icon: e.icon,
+      title: e.title,
+      text: e.text,
+      tone: e.neg ? ('bad' as const) : e.kind === 'breakthrough' ? ('gold' as const) : ('good' as const),
+    }))
     if (!fresh.length) return
+    playSfxForEntries(candidates) // 音效与 toast 同源触发（audio-impl.md §3.4），覆盖日志差量/跨日同步/手动 toast 三条路径
     set((s) => ({ toasts: [...s.toasts, ...fresh] }))
     for (const t of fresh) {
       setTimeout(() => useUiStore.getState().dismissToast(t.id), 4000)

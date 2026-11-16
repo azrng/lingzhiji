@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { playSfx, setBgmScene } from '../audio'
 import { QUIZ_PASS, QUIZ_SIZE } from '../game/constants'
 import { reviewQuota } from '../game/constants'
 import { canFormSession, entryOf, LIBS } from '../game/wordbank'
@@ -14,6 +15,11 @@ export default function QuizModal() {
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
   const dialogRef = useRef<HTMLDivElement>(null)
   useModalFocus(dialogRef, () => setQuizOpen(false))
+  // 任务堂 BGM：进入切学习曲，离开回灵田曲（audio-impl.md §3.3）；卸载回调同时覆盖中断恢复路径
+  useEffect(() => {
+    setBgmScene('study')
+    return () => setBgmScene('field')
+  }, [])
 
   return (
     <div ref={dialogRef} data-game-modal tabIndex={-1} role="dialog" aria-modal="true" aria-label="任务堂" className="fixed inset-0 z-50 game-world overflow-y-auto">
@@ -216,7 +222,13 @@ function Result() {
         </div>
       )}
       <div className="flex justify-center">
-        <Btn className="!px-10 !py-3" onClick={() => { act({ type: 'QUIZ_CONFIRM' }); setQuizOpen(false) }}>确认结果，领取奖励</Btn>
+        <Btn className="!px-10 !py-3" onClick={() => {
+          // 打卡本身不产生日志（quiz.ts checkinStreak），按同一条件判断首次打卡并配音效（audio-impl.md §3.4）
+          const firstCheckin = g.streak.lastCheckinDay !== g.realDay.today
+          const result = act({ type: 'QUIZ_CONFIRM' })
+          if (result.ok && firstCheckin) playSfx('checkin')
+          setQuizOpen(false)
+        }}>确认结果，领取奖励</Btn>
       </div>
     </div>
   )

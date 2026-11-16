@@ -1,6 +1,6 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, DIMINISH_EVENT_CHANCE, tideOf, type EventDef } from './constants'
+import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, DIMINISH_EVENT_CHANCE, tideOf, type EventDef } from './constants'
 import { realDayIndex } from './clock'
 import { convertRate, dayInMonth, monthOf } from './economy'
 import * as economy from './economy'
@@ -177,7 +177,8 @@ function advanceDay(s: GameState): void {
 // 功法升级：心得 100 + 贡献消耗；Lv2 生长期缩短后立即检查成熟状态（farming.md）。
 function upgradeGongfa(s: GameState): ReasonCode | null {
   if (s.gongfa >= 5) return 'MAX_GONGFA'
-  const cost = [0, 0, 50, 100, 150][s.gongfa]
+  // 贡献表走 GONGFA_COST 常量（ActionPanel 展示同源；T29 审查修正：原字面量与常量重复，调参会分叉）
+  const cost = GONGFA_COST[s.gongfa]
   if (s.resources.insight < 100) return 'NO_INSIGHT'
   if (s.resources.contribution < cost) return 'NO_CONTRIBUTION'
   s.resources.insight -= 100

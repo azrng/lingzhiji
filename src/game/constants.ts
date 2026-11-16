@@ -69,7 +69,8 @@ export interface EventDef {
   name: string
   weight: number
   negative?: boolean
-  pos?: [number, number] // 事件素材图标在 5×2 sheet 中的位置；无素材位的新事件不填，走 icon 兜底
+  pos?: [number, number] // 事件图标在对应素材图集中的位置；无素材位时走 icon 兜底
+  sheet?: 'event-icons-sheet-extra.png' // 新事件素材放在独立图集，避免覆盖原图
   icon?: string // emoji 兜底图标（LogEntry.icon）
   desc: string
   effect: EventEffect
@@ -82,10 +83,10 @@ export const EVENTS: EventDef[] = [
   { id: 'stones', name: '拾得散落灵石', weight: 10, pos: [3, 0], desc: '灵石 +8', effect: { kind: 'resource', resource: 'stones', amount: 8 } },
   { id: 'spring', name: '灵泉涌出', weight: 10, pos: [4, 0], desc: '明日灌注效果翻倍', effect: { kind: 'infusionDouble' } },
   { id: 'elder', name: '长老巡视嘉许', weight: 10, pos: [0, 1], desc: '贡献 +5', effect: { kind: 'resource', resource: 'contribution', amount: 5 } },
-  { id: 'beast', name: '灵兽来访', weight: 2, icon: '🦌', desc: '随机生长中田当茬产量 +2', effect: { kind: 'yield', delta: 2, randomField: true } },
-  { id: 'dream', name: '仙人残梦', weight: 2, icon: '🌙', desc: '心得 +5', effect: { kind: 'resource', resource: 'insight', amount: 5 } },
-  { id: 'surge', name: '灵气涌动', weight: 2, icon: '🌊', desc: '灵气 +2', effect: { kind: 'resource', resource: 'qi', amount: 2 } },
-  { id: 'theft', name: '灵石失窃', weight: 2, negative: true, icon: '🦝', desc: '灵石 −5', effect: { kind: 'resource', resource: 'stones', amount: -5 } },
+  { id: 'beast', name: '灵兽来访', weight: 2, pos: [0, 0], sheet: 'event-icons-sheet-extra.png', icon: '🦌', desc: '随机生长中田当茬产量 +2', effect: { kind: 'yield', delta: 2, randomField: true } },
+  { id: 'dream', name: '仙人残梦', weight: 2, pos: [1, 0], sheet: 'event-icons-sheet-extra.png', icon: '🌙', desc: '心得 +5', effect: { kind: 'resource', resource: 'insight', amount: 5 } },
+  { id: 'surge', name: '灵气涌动', weight: 2, pos: [2, 0], sheet: 'event-icons-sheet-extra.png', icon: '🌊', desc: '灵气 +2', effect: { kind: 'resource', resource: 'qi', amount: 2 } },
+  { id: 'theft', name: '灵石失窃', weight: 2, negative: true, pos: [3, 0], sheet: 'event-icons-sheet-extra.png', icon: '🦝', desc: '灵石 −5', effect: { kind: 'resource', resource: 'stones', amount: -5 } },
   { id: 'pest', name: '虫害', weight: 13, negative: true, pos: [1, 1], desc: '随机生长中田产量 −1', effect: { kind: 'yield', delta: -1, randomField: true } },
   { id: 'bird', name: '灵雀偷食', weight: 13, negative: true, pos: [2, 1], desc: '仓库随机灵草 −1', effect: { kind: 'inventory', delta: -1 } },
   { id: 'formation', name: '阵法波动', weight: 13, negative: true, pos: [3, 1], desc: '生长中作物进度 −1 天', effect: { kind: 'growth', delta: -1 } },

@@ -27,7 +27,7 @@ export default function DayLog() {
         {log.map((l, i) => (
           <div key={i} className="flex items-start gap-3 rounded-xl bg-gray-100/70 px-3 py-2.5 text-sm">
             {l.evPos ? (
-              <Sprite sheet="event-icons-sheet.png" cols={5} rows={2} col={l.evPos[0]} row={l.evPos[1]} size={18} className="mt-0.5" />
+              <Sprite sheet={l.evSheet ?? 'event-icons-sheet.png'} cols={5} rows={l.evSheet ? 1 : 2} col={l.evPos[0]} row={l.evPos[1]} size={18} className="mt-0.5" />
             ) : (
               <span className="w-[18px] text-center flex-none">{l.icon ?? '·'}</span>
             )}

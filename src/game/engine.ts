@@ -110,13 +110,13 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
       s.pendingTomorrow.marketMult = rng.next() < 0.5 ? MARKET_UP : MARKET_DOWN
       break
   }
-  addLog(s, { kind: 'event', evPos: ev.pos, icon: ev.icon, title: `事件 · ${ev.name}`, text: ev.desc, neg: ev.negative })
+  addLog(s, { kind: 'event', evPos: ev.pos, evSheet: ev.sheet, icon: ev.icon, title: `事件 · ${ev.name}`, text: ev.desc, neg: ev.negative })
 }
 
 // 月初灵潮日志（PRD §11.1）：第 1/31/61… 天开始时提示本月灵潮
 function addTideLog(s: GameState): void {
   const tide = tideOf(monthOf(s.day))
-  addLog(s, { kind: 'settle', icon: '🌗', title: `灵潮 · ${tide.name}`, text: tide.desc })
+  addLog(s, { kind: 'settle', evPos: [4, 0], evSheet: 'event-icons-sheet-extra.png', icon: '🌗', title: `灵潮 · ${tide.name}`, text: tide.desc })
 }
 
 // 按当月灵潮调制后的权重抽取事件（core-loop.md §3.4）：基础权重 × 灵潮系数后走轮盘

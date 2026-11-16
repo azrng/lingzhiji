@@ -5,6 +5,7 @@ import type { LogEntry } from '../game/types'
 export type Toast = {
   id: number
   evPos?: [number, number]
+  evSheet?: LogEntry['evSheet']
   icon?: string
   title: string
   text?: string
@@ -44,6 +45,7 @@ export const useUiStore = create<UiStore>((set) => ({
       .map((e) => ({
         id: seq++,
         evPos: e.evPos,
+        evSheet: e.evSheet,
         icon: e.icon,
         title: e.title,
         text: e.text,

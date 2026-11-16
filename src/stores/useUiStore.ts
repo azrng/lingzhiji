@@ -1,6 +1,7 @@
 // UI 状态 store：弹层开关与 toast 队列（不入档，瞬时状态）
 import { create } from 'zustand'
 import { playSfxForEntries } from '../audio'
+import { fxForEntries } from '../fx'
 import type { LogEntry } from '../game/types'
 
 export type Toast = {
@@ -41,6 +42,7 @@ export const useUiStore = create<UiStore>((set) => ({
   setTutorialStep: (v) => set({ tutorialStep: v }),
   // 新日志条目转 toast：事件/结算/突破需要即时反馈，普通行动不弹（core-loop.md）
   pushToasts: (entries) => {
+    fxForEntries(entries) // 动效在 toast 过滤之前：收获/播种等 action 类不产 toast 但有粒子/飘字（motion-pack.md §3.2）
     const candidates = entries.filter((e) => e.kind === 'event' || e.kind === 'settle' || e.kind === 'breakthrough')
     const fresh = candidates.map((e) => ({
       id: seq++,

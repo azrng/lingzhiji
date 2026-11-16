@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, RefObject, useEffect, useRef } from 'react'
+import { CSSProperties, MouseEvent, ReactNode, RefObject, useEffect, useRef } from 'react'
 import { assetUrl } from '../assetUrl'
 
 // 原型通用小组件：按钮、弹层壳、素材雪碧图、AP 点阵。
@@ -8,7 +8,7 @@ export function Btn({
   children, onClick, variant = 'primary', disabled = false, className = '', title,
 }: {
   children: ReactNode
-  onClick?: () => void
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void
   variant?: 'primary' | 'secondary' | 'gold' | 'danger'
   disabled?: boolean
   className?: string

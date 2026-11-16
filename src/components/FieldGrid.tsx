@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react'
+import { setHarvestAnchor } from '../fx'
 import { FIELD_CAP, HERBS, HERB_BY_ID, REALM_NAMES } from '../game/constants'
 import { effDays } from '../game/farming'
 import { REASON_TEXT } from './reasonText'
@@ -93,10 +94,22 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative">
         {herbPortrait}
-        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={140} />
+        {/* 成熟摇摆：仅待收状态，田格间按 id 错相（motion-pack.md §3.3） */}
+        <span className="fx-sway" style={{ animationDelay: `${(((fid * 7) % 35) / 10).toFixed(1)}s` }}>
+          <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={140} />
+        </span>
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{g.gongfa >= 3 ? '（收获另有加成）' : ''}</div>
-        <Btn onClick={() => act({ type: 'HARVEST', fieldId: fid })} disabled={g.ap < 1} variant="gold" className="!py-1.5">
+        <Btn
+          // 先记锚点再 dispatch：粒子/飘字定位到这块田（fx.ts，motion-pack.md §3.2）
+          onClick={(e) => {
+            setHarvestAnchor(e.currentTarget)
+            act({ type: 'HARVEST', fieldId: fid })
+          }}
+          disabled={g.ap < 1}
+          variant="gold"
+          className="!py-1.5"
+        >
           收获 · 1 AP
         </Btn>
         {g.ap < 1 && <div className="text-xs text-error-400">{REASON_TEXT.NO_AP}</div>}

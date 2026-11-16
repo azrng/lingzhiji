@@ -11,10 +11,10 @@
 
 | ID | 任务名称 | 任务目标 | 当前阶段 | 负责人 | 状态 | 优先级 | 最近更新 |
 |---|---|---|---|---|---|---|---|
+| T27 | 界面动效包 | 6 项轻动效经 motion+手写 canvas：飘字/摇摆/toast/粒子/按压/降级；vitest 119+build+smoke 全过；T26 音效死路径缺陷已报待拍板，见 tasks/T27.md | 已交付 | AI | DONE | 中 | 2026-11-16 |
 | T26 | M3 氛围音频落地 | BGM×2+音效×10 经 howler 接入：日志差量派生、场景淡切、设置双开关；mp3 修正（Safari 兼容）；vitest 112+smoke；顺手修旧档回退立绘，见 tasks/T26.md | 已交付 | AI | DONE | 高 | 2026-11-16 |
 | T24 | 新事件图标素材补做 | 4 个新事件与月度灵潮换新 5×1 图集（evSheet 路由）；vitest 102+build 过，原型同步暂缓，见 tasks/T24.md | 已交付 | AI | DONE | 中 | 2026-11-16 |
 | T25 | 现实日锚 M1 设计与实现 | 软锚定四机制+修行日历+存档 v2 落地；vitest 102+sim 现实日三档（daily1 69 天达标）+浏览器 smoke；拍板与 M2-M5 方向见 tasks/T25.md | 已交付 | AI | DONE | 高 | 2026-11-16 |
-| T21 | 配置 GitLab Pages 发布 | base 子路径 + 资产引用 BASE_URL 化 + .gitlab-ci.yml，构建与预览链路验证通过 | 已交付 | AI | DONE | 高 | 2026-11-15 |
 | T22 | 配置 GitHub Pages 工作流 | Actions 推送 main 自动构建部署 dist；需仓库设置 Pages 来源为 GitHub Actions | 已交付 | AI | DONE | 高 | 2026-11-15 |
 
 

@@ -1,7 +1,8 @@
 import { ReactNode, useState } from 'react'
 import { setHarvestAnchor } from '../fx'
 import { FIELD_CAP, HERBS, HERB_BY_ID, REALM_NAMES } from '../game/constants'
-import { effDays } from '../game/farming'
+import { monthOf } from '../game/economy'
+import { effDays, seasonAdj, shadeAdj } from '../game/farming'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { Btn, Modal, Sprite } from './ui'
@@ -133,7 +134,17 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
 
   return (
     <div className="relative bg-gray-50/90 border border-gray-50 rounded-2xl shadow-md min-h-52 p-3 hover:shadow-lg transition-shadow">
-      <div className="absolute top-4 left-4 text-xs text-gray-600 tracking-widest">{fid} 号灵田</div>
+      {/* 田属性行（farming-depth.md §3.2/§3.3）：地力点 + 上茬记忆 + 喜阴相生徽章 */}
+      <div className="absolute top-4 left-4 text-xs text-gray-600 tracking-widest">
+        {fid} 号灵田
+        <span className="ml-1.5 text-primary-600" title={`地力：${['贫瘠', '常沃', '肥沃'][f.fertility]}`}>
+          {'●'.repeat(f.fertility)}{'○'.repeat(2 - f.fertility)}
+        </span>
+        {f.lastCrop && <span className="ml-1.5 text-gray-400">上茬 {HERB_BY_ID[f.lastCrop].name}</span>}
+        {f.status !== 'empty' && f.status !== 'confiscated' && f.herb && shadeAdj(g.fields, f.id, f.herb) > 0 && (
+          <span className="ml-1.5 rounded-md border border-gold px-1 text-[10px] text-gold-ink fx-glow-gold">相生</span>
+        )}
+      </div>
       {body}
     </div>
   )
@@ -155,12 +166,23 @@ function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
                 : g.seeds[h.id] < 1
                   ? '种子库存不足 · 可去坊市购买'
                   : null
+          // 特质与物候（farming-depth.md §3.1/§3.4）：特质名 + 当季播种种窗提示
+          const traits = [
+            h.nitrogen && '固氮', h.wet && '喜湿', h.shade && '喜阴', h.insectWard && '驱虫', h.deepRoot && '深根', h.allSeason && '灵韵',
+          ].filter(Boolean).join(' · ')
+          const sAdj = seasonAdj(h.id, monthOf(g.day))
+          const seasonTag = h.allSeason ? '全季' : sAdj > 0 ? '当令 +1' : '反季 −1'
           return (
             <div key={h.id}>
               <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
                 <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={40} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2"><span className="text-sm font-medium text-gray-800">{h.name}</span><span className="text-xs text-gray-600">库存 {g.seeds[h.id]}</span></div>
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-sm font-medium text-gray-800">{h.name}</span>
+                    <span className={`text-[11px] px-1 rounded ${h.allSeason ? 'text-gold-ink border border-gold' : sAdj > 0 ? 'text-success-500 bg-success-50' : 'text-error-500 bg-error-50'}`}>{seasonTag}</span>
+                    <span className="text-xs text-gray-600">库存 {g.seeds[h.id]}</span>
+                  </div>
+                  {traits && <div className="mt-0.5 text-[11px] text-primary-600">特质：{traits}</div>}
                   <div className="mt-1 text-xs leading-5 text-gray-600">灵气 {h.qi} · 生长 {effDays(h.id, g.gongfa)} 天<br />收获 {h.yield} 株 · 售价 {h.sell} 灵石</div>
                 </div>
                 <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!min-h-11 !px-3">

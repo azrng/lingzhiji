@@ -22,7 +22,7 @@ interface Strategy {
   label: string
   pNew: number
   pReview: number
-  pick: 'steady' | 'aggressive' // 稳健/学习起步只种青灵草；进取选标价最高
+  pick: 'steady' | 'aggressive' | 'rotate' // 稳健/学习起步只种青灵草；进取选标价最高；轮作青灵草⇄凝露花换茬
   gamesPerRealDay: number // 每推进 N 个游戏日跨 1 次现实日（调用 syncRealDay）
 }
 
@@ -37,6 +37,8 @@ const STRATEGIES: Strategy[] = [
   { key: 'daily1', label: '现实日·每日 1 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 1 },
   { key: 'daily2', label: '现实日·每日 2 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 2 },
   { key: 'daily3', label: '现实日·每日 3 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 3 },
+  // 轮作对照（farming-depth.md §3.5）：与 daily1 同节奏，仅播种决策改轮作，验证地力/物候机制的增益幅度
+  { key: 'daily1-rotate', label: '现实日·每日 1·轮作', pNew: 0.8, pReview: 0.95, pick: 'rotate', gamesPerRealDay: 1 },
 ]
 
 interface RunResult {
@@ -91,7 +93,17 @@ function plantEmptyFields(s: GameState, strat: Strategy, act: (a: GameAction) =>
     const candidates: HerbId[] = HERBS.filter((h) => s.realm >= h.realm).map((h) => h.id)
     let chosen: HerbId | null = null
 
-    if (strat.pick === 'steady') {
+    if (strat.pick === 'rotate') {
+      // 轮作（farming-depth.md §3.2 对照策略）：上茬青灵草改种凝露花、反之亦然（同为练气可种）；
+      // 换不起时退回青灵草（固氮连作不耗地，轮作策略的下限即稳健策略）
+      const tryPick = (h: HerbId): HerbId | null => {
+        if (s.seeds[h] > 0 && qiOk(h)) return h
+        if (s.resources.stones >= seedPrice(s, h) && qiOk(h) && act({ type: 'BUY_SEED', herb: h }).ok) return h
+        return null
+      }
+      const alt: HerbId = f.lastCrop === 'qingling' ? 'ninglu' : f.lastCrop === 'ninglu' ? 'qingling' : 'qingling'
+      chosen = (f.lastCrop && tryPick(alt)) ?? tryPick('qingling')
+    } else if (strat.pick === 'steady') {
       // 稳健/学习起步：库存青灵草优先，否则买青灵草种（买得起才买）
       if (s.seeds.qingling > 0 && s.resources.qi >= 1) chosen = 'qingling'
       else if (s.resources.stones >= seedPrice(s, 'qingling') && s.resources.qi >= 1) {

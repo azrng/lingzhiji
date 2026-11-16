@@ -80,9 +80,12 @@ export function confiscateField(s: GameState, rng: Rng): boolean {
   const target = candidates.find((f) => f.status === 'empty') ?? pick(rng, candidates)
   const refund = target.status === 'growing' || target.status === 'mature' ? target.herb : undefined
   if (refund) s.seeds[refund] += 1
+  // 地力与茬口随田保留（farming-depth.md §5），赎回后延续
   s.fields[s.fields.indexOf(target)] = {
     id: target.id,
     status: 'confiscated',
+    fertility: target.fertility,
+    lastCrop: target.lastCrop,
     refundSeed: refund,
   }
   addLog(s, { kind: 'settle', icon: '🔒', title: '灵田被收回', text: `${target.id} 号田收归宗门${refund ? '，作物已折为种子退还' : ''}` })

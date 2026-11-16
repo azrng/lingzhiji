@@ -5,6 +5,9 @@ export type CharacterId = 'junior-sister' | 'senior-brother' | 'senior-sister'
 
 export type HerbId = 'qingling' | 'ninglu' | 'ziyun' | 'chisui' | 'longxue' | 'jiuye'
 
+// 物候三季（farming-depth.md §3.4）：6 月一循环，每季 2 月
+export type Season = 'sprout' | 'grow' | 'store'
+
 export interface Herb {
   id: HerbId
   name: string
@@ -15,6 +18,14 @@ export interface Herb {
   yield: number // 基础收获（株）
   sell: number // 售价/株
   exp: number // 修为/株
+  seasons: Season[] // 适播季（空 + allSeason = 全季灵韵）
+  // 特质（farming-depth.md §3.1，全部可选、互不冲突）
+  nitrogen?: boolean // 固氮：收获后地力 +1（与连作 −1 相抵）
+  wet?: boolean // 喜湿：免疫缺水累计与减产
+  shade?: boolean // 喜阴：相邻高秆田时当茬产量 +1
+  insectWard?: boolean // 驱虫：相邻田免疫虫害事件减产
+  deepRoot?: boolean // 深根：连作地力消耗减半（−1 → 0）
+  allSeason?: boolean // 灵韵：不适季惩罚也不吃适季加成
 }
 
 export type FieldStatus = 'empty' | 'growing' | 'mature' | 'confiscated'
@@ -22,6 +33,8 @@ export type FieldStatus = 'empty' | 'growing' | 'mature' | 'confiscated'
 export interface Field {
   id: number
   status: FieldStatus
+  fertility: number // 地力三档：0 贫瘠 / 1 常沃 / 2 肥沃（farming-depth.md §3.2，随存档 v3）
+  lastCrop?: HerbId // 上茬作物（连作判定；收获时更新，田属性不随清茬重置）
   herb?: HerbId
   progress?: number // 生长进度（天）
   curYield?: number // 当茬当前产量

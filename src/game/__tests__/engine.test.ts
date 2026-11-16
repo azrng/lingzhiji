@@ -81,7 +81,7 @@ describe('日结算管线（core-loop.md 五步）', () => {
   it('功法升至二级时立即检查作物成熟', () => {
     const s = started()
     s.resources.insight = 100
-    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 14, curYield: 5, dry: 0, halved: false }
+    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 14, curYield: 5, dry: 0, halved: false, fertility: 1 }
     const r = dispatch(s, { type: 'GONGFA_UP' })
     expect(r.ok).toBe(true)
     expect(r.state.fields[0].status).toBe('mature')
@@ -174,7 +174,7 @@ describe('事件效果解释器与月度灵潮（core-loop.md §3.4 / PRD §11�
     s.resources.qi = 5
     s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
     applyEvent(s, eventOf('beast'), createRng(1))
-    expect(s.fields[0].curYield).toBe(7) // 5 + 2
+    expect(s.fields[0].curYield).toBe(8) // 当令 6 + 2（生发季青灵草 +1，farming-depth.md）
   })
 
   it('仙人残梦：心得 +5；灵气涌动：灵气 +2 受上限截断', () => {
@@ -262,16 +262,16 @@ describe('收获上品（farming.md §3.5 / PRD §6）', () => {
     const primeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() < HARVEST_PRIME_CHANCE)!
     const r = dispatch(matured(primeSeed), { type: 'HARVEST', fieldId: 1 })
     expect(r.ok).toBe(true)
-    expect(r.state!.inventory.qingling).toBe(6) // 5 + 1
+    expect(r.state!.inventory.qingling).toBe(7) // 当令 6 + 1 上品
     expect(r.state!.log[0].text).toContain('上品')
-    expect(r.state!.cultivation).toBe(6) // 修为按最终株数计
+    expect(r.state!.cultivation).toBe(7) // 修为按最终株数计
   })
 
   it('未命中上品：产量为功法加成取整基础值', () => {
     const noPrimeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= HARVEST_PRIME_CHANCE)!
     const r = dispatch(matured(noPrimeSeed), { type: 'HARVEST', fieldId: 1 })
     expect(r.ok).toBe(true)
-    expect(r.state!.inventory.qingling).toBe(5)
+    expect(r.state!.inventory.qingling).toBe(6) // 生发季当令基础 6（farming-depth.md §3.4）
     expect(r.state!.log[0].text).not.toContain('上品')
   })
 })
@@ -370,15 +370,15 @@ describe('地力透支（real-day.md §3.5，罚经营不罚学习）', () => {
   it('递减期收获修为减半向上取整（含上品株数），灵草株数不减', () => {
     // 对照：非递减期 5 株 → 修为 +5
     const ctrl = dispatch(matured(noPrimeSeed), { type: 'HARVEST', fieldId: 1 })
-    expect(ctrl.state!.inventory.qingling).toBe(5)
-    expect(ctrl.state!.cultivation).toBe(5)
+    expect(ctrl.state!.inventory.qingling).toBe(6)
+    expect(ctrl.state!.cultivation).toBe(6)
     expect(ctrl.state!.log[0].text).not.toContain('地力透支')
-    // 递减期：5 株照常入库，修为 ⌈5×1×0.5⌉ = 3
+    // 递减期：6 株照常入库，修为 ⌈6×1×0.5⌉ = 3
     const dimState = matured(noPrimeSeed)
     dimState.realDay.gamesToday = 1
     const r = dispatch(dimState, { type: 'HARVEST', fieldId: 1 })
     expect(r.ok).toBe(true)
-    expect(r.state!.inventory.qingling).toBe(5) // 株数不减
+    expect(r.state!.inventory.qingling).toBe(6) // 株数不减
     expect(r.state!.cultivation).toBe(3)
     expect(r.state!.log[0].text).toContain('地力透支')
   })
@@ -388,8 +388,8 @@ describe('地力透支（real-day.md §3.5，罚经营不罚学习）', () => {
     s.realDay.gamesToday = 1
     const r = dispatch(s, { type: 'HARVEST', fieldId: 1 })
     expect(r.ok).toBe(true)
-    expect(r.state!.inventory.qingling).toBe(6) // 5 + 1 上品，株数不减
-    expect(r.state!.cultivation).toBe(3)
+    expect(r.state!.inventory.qingling).toBe(7) // 当令 6 + 1 上品 上品，株数不减
+    expect(r.state!.cultivation).toBe(4) // ⌈7×0.5⌉
   })
 
   it('测验奖励与打卡不受递减影响（同种子差分）', () => {

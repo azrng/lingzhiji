@@ -1,14 +1,32 @@
 // 全部数值常量（PRD §12 参数总表为需求事实来源；调参改这里并跑平衡模拟器验证）
-import type { Herb, HerbId } from './types'
+import type { Herb, HerbId, Season } from './types'
 
 export const HERBS: Herb[] = [
-  { id: 'qingling', name: '青灵草', price: 5, realm: 0, qi: 1, days: 15, yield: 5, sell: 4, exp: 1 },
-  { id: 'ninglu', name: '凝露花', price: 12, realm: 0, qi: 1, days: 20, yield: 4, sell: 9, exp: 1 },
-  { id: 'ziyun', name: '紫云芝', price: 40, realm: 2, qi: 2, days: 30, yield: 3, sell: 35, exp: 3 },
-  { id: 'chisui', name: '赤髓参', price: 60, realm: 3, qi: 2, days: 35, yield: 3, sell: 50, exp: 3 },
-  { id: 'longxue', name: '龙血藤', price: 180, realm: 6, qi: 3, days: 50, yield: 2, sell: 210, exp: 10 },
-  { id: 'jiuye', name: '九叶莲', price: 260, realm: 8, qi: 3, days: 60, yield: 2, sell: 290, exp: 10 },
+  // 特质与适播季（farming-depth.md §3.1/§3.4）
+  { id: 'qingling', name: '青灵草', price: 5, realm: 0, qi: 1, days: 15, yield: 5, sell: 4, exp: 1, seasons: ['sprout'], nitrogen: true },
+  { id: 'ninglu', name: '凝露花', price: 12, realm: 0, qi: 1, days: 20, yield: 4, sell: 9, exp: 1, seasons: ['grow'], wet: true },
+  { id: 'ziyun', name: '紫云芝', price: 40, realm: 2, qi: 2, days: 30, yield: 3, sell: 35, exp: 3, seasons: ['grow', 'store'], shade: true },
+  { id: 'chisui', name: '赤髓参', price: 60, realm: 3, qi: 2, days: 35, yield: 3, sell: 50, exp: 3, seasons: ['store'], insectWard: true },
+  { id: 'longxue', name: '龙血藤', price: 180, realm: 6, qi: 3, days: 50, yield: 2, sell: 210, exp: 10, seasons: ['store', 'sprout'], deepRoot: true },
+  { id: 'jiuye', name: '九叶莲', price: 260, realm: 8, qi: 3, days: 60, yield: 2, sell: 290, exp: 10, seasons: [], allSeason: true },
 ]
+
+// 物候三季（farming-depth.md §3.4）：6 月一循环、每季 2 月，与月度灵潮并行
+export interface SeasonDef {
+  id: Season
+  name: string
+  months: [number, number] // 月份区间（1-6 循环内）
+  proverb: string // 月初灵潮日志附言（农谚池，风味兼教学）
+}
+
+export const SEASONS: SeasonDef[] = [
+  { id: 'sprout', name: '生发季', months: [1, 2], proverb: '轮作如修行，换茬养地力' },
+  { id: 'grow', name: '长养季', months: [3, 4], proverb: '凝露花喜雨，长养勤浇灌' },
+  { id: 'store', name: '收藏季', months: [5, 6], proverb: '赤髓参入土，深藏而灵固' },
+]
+
+export const seasonOf = (month: number): Season => SEASONS[(month - 1) % 6 >> 1].id
+export const seasonDefOf = (month: number): SeasonDef => SEASONS[(month - 1) % 6 >> 1]
 
 export const HERB_BY_ID = Object.fromEntries(HERBS.map((h) => [h.id, h])) as Record<HerbId, Herb>
 

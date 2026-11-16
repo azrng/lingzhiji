@@ -6,7 +6,7 @@ import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 export interface SaveData {
   version: number
@@ -51,6 +51,9 @@ function validField(f: unknown): boolean {
   if (typeof f !== 'object' || f === null) return false
   const x = f as Record<string, unknown>
   if (!nonNegInt(x.id) || (x.id as number) < 1) return false
+  // 地力与茬口（farming-depth.md §3.2，随存档 v3）：所有状态必备地力、茬口可空
+  if (!nonNegInt(x.fertility) || (x.fertility as number) > 2) return false
+  if (x.lastCrop !== undefined && !isHerbId(x.lastCrop)) return false
   switch (x.status) {
     case 'empty':
       return true
@@ -82,7 +85,7 @@ function validLibStat(s: unknown): boolean {
   )
 }
 
-function validate(game: unknown): ReasonCode | null {
+export function validate(game: unknown): ReasonCode | null {
   if (typeof game !== 'object' || game === null) return 'BAD_SHAPE'
   const g = game as GameState
   const ok =
@@ -224,6 +227,19 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
         ...data.game,
         realDay: { today: realDayIndex(Date.now()), gamesToday: 0 },
         streak: { count: 0, best: 0, lastCheckinDay: -1, checkins: 0, freezes: 0, milestones: [], history: [] },
+      },
+    }
+  },
+  // v2 → v3（farming-depth.md §2）：田块补地力常沃（fertility 1）；lastCrop 留空 = 无茬口记忆。
+  // 脏档（fields 缺失/非数组）不在此修复，保持原样交给后续 validate 拦截（迁移必须容错不抛异常）
+  (data) => {
+    if (data.version !== 2) return data
+    return {
+      ...data,
+      version: 3,
+      game: {
+        ...data.game,
+        ...(Array.isArray(data.game?.fields) ? { fields: data.game.fields.map((f) => ({ ...f, fertility: 1 })) } : {}),
       },
     }
   },

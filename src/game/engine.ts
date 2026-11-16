@@ -1,6 +1,6 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, DIMINISH_EVENT_CHANCE, tideOf, type EventDef } from './constants'
+import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, DIMINISH_EVENT_CHANCE, seasonDefOf, tideOf, type EventDef } from './constants'
 import { realDayIndex } from './clock'
 import { convertRate, dayInMonth, monthOf } from './economy'
 import * as economy from './economy'
@@ -37,7 +37,7 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
     cultivation: 0,
     realm: 0,
     gongfa: 1,
-    fields: Array.from({ length: INITIAL.fields }, (_, i) => ({ id: i + 1, status: 'empty' as const })),
+    fields: Array.from({ length: INITIAL.fields }, (_, i) => ({ id: i + 1, status: 'empty' as const, fertility: 1 })),
     seeds: { ...INITIAL.seeds },
     inventory: { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 },
     quizDaily: { done: false, session: null },
@@ -64,12 +64,20 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
 // 即时类立即生效，持续类写入 pendingTomorrow 次日生效；无有效目标时「无事发生」，不顺延不替换。
 export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
   const eff = ev.effect
+  let note = '' // 结算附注（如驱虫护邻），拼进事件日志 text
   switch (eff.kind) {
     case 'yield': {
       // 目标选取走 PRNG；无生长中田则无事发生
       const growing = s.fields.filter((f) => f.status === 'growing')
       const t = eff.randomField && growing.length ? pick(rng, growing) : null
-      if (t) t.curYield = Math.max(0, t.curYield! + eff.delta)
+      if (t) {
+        // 驱虫护邻（farming-depth.md §3.3）：负向产量事件的目标田相邻有赤髓参 → 产量无损，日志附注
+        if (eff.delta < 0 && farming.wardedByNeighbor(s.fields, t.id)) {
+          note = '赤髓参灵气所护，产量无损'
+        } else {
+          t.curYield = Math.max(0, t.curYield! + eff.delta)
+        }
+      }
       break
     }
     case 'growth':
@@ -110,13 +118,14 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
       s.pendingTomorrow.marketMult = rng.next() < 0.5 ? MARKET_UP : MARKET_DOWN
       break
   }
-  addLog(s, { kind: 'event', evPos: ev.pos, evSheet: ev.sheet, icon: ev.icon, title: `事件 · ${ev.name}`, text: ev.desc, neg: ev.negative })
+  addLog(s, { kind: 'event', evPos: ev.pos, evSheet: ev.sheet, icon: ev.icon, title: `事件 · ${ev.name}`, text: note ? `${ev.desc}（${note}）` : ev.desc, neg: ev.negative })
 }
 
-// 月初灵潮日志（PRD §11.1）：第 1/31/61… 天开始时提示本月灵潮
+// 月初灵潮日志（PRD §11.1）：第 1/31/61… 天开始时提示本月灵潮，附当季农谚（farming-depth.md §3.4）
 function addTideLog(s: GameState): void {
   const tide = tideOf(monthOf(s.day))
-  addLog(s, { kind: 'settle', evPos: [4, 0], evSheet: 'event-icons-sheet-extra.png', icon: '🌗', title: `灵潮 · ${tide.name}`, text: tide.desc })
+  const season = seasonDefOf(monthOf(s.day))
+  addLog(s, { kind: 'settle', evPos: [4, 0], evSheet: 'event-icons-sheet-extra.png', icon: '🌗', title: `灵潮 · ${tide.name}`, text: `${tide.desc}。${season.name} · 农谚：${season.proverb}` })
 }
 
 // 按当月灵潮调制后的权重抽取事件（core-loop.md §3.4）：基础权重 × 灵潮系数后走轮盘

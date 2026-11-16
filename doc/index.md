@@ -17,4 +17,5 @@ last_updated: 2026-11-16
 | lingzhiji | 氛围包音频候选（M3 前置素材选定） | 设计 | `design/lingzhiji/mood-pack-audio.md` | approved | DES-LINGZHIJI-AUDIO → PRD §19 / T25 M3 |
 | lingzhiji | 氛围音频（BGM / 音效 / 声音开关） | 设计 | `design/lingzhiji/audio-impl.md` | approved | DES-LINGZHIJI-AUDIO-IMPL → PRD §20 |
 | lingzhiji | 界面动效包（飘字 / 摇摆 / toast / 粒子 / 降级） | 设计 | `design/lingzhiji/motion-pack.md` | approved | DES-LINGZHIJI-MOTION-PACK → PRD §21 |
+| lingzhiji | 种田深化第一批（特质 / 地力轮作 / 邻作 / 物候） | 设计 | `design/lingzhiji/farming-depth.md` | approved | DES-LINGZHIJI-FARMING-DEPTH → PRD §22 |
 | lingzhiji | 存档结构契约（已落地为代码）+ 词库契约索引 | 契约 | `contracts/lingzhiji/save-data.md`（superseded）、`contracts/lingzhiji.md` | approved | CON-LINGZHIJI-SAVE-001 → `src/game/types.ts` / CON-LINGZHIJI-WLIB-001 |

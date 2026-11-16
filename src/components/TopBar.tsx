@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { monthOf } from '../game/economy'
-import { QI_CAP, REALM_EXP, REALM_NAMES } from '../game/constants'
+import { QI_CAP, REALM_EXP, REALM_NAMES, seasonDefOf } from '../game/constants'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import CalendarModal from './CalendarModal'
@@ -26,6 +26,7 @@ export default function TopBar() {
         <div className="text-xs text-gray-500 tracking-widest">入宗时日</div>
         <div className="mt-1 text-base text-info-600 font-semibold tracking-wide">
           第 {monthOf(g.day)} 月 · 第 {((g.day - 1) % 30) + 1} 天
+          <span className="ml-1.5 text-xs font-normal text-primary-600">{seasonDefOf(monthOf(g.day)).name}</span>
         </div>
         {/* 地力透支标签（real-day.md §4）：当日第 2+ 游戏日起附在日期区 */}
         {g.realDay.gamesToday >= 1 && (

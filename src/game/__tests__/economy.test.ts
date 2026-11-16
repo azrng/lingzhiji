@@ -5,10 +5,10 @@ import { dispatch, createInitialState } from '../engine'
 
 describe('取整方向（economy.md）', () => {
   it('定额折算 ⌊售价÷4⌋ 向下取整', () => {
-    expect(convertRate({ id: 'qingling', name: '', price: 5, realm: 0, qi: 1, days: 15, yield: 5, sell: 4, exp: 1 })).toBe(1)
-    expect(convertRate({ id: 'ziyun', name: '', price: 40, realm: 2, qi: 2, days: 30, yield: 3, sell: 35, exp: 3 })).toBe(8)
-    expect(convertRate({ id: 'longxue', name: '', price: 180, realm: 6, qi: 3, days: 50, yield: 2, sell: 210, exp: 10 })).toBe(52)
-    expect(convertRate({ id: 'jiuye', name: '', price: 260, realm: 8, qi: 3, days: 60, yield: 2, sell: 290, exp: 10 })).toBe(72)
+    expect(convertRate({ id: 'qingling', name: '', price: 5, realm: 0, qi: 1, days: 15, yield: 5, sell: 4, exp: 1, seasons: [] })).toBe(1)
+    expect(convertRate({ id: 'ziyun', name: '', price: 40, realm: 2, qi: 2, days: 30, yield: 3, sell: 35, exp: 3, seasons: [] })).toBe(8)
+    expect(convertRate({ id: 'longxue', name: '', price: 180, realm: 6, qi: 3, days: 50, yield: 2, sell: 210, exp: 10, seasons: [] })).toBe(52)
+    expect(convertRate({ id: 'jiuye', name: '', price: 260, realm: 8, qi: 3, days: 60, yield: 2, sell: 290, exp: 10, seasons: [] })).toBe(72)
   })
 
   it('练气六层起种子 9 折向上取整；练气一层原价', () => {
@@ -188,7 +188,7 @@ describe('应急领种（economy.md §3.2）', () => {
     const s = createInitialState(1)
     s.seeds.qingling = 0
     s.resources.stones = 0
-    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 0, curYield: 5, dry: 0, halved: false }
+    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 0, curYield: 5, dry: 0, halved: false, fertility: 1 }
     expect(dispatch(s, { type: 'EMERGENCY_SEED' }).ok).toBe(false)
     s.fields.forEach((field) => { field.status = 'confiscated' })
     expect(dispatch(s, { type: 'EMERGENCY_SEED' }).ok).toBe(false)

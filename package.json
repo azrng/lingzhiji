@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "sim": "tsx scripts/balance-sim.ts",
     "sim:quick": "tsx scripts/balance-sim.ts --quick",
     "words:groups": "tsx scripts/word-groups.ts"
@@ -21,6 +22,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.1.0",
     "@types/howler": "^2.2.13",
     "@types/react": "^19.1.0",

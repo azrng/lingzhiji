@@ -51,7 +51,7 @@ localStorage['lingzhiji.audio'] = {"bgm":true,"sfx":true}
 
 ### 3.4 音效触发（与 toast 同源）
 
-日志差量 → toast 的唯一入口 `useUiStore.pushToasts` 内同步调用 `playSfxForEntries(fresh)`，一处挂接覆盖三条路径：GameScreen 日志差量 effect、`continueSaved`/`importSaved` 的跨日显式入队、设置弹层手动 toast。
+日志差量 → toast 的唯一入口 `useUiStore.pushToasts` 内同步调用 `playSfxForEntries(entries)`——**喂全量差量而非 toast 候选**（播种/收获/上品/买卖是 `kind:'action'`，不产 toast 但映射表要求配音），一处挂接覆盖三条路径：GameScreen 日志差量 effect、`continueSaved`/`importSaved` 的跨日显式入队、设置弹层手动 toast。
 
 映射规则（`sfxForEntry(entry): SfxId | null`，纯函数、有序首中即播，便于单测）：
 

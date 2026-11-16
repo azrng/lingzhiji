@@ -43,6 +43,7 @@ export const useUiStore = create<UiStore>((set) => ({
   // 新日志条目转 toast：事件/结算/突破需要即时反馈，普通行动不弹（core-loop.md）
   pushToasts: (entries) => {
     fxForEntries(entries) // 动效在 toast 过滤之前：收获/播种等 action 类不产 toast 但有粒子/飘字（motion-pack.md §3.2）
+    playSfxForEntries(entries) // 音效同口径喂全量差量：播种/收获/上品/买卖是 action 类，不产 toast 但映射表要求配音（audio-impl.md §3.4）
     const candidates = entries.filter((e) => e.kind === 'event' || e.kind === 'settle' || e.kind === 'breakthrough')
     const fresh = candidates.map((e) => ({
       id: seq++,
@@ -54,7 +55,6 @@ export const useUiStore = create<UiStore>((set) => ({
       tone: e.neg ? ('bad' as const) : e.kind === 'breakthrough' ? ('gold' as const) : ('good' as const),
     }))
     if (!fresh.length) return
-    playSfxForEntries(candidates) // 音效与 toast 同源触发（audio-impl.md §3.4），覆盖日志差量/跨日同步/手动 toast 三条路径
     set((s) => ({ toasts: [...s.toasts, ...fresh] }))
     for (const t of fresh) {
       setTimeout(() => useUiStore.getState().dismissToast(t.id), 4000)

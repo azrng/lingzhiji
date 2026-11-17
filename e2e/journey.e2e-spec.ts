@@ -135,8 +135,8 @@ test.describe('灵植记 · 玩家旅程', () => {
     await expect(page.getByText(/生长 0\/15 天/)).toBeVisible()
 
     // 照料：浇灌与吐纳各耗 1 行动力（3 → 1）
-    await clickButton(page.getByRole('button', { name: '浇灌 1 AP' }))
-    await clickButton(page.getByRole('button', { name: '吐纳 1 AP' }))
+    await clickButton(page.getByRole('button', { name: '浇灌 1 行动力' }))
+    await clickButton(page.getByRole('button', { name: '吐纳 1 行动力' }))
     const afterTuna = await readSave(page)
     expect(afterTuna.cultivation).toBe(1)
 
@@ -152,7 +152,7 @@ test.describe('灵植记 · 玩家旅程', () => {
     // 同现实日推第二个游戏日 → 现实日锚 M1 的地力透支提示（顶栏标签唯一文案）
     await expect(page.getByText('地力透支 · 今日第 2 个游戏日')).toBeVisible()
     await expect(page.getByRole('button', { name: /任务堂 · 今日未完成/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: '浇灌 1 AP' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: '浇灌 1 行动力' })).toBeEnabled()
     const nextDay = await readSave(page)
     expect(nextDay.day).toBe(2)
     expect(nextDay.quizDone).toBe(false)

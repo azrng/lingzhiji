@@ -37,11 +37,11 @@ export default function FieldGrid() {
           <button
             onClick={() => act({ type: 'RECLAIM_LAND' })}
             disabled={!!reclaimReason}
-            title={reclaimReason ?? '开荒 1 块新灵田（2 AP）'}
+            title={reclaimReason ?? '开荒 1 块新灵田（2 行动力）'}
             className="min-h-52 rounded-2xl border-2 border-dashed border-primary-300 bg-gray-50/50 text-primary-700 hover:bg-gray-50/80 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-2"
           >
             <span className="text-2xl">＋</span>
-            <span className="text-sm">开荒 · 2 AP</span>
+            <span className="text-sm">开荒 · 2 行动力</span>
             <span className="text-xs text-gray-600">{reclaimReason ?? `上限 ${FIELD_CAP[g.realm]} 块`}</span>
           </button>
         )}
@@ -111,7 +111,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
           variant="gold"
           className="!py-1.5"
         >
-          收获 · 1 AP
+          收获 · 1 行动力
         </Btn>
         {g.ap < 1 && <div className="text-xs text-error-400">{REASON_TEXT.NO_AP}</div>}
       </div>

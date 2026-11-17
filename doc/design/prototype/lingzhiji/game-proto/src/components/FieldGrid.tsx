@@ -20,11 +20,11 @@ export default function FieldGrid() {
         <button
           onClick={() => useGame.getState().reclaimLand()}
           disabled={s.ap < 2}
-          title={s.ap < 2 ? '行动力不足（需 2 AP）' : '开荒 1 块新灵田（2 AP）'}
+          title={s.ap < 2 ? '行动力不足（需 2 行动力）' : '开荒 1 块新灵田（2 行动力）'}
           className="min-h-36 rounded-2xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-primary-400 hover:text-primary-500 disabled:cursor-not-allowed disabled:opacity-60 flex flex-col items-center justify-center gap-2"
         >
           <span className="text-2xl">＋</span>
-          <span className="text-sm">开荒 · 2 AP</span>
+          <span className="text-sm">开荒 · 2 行动力</span>
           <span className="text-xs text-gray-400">上限 {FIELD_CAP[s.realm]} 块</span>
         </button>
       )}
@@ -73,7 +73,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{s.gongfa >= 3 ? '（Lv3 加成后更多）' : ''}</div>
         <Btn onClick={() => useGame.getState().harvest(fid)} disabled={s.ap < 1} variant="gold" className="!py-1.5">
-          收获 · 1 AP
+          收获 · 1 行动力
         </Btn>
         {s.ap < 1 && <div className="text-xs text-error-400">行动力不足</div>}
       </div>

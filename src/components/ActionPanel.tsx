@@ -45,16 +45,16 @@ export default function ActionPanel() {
           任务堂 {g.quizDaily.done ? '· 已完成 ✓' : '· 今日未完成'}
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday}
-          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 AP，全田今日免缺水'}>
-          浇灌 <span className="text-xs opacity-70">1 AP</span>
+          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，全田今日免缺水'}>
+          浇灌 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'IRRIGATE' }))} disabled={g.resources.qi < 1 || noGrowing}
           title={noGrowing ? REASON_TEXT.NO_CROP : g.resources.qi < 1 ? REASON_TEXT.NO_QI : '消耗 1 灵气，加速生长中灵田'}>
           灌注 <span className="text-xs opacity-70">1 灵气</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'TUNA' }))} disabled={g.tunaUsedToday || g.ap < 1}
-          title={g.tunaUsedToday ? '今日已修炼' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 AP，修为 +1'}>
-          吐纳 <span className="text-xs opacity-70">1 AP</span>
+          title={g.tunaUsedToday ? '今日已修炼' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，修为 +1'}>
+          吐纳 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)}>坊市</Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setGongfaOpen(true)}>

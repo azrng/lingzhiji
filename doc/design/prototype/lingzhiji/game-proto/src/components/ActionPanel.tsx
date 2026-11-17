@@ -35,7 +35,7 @@ export default function ActionPanel() {
           任务堂 {s.quizDone ? '· 今日已完成 ✓' : '· 今日未完成'}
         </Btn>
         <Btn variant="secondary" onClick={() => useGame.getState().water()} disabled={s.ap < 1 || s.watered}
-          title={s.watered ? '今日已浇灌' : '消耗 1 AP，全田今日免缺水'}>
+          title={s.watered ? '今日已浇灌' : '消耗 1 行动力，全田今日免缺水'}>
           💧 浇灌
         </Btn>
         <Btn variant="secondary" onClick={() => useGame.getState().irrigate()} disabled={s.qi < 1 || noGrowing}
@@ -43,7 +43,7 @@ export default function ActionPanel() {
           🔮 灌注
         </Btn>
         <Btn variant="secondary" onClick={() => useGame.getState().tuna()} disabled={s.tunaUsed || s.ap < 1}
-          title={s.tunaUsed ? '今日已修炼' : '消耗 1 AP，修为 +1'}>
+          title={s.tunaUsed ? '今日已修炼' : '消耗 1 行动力，修为 +1'}>
           🧘 吐纳
         </Btn>
         <Btn variant="secondary" onClick={() => useGame.setState({ marketOpen: true })}>🏛 坊市</Btn>

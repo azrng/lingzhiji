@@ -129,11 +129,59 @@ body {
 }
 button:not(:disabled):active { animation: fx-press 0.1s ease-out forwards; }
 
-/* 减弱动效降级（§3.4）：摇摆 / 按压 / 脉冲全静；飘字静态显示（fx.ts 按相同时长清理） */
+/* ---- M3 氛围层（roadmap-assets.md #2/#3/#4）+ M2c 答对脉冲：素材 URL 由组件经 assetUrl 注入
+   CSS 变量或内联定位，动画与透明度统一在此管理（子路径部署 base=/lingzhiji/ 下不写绝对路径）---- */
+
+/* 雾带：无缝横条贴灵田底部缓慢左漂，漂移半幅（2048 宽无缝贴图取 1024px）后循环 */
+@keyframes fx-mist-drift {
+  from { background-position: 0 bottom; }
+  to { background-position: -1024px bottom; }
+}
+.fx-mist-layer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 88px;
+  background-image: var(--mist-url);
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  background-position: 0 bottom;
+  opacity: 0.45;
+  pointer-events: none;
+  animation: fx-mist-drift 26s linear infinite;
+}
+
+/* 萤火：光点缓漂 + 明暗呼吸；位置与相位由组件注入静态数据，避免重渲染跳动 */
+@keyframes fx-firefly-float {
+  0%, 100% { transform: translate(0, 0); opacity: 0.12; }
+  50% { transform: translate(14px, -22px); opacity: 0.75; }
+}
+.fx-firefly { animation: fx-firefly-float 7s ease-in-out infinite; }
+
+/* 成熟光晕：垫在成熟植株下方的金色呼吸（keyframes 内含水平居中位移，降级时由 -translate-x-1/2 兜底） */
+@keyframes fx-mature-glow-breath {
+  0%, 100% { opacity: 0.35; transform: translate(-50%, 0) scale(1); }
+  50% { opacity: 0.7; transform: translate(-50%, 0) scale(1.12); }
+}
+.fx-mature-glow { animation: fx-mature-glow-breath 3s ease-in-out infinite; }
+
+/* 答对金色脉冲（M2c 简化版）：题卡一次性闪光。全局粒子 canvas 在弹层 z-50 之下会被任务堂遮挡，故用 CSS 脉冲 */
+@keyframes fx-flash-gold {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-gold) 55%, transparent); }
+  100% { box-shadow: 0 0 22px 10px transparent; }
+}
+.fx-flash-gold { animation: fx-flash-gold 0.55s ease-out 1; }
+
+/* 减弱动效降级（§3.4）：摇摆 / 按压 / 脉冲 / 氛围层全静；飘字静态显示（fx.ts 按相同时长清理） */
 @media (prefers-reduced-motion: reduce) {
   .fx-sway,
   .fx-pulse-error,
-  button:not(:disabled):active { animation: none; }
+  button:not(:disabled):active,
+  .fx-mist-layer,
+  .fx-firefly,
+  .fx-mature-glow,
+  .fx-flash-gold { animation: none; }
+  .fx-firefly { opacity: 0.4; }
   .fx-float-text { animation: none; transform: translate(-50%, -100%); }
   .fx-glow-gold { box-shadow: none; }
 }

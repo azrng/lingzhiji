@@ -5,8 +5,6 @@ import type { GameState } from './types'
 
 // 派生上限不入档，只由 realm 计算（architecture.md §5）
 export const qiCap = (realm: number) => QI_CAP[realm]
-export const realmName = (realm: number) => REALM_NAMES[realm]
-export const isFoundation = (realm: number) => realm >= 9
 
 // 修为入账：累计只增不减；跨越阈值自动突破（连跳合并为一条日志）。
 // 筑基结算由 UI 按 realm>=9 && !milestoneShown 派生展示，MILESTONE_SHOWN 动作落档

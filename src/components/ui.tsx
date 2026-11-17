@@ -149,6 +149,20 @@ export function Sprite({
   return <span className={className} style={style} />
 }
 
+// 日志/徽标 emoji → 图标素材映射（roadmap-assets.md #11–#13）：
+// 存档 icon 字段仍是 emoji 字符串（旧档兼容），展示层命中的三个用素材渲染，其余原样兜底
+const ICON_IMG: Record<string, string> = {
+  '🌅': 'icon-dew.png',
+  '🧿': 'icon-talisman.png',
+  '🕯': 'icon-daoxin-candle.png',
+}
+
+export function LogIcon({ icon, size = 18, className = '' }: { icon?: string | null; size?: number; className?: string }) {
+  const file = icon ? ICON_IMG[icon] : undefined
+  if (file) return <img src={assetUrl(file)} alt="" aria-hidden width={size} height={size} className={`flex-none ${className}`} />
+  return <span className={className}>{icon ?? '·'}</span>
+}
+
 // 行动力 / 灵气点阵
 export function Pips({ value, cap }: { value: number; cap: number }) {
   return (

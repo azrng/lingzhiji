@@ -4,6 +4,7 @@ import { QI_CAP, REALM_EXP, REALM_NAMES, seasonDefOf } from '../game/constants'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import CalendarModal from './CalendarModal'
+import { assetUrl } from '../assetUrl'
 import { Pips, Sprite } from './ui'
 
 // 顶部状态栏：日期、境界与修为进度、资源、道心入口、设置入口
@@ -69,7 +70,8 @@ export default function TopBar() {
             checkedToday ? 'bg-success-50 border-success-200 text-success-500' : 'bg-warning-50 border-warning-200 text-warning-500'
           }`}
         >
-          <span aria-hidden>🕯</span>
+          {/* 道心烛火图标（roadmap-assets.md #11）：替换原 emoji 🕯 兜底 */}
+          <img src={assetUrl('icon-daoxin-candle.png')} alt="" aria-hidden width={18} height={18} className="flex-none" />
           <span>道心 {g.streak.count}</span>
           <span aria-label={checkedToday ? '今日已打卡' : '今日未打卡'}>{checkedToday ? '✓' : '⚠'}</span>
         </button>

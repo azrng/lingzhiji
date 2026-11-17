@@ -11,9 +11,8 @@ import * as quiz from './quiz'
 import { createRng, pick, type Rng } from './rng'
 import type { GameAction, GameState, ReasonCode } from './types'
 
-export { monthOf, dayInMonth } from './economy'
-
-export function quizStartStat() {
+// 两库学习统计的零值起点（仅引擎内 createInitialState / QUIZ 相关动作使用）
+function quizStartStat() {
   return {
     attempts: 0,
     distinctWords: [] as string[],

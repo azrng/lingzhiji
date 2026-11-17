@@ -3,7 +3,8 @@ import { loadPrefs, playSfx, setBgmScene, speak } from '../audio'
 import { QUIZ_PASS, QUIZ_SIZE } from '../game/constants'
 import { reviewQuota } from '../game/constants'
 import { canFormSession, entryOf, LIBS, normalize } from '../game/wordbank'
-import { dueInDays } from '../game/srs'
+import { dueCount, dueInDays } from '../game/srs'
+import { assetUrl } from '../assetUrl'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -53,15 +54,13 @@ function Entry({ done }: { done: boolean }) {
   const quota = reviewQuota(g.realm)
   const lib = g.learning.currentLib
   const usable = canFormSession(lib, QUIZ_SIZE)
-  const [showWrong, setShowWrong] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const wrongWords = g.learning.libs[lib].wrongQueue
 
   if (!usable) {
     return (
       <div className="bg-error-50 border border-error-200 rounded-xl p-5">
         <div className="text-error-500 font-medium mb-2">⚠ 当前词库无法组成 10 个不同单词的题目</div>
-        <p className="text-sm text-gray-600 mb-4">可切换另一词库继续；进度与错词已保留。</p>
+        <p className="text-sm text-gray-600 mb-4">可切换另一词库继续；进度与复习计划已保留。</p>
         <div className="flex gap-3">
           <Btn onClick={() => act({ type: 'QUIZ_SET_LIB', lib: lib === 'cet4' ? 'cet6' : 'cet4' })}>
             切换到{lib === 'cet4' ? '六级' : '四级'}
@@ -75,17 +74,17 @@ function Entry({ done }: { done: boolean }) {
     <div className="flex flex-col gap-5">
       {done && (
         <div className="bg-success-50 border border-success-200 rounded-xl p-4 text-sm text-gray-700">
-          今日任务已完成 ✓ 明日再来。可切换词库或查看错词池，今日不再重复计奖。
+          今日任务已完成 ✓ 明日再来。可切换词库继续学习，今日不再重复计奖。
         </div>
       )}
       <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5 sm:p-6">
         <div className="font-serif text-xl text-primary-900">今日功课</div>
-        <div className="text-sm text-gray-600 mt-2 mb-4">选择词库，学过的词和错词会为你保留。</div>
+        <div className="text-sm text-gray-600 mt-2 mb-4">选择词库，学过的词会记入复习计划。</div>
         <div className="flex gap-3">
           {(['cet4', 'cet6'] as const).map((id) => (
             <button
               key={id}
-              onClick={() => { act({ type: 'QUIZ_SET_LIB', lib: id }); setShowWrong(false); setError(null) }}
+              onClick={() => { act({ type: 'QUIZ_SET_LIB', lib: id }); setError(null) }}
               className={`px-5 py-2.5 rounded-xl text-sm border transition-colors ${lib === id ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-primary-400'}`}
             >
               {id === 'cet4' ? '英语四级' : '英语六级'}{lib === id && ' ✓'}
@@ -94,13 +93,10 @@ function Entry({ done }: { done: boolean }) {
           ))}
         </div>
         <div className="text-sm text-gray-700 mt-5">每次学习 {QUIZ_SIZE} 词，优先复习最多 {quota} 词；词量不足时补入其他可用单词。</div>
-        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-gray-700">
-          <span>错词池：{wrongWords.length} 个待复习</span>
-          <button type="button" aria-expanded={showWrong} onClick={() => setShowWrong(!showWrong)} className="min-h-11 px-3 text-primary-700 underline underline-offset-4">{showWrong ? '收起错词' : '查看错词'}</button>
+        {/* 复习概览（srs-audio.md 口径）：错词池已退役（v4 由 FSRS 卡调度），此处展示到期数 */}
+        <div className="text-sm text-gray-700 mt-3">
+          复习计划：今日到期 <b className="text-primary-600">{dueCount(g.learning.cards, g.realDay.today)}</b> 词 · 累计学过 {Object.keys(g.learning.cards).length} 词，到期词会自动排进每场功课。
         </div>
-        {showWrong && (wrongWords.length === 0
-          ? <p className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">暂时没有错词，继续保持。</p>
-          : <ul className="max-h-60 overflow-y-auto rounded-xl bg-gray-50 divide-y divide-gray-200">{wrongWords.map((word) => <li key={word} className="px-4 py-3 text-sm"><strong className="text-info-600">{word}</strong><span className="ml-3 text-gray-600">{entryOf(lib, word)?.meaning ?? '词条暂不可用'}</span></li>)}</ul>)}
       </div>
       {!done && (
         <div className="flex justify-center">
@@ -157,6 +153,7 @@ function Testing() {
   const q = session.questions[session.idx]
   const chosen = session.answers[session.idx]
   const [spellInput, setSpellInput] = useState('')
+  const [goldFlash, setGoldFlash] = useState(false)
   const optionsRef = useRef<HTMLDivElement>(null)
   const nextRef = useRef<HTMLDivElement>(null)
   const phonetic = entryOf(lib, normalize(q.word))?.phonetic ?? ''
@@ -169,6 +166,11 @@ function Testing() {
   }, [session.idx])
   useEffect(() => {
     if (chosen !== null && q.kind !== 'listen' && prefs.autoRead) void speak(q.word)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen])
+  // 答对金色脉冲（M2c）：在题卡上重放一次性闪光，onAnimationEnd 复位以便下次重放
+  useEffect(() => {
+    if (chosen !== null && correct) setGoldFlash(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosen])
   useEffect(() => {
@@ -234,7 +236,14 @@ function Testing() {
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap">{session.idx + 1}/{QUIZ_SIZE}</span>
       </div>
-      <div className="rounded-2xl bg-primary-50 border border-primary-100 px-5 py-8 text-center">{prompt}</div>
+      {/* 题卡（roadmap-assets.md #10）：拓片纸纹铺底 + 答对金色脉冲，纹理为装饰层不拦截交互 */}
+      <div
+        className={`relative rounded-2xl bg-primary-50 border border-primary-100 px-5 py-8 text-center overflow-hidden${goldFlash ? ' fx-flash-gold' : ''}`}
+        onAnimationEnd={() => setGoldFlash(false)}
+      >
+        <img src={assetUrl('quiz-paper-texture.png')} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-30" />
+        <div className="relative">{prompt}</div>
+      </div>
       {q.kind === 'spell' ? (
         chosen === null ? (
           <div className="flex justify-center gap-3">
@@ -286,7 +295,7 @@ function Testing() {
               </span>
             ) : (
               <span className="text-error-400">
-                ✗ 正确答案：<b>{q.kind === 'w2c' ? q.meaning : q.word}</b>（将尽快重现复习）
+                ✗ 正确答案：<b>{q.kind === 'w2c' ? q.meaning : q.word}</b>
                 <NextReviewHint lib={lib} word={q.word} />
               </span>
             )}
@@ -319,7 +328,7 @@ function Result() {
     <div className="flex flex-col gap-5">
       <div className="text-center py-6 rounded-2xl bg-primary-50 border border-primary-100">
         <div className={`font-serif text-6xl ${pass ? 'text-success-500' : 'text-warning-500'}`}>{score}<span className="text-2xl text-gray-400">/{QUIZ_SIZE}</span></div>
-        <div className="text-sm text-gray-600 mt-2">{pass ? '合格 · 灵气充盈' : '未达合格线 · 仍可结束当天，错词将排队复习'}</div>
+        <div className="text-sm text-gray-600 mt-2">{pass ? '合格 · 灵气充盈' : '未达合格线 · 仍可结束当天，错词已排入复习计划'}</div>
       </div>
       <div className={`${pass ? 'bg-success-50 border-success-200' : 'bg-warning-50 border-warning-200'} border rounded-xl p-4 text-sm text-gray-700`}>
         {pass
@@ -328,7 +337,7 @@ function Result() {
       </div>
       {wrongs.length > 0 && (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <div className="text-xs text-gray-500 mb-2">本场错词（进入错词池，按等待最久优先重现）</div>
+          <div className="text-xs text-gray-500 mb-2">本场错词（已排入复习计划，到期自动重现）</div>
           <div className="flex flex-wrap gap-2">
             {wrongs.map((q) => (
               <span key={q.word} className="text-xs bg-error-50 text-error-500 border border-error-200 rounded-full px-2.5 py-1">

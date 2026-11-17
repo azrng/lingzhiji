@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
-import { Sprite } from './ui'
+import { LogIcon, Sprite } from './ui'
 
 // 右上角事件/提示 toast 队列（由新日志条目派生）；多标签页横幅（save.md §3.6）。
 // 进出场动效（motion-pack.md §3.3/3.4）：弹性进场/快速退场，负向轻脉冲一次、金色调常驻微光；
@@ -27,7 +27,7 @@ export function EventToasts() {
             {t.evPos ? (
               <Sprite sheet={t.evSheet ?? 'event-icons-sheet.png'} cols={5} rows={t.evSheet ? 1 : 2} col={t.evPos[0]} row={t.evPos[1]} size={22} className="mt-0.5" />
             ) : (
-              <span className="text-lg leading-none mt-0.5">{t.icon ?? '·'}</span>
+              <LogIcon icon={t.icon} size={22} className="text-lg leading-none mt-0.5" />
             )}
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-gray-700 leading-snug">{t.title}</div>

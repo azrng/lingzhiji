@@ -2,13 +2,13 @@
 // 题型注册表、跨库记录、奖励与学习统计。
 // 全部函数在 engine 克隆的 draft 上就地修改，返回失败原因或 null
 import {
-  FREEZE_CAP, FREEZE_GRANT_EVERY, HERBS, MILESTONE_REWARD, MILESTONE_TITLES, QUIZ_PASS, QUIZ_SIZE,
+  FREEZE_CAP, FREEZE_GRANT_EVERY, MILESTONE_REWARD, MILESTONE_TITLES, QUIZ_PASS, QUIZ_SIZE,
   REWARD_FAIL, REWARD_FULL, REWARD_PASS, STREAK_HISTORY_MAX, STREAK_MILESTONES, reviewQuota,
 } from './constants'
 import { addLog } from './log'
 import { buildQuestion, pickKind } from './question-types'
 import { qiCap } from './progression'
-import { createRng, pick, shuffled, type Rng } from './rng'
+import { shuffled, type Rng } from './rng'
 import { dueWords, grade, leastStable } from './srs'
 import { entryOf, LIBS, normalize } from './wordbank'
 import type { GameState, LibId, QuizQuestion, ReasonCode } from './types'
@@ -158,7 +158,7 @@ export function confirm(s: GameState): ReasonCode | null {
     s.resources.insight += REWARD_FAIL.insight
     const before = s.resources.qi
     s.resources.qi = Math.min(qiCap(s.realm), before + REWARD_FAIL.qi)
-    addLog(s, { kind: 'settle', icon: '📘', title: `任务堂 ${score}/${QUIZ_SIZE}`, text: `灵气 +${REWARD_FAIL.qi}、心得 +${REWARD_FAIL.insight}；错词将排队复习` })
+    addLog(s, { kind: 'settle', icon: '📘', title: `任务堂 ${score}/${QUIZ_SIZE}`, text: `灵气 +${REWARD_FAIL.qi}、心得 +${REWARD_FAIL.insight}；错词已排入复习计划` })
   }
   s.quizDaily.done = true
   s.quizDaily.session = null
@@ -207,6 +207,3 @@ export function setLib(s: GameState, lib: LibId): ReasonCode | null {
   s.learning.currentLib = lib
   return null
 }
-
-// 供测试与调试：错词重现比例等统计由 stat 提供；rng 独立入口便于单独抽干扰项测试
-export const _rngHelpers = { createRng, pick, shuffled, HERBS }

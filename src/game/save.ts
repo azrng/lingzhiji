@@ -292,7 +292,21 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
       game: {
         ...data.game,
         ...(learning && typeof learning === 'object'
-          ? { learning: { ...learning, cards } }
+          ? {
+              learning: {
+                ...learning,
+                cards,
+                // wrongQueue 在 v4 恒空（字段保留供校验）：迁移时把旧档遗留队列一并清掉，
+                // 否则 UI 会展示一个永不更新的僵尸错词池。脏档缺库时字段缺失交 validate 拦截
+                libs: learning.libs && typeof learning.libs === 'object'
+                  ? {
+                      ...learning.libs,
+                      cet4: { ...learning.libs.cet4, wrongQueue: [] },
+                      cet6: { ...learning.libs.cet6, wrongQueue: [] },
+                    }
+                  : learning.libs,
+              },
+            }
           : {}),
       },
     }

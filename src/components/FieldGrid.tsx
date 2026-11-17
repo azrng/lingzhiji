@@ -1,11 +1,22 @@
-import { ReactNode, useState } from 'react'
+import { CSSProperties, ReactNode, useState } from 'react'
 import { setHarvestAnchor } from '../fx'
+import { assetUrl } from '../assetUrl'
 import { FIELD_CAP, HERBS, HERB_BY_ID, REALM_NAMES } from '../game/constants'
 import { monthOf } from '../game/economy'
 import { effDays, seasonAdj, shadeAdj } from '../game/farming'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { Btn, Modal, Sprite } from './ui'
+
+// M3 氛围层萤火（roadmap-assets.md #3）：固定相位数据（百分比定位 + 秒级延时），静态常量避免重渲染跳动
+const FIREFLIES = [
+  { x: 8, y: 62, delay: 0, dur: 7 },
+  { x: 22, y: 34, delay: 1.8, dur: 8.5 },
+  { x: 47, y: 58, delay: 0.9, dur: 6.2 },
+  { x: 63, y: 28, delay: 2.6, dur: 9 },
+  { x: 81, y: 52, delay: 1.2, dur: 7.8 },
+  { x: 92, y: 70, delay: 3.4, dur: 6.8 },
+]
 
 // 灵田格：空田 / 生长中 / 成熟 / 被收回 四态；空田点击弹出播种弹层
 export default function FieldGrid() {
@@ -18,7 +29,7 @@ export default function FieldGrid() {
   const mature = g.fields.filter((field) => field.status === 'mature').length
 
   return (
-    <section className="field-garden rounded-3xl border border-primary-200/80 p-4 sm:p-5 lg:p-6">
+    <section className="field-garden relative rounded-3xl border border-primary-200/80 p-4 sm:p-5 lg:p-6">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs tracking-[.2em] text-primary-700">青云宗 · 灵植堂</p>
@@ -47,6 +58,17 @@ export default function FieldGrid() {
         )}
         {planting !== null && <PlantModal fid={planting} onClose={() => setPlanting(null)} />}
       </div>
+      {/* M3 氛围层（roadmap-assets.md #2/#3）：灵田雾带 + 萤火，纯装饰不拦截交互；雾带 URL 经 CSS 变量注入 */}
+      <div className="fx-mist-layer" style={{ '--mist-url': `url(${assetUrl('fx-mist.png')})` } as CSSProperties} aria-hidden />
+      {FIREFLIES.map((f, i) => (
+        <img
+          key={i}
+          src={assetUrl('fx-firefly.png')}
+          alt="" aria-hidden
+          className="fx-firefly pointer-events-none absolute h-5 w-5"
+          style={{ left: `${f.x}%`, top: `${f.y}%`, animationDelay: `${f.delay}s`, animationDuration: `${f.dur}s` }}
+        />
+      ))}
     </section>
   )
 }
@@ -65,9 +87,12 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   )
 
   // 成长阶段植株（T40 图集 6 行 × 4 列）：plot 裸土底图 + 透明植株叠加，底部对齐；
-  // 成熟态仅植株摇摆（底图静止），swayDelay 供田格间错相
-  const growthCrop = (stage: number, swayDelay?: string) => (
+  // 成熟态仅植株摇摆（底图静止），swayDelay 供田格间错相；glow = 成熟光晕垫层（roadmap-assets.md #4）
+  const growthCrop = (stage: number, swayDelay?: string, glow?: boolean) => (
     <span className="relative inline-flex items-end justify-center">
+      {glow && (
+        <img src={assetUrl('fx-mature-glow.png')} alt="" aria-hidden className="fx-mature-glow absolute bottom-0 left-1/2 -translate-x-1/2 w-40 max-w-none" />
+      )}
       <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={140} />
       <span
         className={`absolute bottom-2 left-1/2 -translate-x-1/2${swayDelay === undefined ? '' : ' fx-sway'}`}
@@ -111,8 +136,8 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative">
         {herbPortrait}
-        {/* 成熟摇摆：仅待收状态，田格间按 id 错相（motion-pack.md §3.3）；植株用 T40 图集成熟列 */}
-        {growthCrop(3, (((fid * 7) % 35) / 10).toFixed(1))}
+        {/* 成熟摇摆：仅待收状态，田格间按 id 错相（motion-pack.md §3.3）；植株用 T40 图集成熟列 + 光晕呼吸 */}
+        {growthCrop(3, (((fid * 7) % 35) / 10).toFixed(1), true)}
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{g.gongfa >= 3 ? '（收获另有加成）' : ''}</div>
         <Btn

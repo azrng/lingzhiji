@@ -26,9 +26,9 @@ export default function MilestoneScreen() {
           <Row k="修为" v={`${g.cultivation}（累计，不清零）`} />
           <Row k="功法" v={`Lv${g.gongfa}`} />
           <Row k="灵田" v={`${g.fields.length} 块`} />
-          <Row k="四级词库" v={`任务 ${c4.sessions} 次 · 作答 ${c4.attempts} 词次 · 学过 ${c4.distinctWords.length}/${LIBS.cet4.length} 词 · 首答正确率 ${pct(c4.firstCorrect)}`} />
-          <Row k="六级词库" v={`任务 ${c6.sessions} 次 · 作答 ${c6.attempts} 词次 · 学过 ${c6.distinctWords.length}/${LIBS.cet6.length} 词 · 错词池 ${c6.wrongQueue.length}`} />
-          <Row k="定额" v={g.month.ledger.length ? g.month.ledger.map((l) => `第${l.month}月${l.paid ? '缴' : '欠'}`).join('、') : '尚无结算记录'} />
+          <Row k="四级词库" v={`任务 ${c4.sessions} 次 · 作答 ${c4.attempts} 词次 · 学过 ${c4.distinctWords.length}/${LIBS.cet4.length} 词 · 首答正确率 ${pct(c4.firstCorrect)} · 复习正确率 ${pct(c4.reviewCorrect)}`} />
+          <Row k="六级词库" v={`任务 ${c6.sessions} 次 · 作答 ${c6.attempts} 词次 · 学过 ${c6.distinctWords.length}/${LIBS.cet6.length} 词 · 首答正确率 ${pct(c6.firstCorrect)} · 复习正确率 ${pct(c6.reviewCorrect)}`} />
+          <Row k="定额" v={g.month.ledger.length ? g.month.ledger.map((l) => `第${l.month}月${l.detail}`).join('、') : '尚无结算记录'} />
           <p className="text-xs text-gray-400 mt-2">学习数据用于回顾，不代表单词掌握程度。</p>
         </div>
         <div className="mt-7">

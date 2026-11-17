@@ -1,6 +1,6 @@
 import { useGameStore } from '../stores/useGameStore'
 import { characterImage } from '../game/characters'
-import { Sprite } from './ui'
+import { LogIcon, Sprite } from './ui'
 
 // 侧边日志（定稿构图）：弟子头像 + 当日/近期记录流
 export default function DayLog() {
@@ -29,7 +29,7 @@ export default function DayLog() {
             {l.evPos ? (
               <Sprite sheet={l.evSheet ?? 'event-icons-sheet.png'} cols={5} rows={l.evSheet ? 1 : 2} col={l.evPos[0]} row={l.evPos[1]} size={18} className="mt-0.5" />
             ) : (
-              <span className="w-[18px] text-center flex-none">{l.icon ?? '·'}</span>
+              <LogIcon icon={l.icon} className="w-[18px] text-center" />
             )}
             <div className="min-w-0">
               <div className="text-gray-700 leading-snug">{l.title}</div>

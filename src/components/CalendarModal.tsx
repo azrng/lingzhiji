@@ -1,5 +1,6 @@
 import { FREEZE_CAP, FREEZE_GRANT_EVERY, MILESTONE_TITLES, QUIZ_SIZE, STREAK_MILESTONES } from '../game/constants'
 import { indexToDate, realDayIndex } from '../game/clock'
+import { assetUrl } from '../assetUrl'
 import { useGameStore } from '../stores/useGameStore'
 import { Btn, Modal } from './ui'
 
@@ -69,7 +70,11 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
         <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-gray-700">
           <span title="每个现实日完成一次任务堂（10 题，答错也算）即打卡；连胜达成里程碑可得称号">道心连胜 <b className="text-primary-600">{g.streak.count}</b> 🔥</span>
           <span>历史最高 <b className="text-primary-600">{g.streak.best}</b></span>
-          <span title={`上限 ${FREEZE_CAP} 枚：每累计打卡 ${FREEZE_GRANT_EVERY} 次自动 +1；漏签时自动消耗，保住连胜`}>护道符 <b className="text-primary-600">{g.streak.freezes}/{FREEZE_CAP}</b> 🧿</span>
+          <span title={`上限 ${FREEZE_CAP} 枚：每累计打卡 ${FREEZE_GRANT_EVERY} 次自动 +1；漏签时自动消耗，保住连胜`}>
+            护道符 <b className="text-primary-600">{g.streak.freezes}/{FREEZE_CAP}</b>
+            {/* 护道符图标（roadmap-assets.md #12）：替换原 emoji 🧿 兜底 */}
+            <img src={assetUrl('icon-talisman.png')} alt="" aria-hidden width={16} height={16} className="inline-block align-middle ml-0.5" />
+          </span>
         </div>
         {/* 称号与下一里程碑：称号由已达成最高里程碑派生，不存档 */}
         <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-gray-600">

@@ -27,6 +27,7 @@ relations:
 | lingzhiji | 界面动效包（收获飘字 / 摇摆 / toast / 粒子 / 降级） | `lingzhiji/motion-pack.md` | approved | REQ §21 |
 | lingzhiji | 种田深化第一批（特质 / 地力轮作 / 邻作 / 物候 / 存档 v3） | `lingzhiji/farming-depth.md` | approved | REQ §22 |
 | lingzhiji | 扩展路线与素材清单（M2–M5 方向 / 13 项素材规格 / 调研事实，自 T25 吸收） | `lingzhiji/roadmap-assets.md` | approved | REQ §19 §20 §21 |
+| lingzhiji | M2 学习强化（FSRS 调度 / 发音 / ECDICT 音标 / 题型注册表 / 存档 v4） | `lingzhiji/srs-audio.md` | in-review | REQ §8.1 §8.5 §8.6 |
 
 契约：存档契约 CON-LINGZHIJI-SAVE-001 已落地为 `src/game/types.ts` + `src/game/save.ts`（代码为事实来源，历史草案 `doc/contracts/lingzhiji/save-data.md` 已标 superseded）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
 

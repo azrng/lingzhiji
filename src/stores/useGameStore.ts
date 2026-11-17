@@ -122,7 +122,14 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     reloadFromDisk: () => {
       const r = load()
-      if (r.ok) set({ game: r.state!, tabBanner: false, lastSavedAt: r.savedAt ?? 0 })
+      if (!r.ok) return
+      // 他页存档可能停留在过去的现实日（边缘时序旧档）：与 continueSaved 同口径载入即同步（T29 建议修 5）
+      const { state, changed } = syncRealDay(r.state!, Date.now())
+      if (changed) {
+        useUiStore.getState().pushToasts(freshLogEntries(r.state!.log, state.log))
+      }
+      const savedAt = changed ? persist(state) : r.savedAt ?? 0
+      set({ game: state, tabBanner: false, lastSavedAt: savedAt })
     },
   }
 })

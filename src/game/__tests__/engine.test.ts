@@ -420,15 +420,15 @@ describe('地力透支（real-day.md §3.5，罚经营不罚学习）', () => {
     expect(dim.fields[0].dry).toBe(base.fields[0].dry) // 未浇灌同样缺水 +1
   })
 
-  it('第 2 个游戏日推进时记录地力透支说明日志（仅首次）', () => {
+  it('单日单推不发预警，真第 2 推才记录地力透支日志（T29 建议修：降噪）', () => {
     let s = started(noEventSeed)
     s.quizDaily.done = true
     s = dispatch(s, { type: 'END_DAY' }).state
-    expect(s.log.some((l) => l.title === '地力透支')).toBe(true)
-    // 后续游戏日不再重复说明
+    expect(s.log.some((l) => l.title === '地力透支')).toBe(false)
+    // 第 2 推（进入递减期后）才说明规则
     s.quizDaily.done = true
     s.log = []
     s = dispatch(s, { type: 'END_DAY' }).state
-    expect(s.log.some((l) => l.title === '地力透支')).toBe(false)
+    expect(s.log.some((l) => l.title === '地力透支')).toBe(true)
   })
 })

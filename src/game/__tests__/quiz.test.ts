@@ -315,6 +315,7 @@ describe('道心打卡（real-day.md §3.4）', () => {
     expect(s.streak.freezes).toBe(2) // 已满后不发放（第 21 次前不会再到 7 的倍数）
   })
 
+  // 375 轮整场测验耗时基线 ~3.3s，贴默认 5s 超时（T27/T29 两次偶发超时）：单独放宽超时
   it('打卡历史环形保留 370 条', () => {
     let s = createInitialState(7)
     for (let i = 0; i < 375; i++) {
@@ -325,5 +326,5 @@ describe('道心打卡（real-day.md §3.4）', () => {
     expect(s.streak.history.length).toBe(370)
     // 队首被裁掉最旧的，仍严格升序
     expect(s.streak.history[0]).toBeGreaterThan(s.realDay.today - 370)
-  })
+  }, 15000)
 })

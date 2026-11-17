@@ -164,13 +164,15 @@ function endDay(s: GameState, rng: Rng): ReasonCode | null {
 }
 
 function advanceDay(s: GameState): void {
-  // 地力透支（real-day.md §3.5）：游戏日成功推进计入当日；第 2+ 个游戏日递减，首次出现时日志说明规则
-  if (s.realDay.gamesToday === 0) {
+  // 地力透支（real-day.md §3.5）：游戏日成功推进计入当日；第 2+ 个游戏日递减。
+  // 预警只在真第 2 推发生时说明一次（T29 建议修）：单日单推玩家不再每日被「再推会减半」预警；
+  // 递减进行中的实时提示由顶栏「地力透支」标签承担
+  if (s.realDay.gamesToday >= 1) {
     addLog(s, {
       kind: 'settle',
       icon: '⛰️',
       title: '地力透支',
-      text: '今日再推游戏日：日终事件触发与收获修为减半；灵草株数、测验奖励与自然生长不受影响',
+      text: '今日已多推游戏日：收获修为减半、日终事件更频繁；灵草株数、测验奖励与自然生长不受影响',
     })
   }
   s.realDay.gamesToday += 1

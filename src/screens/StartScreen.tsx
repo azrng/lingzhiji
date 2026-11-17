@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { assetUrl } from '../assetUrl'
 import { characters } from '../game/characters'
+import { SAVE_KEY } from '../game/save'
 import { REASON_TEXT } from '../components/reasonText'
 import { Btn, ConfirmOverlay, Modal } from '../components/ui'
 import { useGameStore } from '../stores/useGameStore'
@@ -19,7 +20,7 @@ export default function StartScreen() {
   const importSaved = useGameStore((s) => s.importSaved)
   let hasSave = false
   try {
-    hasSave = typeof localStorage !== 'undefined' && localStorage.getItem('lingzhiji.save.v1') !== null
+    hasSave = typeof localStorage !== 'undefined' && localStorage.getItem(SAVE_KEY) !== null
   } catch {
     // 浏览器禁用存储时仍允许进入游戏，保存失败由游戏状态提示。
   }

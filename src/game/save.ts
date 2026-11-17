@@ -1,7 +1,7 @@
 // 存档（save.md）：localStorage 唯一读写点；版本校验、Base64 导码、损坏恢复。
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
 import { realDayIndex } from './clock'
-import { FREEZE_CAP, HERB_BY_ID, HERBS, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
+import { DAILY_AP, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_DOWN, MARKET_UP, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
 import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
@@ -92,10 +92,10 @@ export function validate(game: unknown): ReasonCode | null {
     (g.characterId === undefined || g.characterId === 'junior-sister' || g.characterId === 'senior-brother' || g.characterId === 'senior-sister') &&
     nonNegInt(g.day) && g.day >= 1 &&
     (g.phase === 'day' || g.phase === 'quota') &&
-    nonNegInt(g.ap) && g.ap <= 3 &&
+    nonNegInt(g.ap) && g.ap <= DAILY_AP &&
     isBool(g.wateredToday) && isBool(g.tunaUsedToday) &&
     typeof g.pendingTomorrow === 'object' && g.pendingTomorrow !== null &&
-    (g.pendingTomorrow.marketMult === undefined || g.pendingTomorrow.marketMult === 1.5 || g.pendingTomorrow.marketMult === 0.7) &&
+    (g.pendingTomorrow.marketMult === undefined || g.pendingTomorrow.marketMult === MARKET_UP || g.pendingTomorrow.marketMult === MARKET_DOWN) &&
     (g.pendingTomorrow.infusionDouble === undefined || isBool(g.pendingTomorrow.infusionDouble)) &&
     typeof g.resources === 'object' && g.resources !== null &&
     nonNegInt(g.resources.stones) && nonNegInt(g.resources.contribution) &&
@@ -134,7 +134,7 @@ export function validate(game: unknown): ReasonCode | null {
     g.streak.history.every((v) => nonNegInt(v)) &&
     g.streak.history.every((v, i) => i === 0 || v > g.streak!.history[i - 1]) &&
     isBool(g.milestoneShown) && isBool(g.tutorialDone) &&
-    Array.isArray(g.log) && g.log.length <= 50 &&
+    Array.isArray(g.log) && g.log.length <= LOG_MAX &&
     g.log.every((l) => typeof l === 'object' && l !== null && nonNegInt(l.day) && isStr(l.title) && isStr(l.text)) &&
     nonNegInt(g.rngState)
   if (!ok) return 'BAD_SHAPE'

@@ -57,18 +57,18 @@ describe('声音偏好（audio-impl.md §3.2）', () => {
   })
 
   it('缺键默认全开', () => {
-    expect(loadPrefs()).toEqual({ bgm: true, sfx: true })
+    expect(loadPrefs()).toEqual({ bgm: true, sfx: true, voice: true, autoRead: true })
   })
 
   it('保存后读回一致；坏 JSON 回默认', () => {
-    savePrefs({ bgm: false, sfx: true })
-    expect(loadPrefs()).toEqual({ bgm: false, sfx: true })
+    savePrefs({ bgm: false, sfx: true, voice: false, autoRead: true })
+    expect(loadPrefs()).toEqual({ bgm: false, sfx: true, voice: false, autoRead: true })
     vi.stubGlobal('localStorage', { getItem: () => 'not-json', setItem: () => {} })
-    expect(loadPrefs()).toEqual({ bgm: true, sfx: true })
+    expect(loadPrefs()).toEqual({ bgm: true, sfx: true, voice: true, autoRead: true })
   })
 
   it('部分字段缺失视为 true', () => {
     vi.stubGlobal('localStorage', { getItem: () => '{"bgm":false}', setItem: () => {} })
-    expect(loadPrefs()).toEqual({ bgm: false, sfx: true })
+    expect(loadPrefs()).toEqual({ bgm: false, sfx: true, voice: true, autoRead: true })
   })
 })

@@ -12,13 +12,15 @@
     "test:e2e": "playwright test",
     "sim": "tsx scripts/balance-sim.ts",
     "sim:quick": "tsx scripts/balance-sim.ts --quick",
-    "words:groups": "tsx scripts/word-groups.ts"
+    "words:groups": "tsx scripts/word-groups.ts",
+    "words:phonetic": "tsx scripts/phonetic-fill.ts"
   },
   "dependencies": {
     "howler": "^2.2.4",
     "motion": "^14.14.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "ts-fsrs": "^5.4.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

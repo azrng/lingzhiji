@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { playSfx, setBgmScene } from '../audio'
+import { loadPrefs, playSfx, setBgmScene, speak } from '../audio'
 import { QUIZ_PASS, QUIZ_SIZE } from '../game/constants'
 import { reviewQuota } from '../game/constants'
-import { canFormSession, entryOf, LIBS } from '../game/wordbank'
+import { canFormSession, entryOf, LIBS, normalize } from '../game/wordbank'
+import { dueInDays } from '../game/srs'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import { Btn, useModalFocus } from './ui'
+import type { QuizQuestion } from '../game/types'
 
-// 任务堂：全屏弹层，四相位 入口 → 先学（新词）→ 测验 → 结果（quiz.md）
+// 任务堂：全屏弹层，四相位 入口 → 先学（新词）→ 测验 → 结果（quiz.md + srs-audio.md）
+
+// 题面渲染按题型分流（srs-audio.md §3.4）：w2c 词→释义；c2w 释义→词；listen 听音→词；spell 拼写
+function correctOf(q: QuizQuestion, chosen: string | null): boolean {
+  if (chosen === null) return false
+  return q.kind === 'spell' ? normalize(chosen) === normalize(q.word) : chosen === q.meaning
+}
 export default function QuizModal() {
   const session = useGameStore((s) => s.game.quizDaily.session)
   const done = useGameStore((s) => s.game.quizDaily.done)
@@ -107,15 +115,29 @@ function Entry({ done }: { done: boolean }) {
 
 function Learning() {
   const session = useGameStore((s) => s.game.quizDaily.session)!
+  const lib = session.lib
   const act = useGameStore((s) => s.act)
   const news = session.questions.filter((q) => q.from === 'new')
+  const phoneticOf = (word: string): string => entryOf(lib, normalize(word))?.phonetic ?? ''
   return (
     <div className="flex flex-col gap-4">
       <div><div className="font-serif text-2xl text-info-600">先识新词</div><div className="mt-2 text-sm text-gray-600">本场新词 {news.length} 个 · 复习 {QUIZ_SIZE - news.length} 个（复习词不提前展示答案）</div></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {news.map((q) => (
           <div key={q.word} className="bg-primary-50/70 border border-primary-100 rounded-2xl p-5">
-            <div className="font-serif text-2xl text-info-600 break-words">{q.word}</div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-serif text-2xl text-info-600 break-words">
+                {q.word}
+                {phoneticOf(q.word) && <span className="ml-2 text-sm text-gray-500 font-sans">[{phoneticOf(q.word)}]</span>}
+              </div>
+              <button
+                type="button"
+                aria-label={`朗读 ${q.word}`}
+                title="朗读单词"
+                onClick={() => void speak(q.word)}
+                className="min-h-9 min-w-9 rounded-lg border border-primary-200 text-base leading-none hover:bg-primary-100"
+              >🔊</button>
+            </div>
             <div className="text-sm text-gray-700 mt-2 leading-6">{q.meaning}</div>
           </div>
         ))}
@@ -131,14 +153,79 @@ function Learning() {
 function Testing() {
   const session = useGameStore((s) => s.game.quizDaily.session)!
   const act = useGameStore((s) => s.act)
+  const lib = session.lib
   const q = session.questions[session.idx]
   const chosen = session.answers[session.idx]
+  const [spellInput, setSpellInput] = useState('')
   const optionsRef = useRef<HTMLDivElement>(null)
   const nextRef = useRef<HTMLDivElement>(null)
+  const phonetic = entryOf(lib, normalize(q.word))?.phonetic ?? ''
+  const correct = correctOf(q, chosen)
+  // 听音辨词进题自动朗读；其余题型答题后朗读（开关独立，srs-audio.md §3.2）
+  const prefs = loadPrefs()
   useEffect(() => {
+    if (q.kind === 'listen' && chosen === null) void speak(q.word)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.idx])
+  useEffect(() => {
+    if (chosen !== null && q.kind !== 'listen' && prefs.autoRead) void speak(q.word)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen])
+  useEffect(() => {
+    setSpellInput('')
     const target = chosen === null ? optionsRef.current : nextRef.current
+    // spell 题无选项，焦点落输入框
+    if (q.kind === 'spell' && chosen === null) {
+      target?.querySelector<HTMLInputElement>('input')?.focus()
+      return
+    }
     target?.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus()
   }, [session.idx, chosen])
+  // 题面按题型分流
+  const prompt = (() => {
+    if (q.kind === 'w2c') {
+      return (
+        <>
+          <div className="text-xs text-primary-700 tracking-widest mb-3">选出正确释义</div>
+          <div className="font-serif text-4xl text-info-600 tracking-wide break-words">
+            {q.word}
+            {phonetic && <span className="ml-2 text-base text-gray-500 font-sans">[{phonetic}]</span>}
+          </div>
+        </>
+      )
+    }
+    if (q.kind === 'c2w') {
+      return (
+        <>
+          <div className="text-xs text-primary-700 tracking-widest mb-3">释义反选 · 选出对应的英文词</div>
+          <div className="font-serif text-3xl text-info-600 break-words">{q.meaning}</div>
+        </>
+      )
+    }
+    if (q.kind === 'listen') {
+      return (
+        <>
+          <div className="text-xs text-primary-700 tracking-widest mb-3">听音辨词 · 聆听灵音选词</div>
+          <button
+            type="button"
+            onClick={() => void speak(q.word)}
+            className="min-h-16 min-w-16 rounded-full border-2 border-primary-300 text-3xl hover:bg-primary-100"
+            title="再听一次"
+          >🔊</button>
+        </>
+      )
+    }
+    return (
+      <>
+        <div className="text-xs text-primary-700 tracking-widest mb-3">灵种拼写 · 拼出对应的英文词</div>
+        <div className="font-serif text-2xl text-info-600 break-words">{q.meaning}</div>
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <button type="button" onClick={() => void speak(q.word)} className="min-h-9 min-w-9 rounded-lg border border-primary-200 hover:bg-primary-100" title="听发音">🔊</button>
+          {chosen !== null && !correct && <span className="text-sm text-gray-500">正确拼写：<b className="text-info-600">{q.word}</b></span>}
+        </div>
+      </>
+    )
+  })()
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -147,39 +234,61 @@ function Testing() {
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap">{session.idx + 1}/{QUIZ_SIZE}</span>
       </div>
-      <div className="rounded-2xl bg-primary-50 border border-primary-100 px-5 py-8 text-center">
-        <div className="text-xs text-primary-700 tracking-widest mb-3">选出正确释义</div>
-        <div className="font-serif text-4xl text-info-600 tracking-wide break-words">{q.word}</div>
-      </div>
-      <div ref={optionsRef} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {q.opts.map((opt) => {
-          const isAnswer = opt === q.meaning
-          const picked = chosen === opt
-          let cls = 'bg-gray-50 border-gray-300 hover:border-primary-400'
-          if (chosen !== null) {
-            if (isAnswer) cls = 'bg-success-50 border-success-500 text-success-500'
-            else if (picked) cls = 'bg-error-50 border-error-400 text-error-500'
-            else cls = 'bg-gray-100 border-gray-200 text-gray-400'
-          }
-          return (
-            <button
-              key={opt}
-              disabled={chosen !== null}
-              onClick={() => act({ type: 'QUIZ_ANSWER', choice: opt })}
-              className={`min-h-16 px-5 py-4 rounded-xl text-sm leading-6 border transition-colors text-left focus-visible:outline-2 focus-visible:outline-primary-600 ${cls}`}
-            >
-              {opt}
-            </button>
-          )
-        })}
-      </div>
+      <div className="rounded-2xl bg-primary-50 border border-primary-100 px-5 py-8 text-center">{prompt}</div>
+      {q.kind === 'spell' ? (
+        chosen === null ? (
+          <div className="flex justify-center gap-3">
+            <input
+              aria-label="拼写英文单词"
+              value={spellInput}
+              onChange={(e) => setSpellInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && spellInput.trim()) act({ type: 'QUIZ_ANSWER', choice: spellInput }) }}
+              className="min-h-12 w-64 rounded-xl border border-gray-300 px-4 font-serif text-lg tracking-widest"
+              placeholder="拼出英文词"
+            />
+            <Btn disabled={!spellInput.trim()} onClick={() => act({ type: 'QUIZ_ANSWER', choice: spellInput })}>确认拼写</Btn>
+          </div>
+        ) : (
+          <div className="text-center font-serif text-2xl tracking-widest text-gray-400 select-none">{q.word}</div>
+        )
+      ) : (
+        <div ref={optionsRef} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {q.opts.map((opt) => {
+            // w2c 选项是释义；c2w/listen 选项是单词——正确项统一按题型比对
+            const isAnswer = q.kind === 'w2c' ? opt === q.meaning : normalize(opt) === normalize(q.word)
+            const picked = chosen === opt
+            let cls = 'bg-gray-50 border-gray-300 hover:border-primary-400'
+            if (chosen !== null) {
+              if (isAnswer) cls = 'bg-success-50 border-success-500 text-success-500'
+              else if (picked) cls = 'bg-error-50 border-error-400 text-error-500'
+              else cls = 'bg-gray-100 border-gray-200 text-gray-400'
+            }
+            return (
+              <button
+                key={opt}
+                disabled={chosen !== null}
+                onClick={() => act({ type: 'QUIZ_ANSWER', choice: opt })}
+                className={`min-h-16 px-5 py-4 rounded-xl text-sm leading-6 border transition-colors text-left focus-visible:outline-2 focus-visible:outline-primary-600 ${cls}`}
+              >
+                {opt}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {chosen !== null && (
         <div ref={nextRef} className="flex flex-wrap gap-4 items-center justify-between">
           <div role="status" className="text-sm">
-            {chosen === q.meaning ? (
-              <span className="text-success-500">✓ 正确</span>
+            {correct ? (
+              <span className="text-success-500">
+                ✓ 正确
+                <NextReviewHint lib={lib} word={q.word} />
+              </span>
             ) : (
-              <span className="text-error-400">✗ 正确释义：<b>{q.meaning}</b>（错词将排队复习）</span>
+              <span className="text-error-400">
+                ✗ 正确答案：<b>{q.kind === 'w2c' ? q.meaning : q.word}</b>（将尽快重现复习）
+                <NextReviewHint lib={lib} word={q.word} />
+              </span>
             )}
           </div>
           <Btn onClick={() => act({ type: 'QUIZ_NEXT' })}>{session.idx === QUIZ_SIZE - 1 ? '查看结果' : '下一题'}</Btn>
@@ -189,14 +298,22 @@ function Testing() {
   )
 }
 
+// SRS 可视化（srs-audio.md §4）：作答后从最新卡读「下次复习 N 天后」（answer 即时入账）
+function NextReviewHint({ lib, word }: { lib: string; word: string }) {
+  const card = useGameStore((s) => s.game.learning.cards[normalize(word)])
+  if (!card) return null
+  const days = dueInDays(card, useGameStore.getState().game.realDay.today)
+  return <span className="ml-2 text-xs text-gray-400">📚 下次复习：{days === 0 ? '明日' : `${days} 天后`}</span>
+}
+
 function Result() {
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
   // 结果相位时 session 仍在档（confirm 后清空并置 done），此处直接从 session 计算展示
   const session = g.quizDaily.session!
-  const score = session.questions.filter((q, i) => session.answers[i] === q.meaning).length
-  const wrongs = session.questions.filter((q, i) => session.answers[i] !== q.meaning)
+  const score = session.questions.filter((q, i) => correctOf(q, session.answers[i])).length
+  const wrongs = session.questions.filter((q, i) => !correctOf(q, session.answers[i]))
   const pass = score >= QUIZ_PASS
   return (
     <div className="flex flex-col gap-5">

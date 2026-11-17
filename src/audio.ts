@@ -11,7 +11,8 @@ export type SfxId =
   | 'click' | 'plant' | 'harvest' | 'premium' | 'gain'
   | 'steal' | 'checkin' | 'dew' | 'tide' | 'milestone'
 export type BgmScene = 'field' | 'study'
-export type AudioPrefs = { bgm: boolean; sfx: boolean }
+// voice=单词发音开关（独立于音效）；autoRead=答题后自动朗读（srs-audio.md §3.2，随 M2 扩展）
+export type AudioPrefs = { bgm: boolean; sfx: boolean; voice: boolean; autoRead: boolean }
 
 const PREFS_KEY = 'lingzhiji.audio'
 const BGM_VOLUME = 0.5
@@ -41,12 +42,13 @@ const SFX_FILES: Record<SfxId, string> = {
 export function loadPrefs(): AudioPrefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY)
-    if (!raw) return { bgm: true, sfx: true }
+    if (!raw) return { bgm: true, sfx: true, voice: true, autoRead: true }
     const parsed = JSON.parse(raw) as Partial<AudioPrefs>
-    return { bgm: parsed.bgm !== false, sfx: parsed.sfx !== false }
+    // 旧键缺 voice/autoRead 字段：默认开（发音是增强项，随 M2 上线对老玩家直接生效）
+    return { bgm: parsed.bgm !== false, sfx: parsed.sfx !== false, voice: parsed.voice !== false, autoRead: parsed.autoRead !== false }
   } catch {
     // 键损坏或环境无 localStorage：回默认全开
-    return { bgm: true, sfx: true }
+    return { bgm: true, sfx: true, voice: true, autoRead: true }
   }
 }
 
@@ -55,6 +57,48 @@ export function savePrefs(prefs: AudioPrefs): void {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
   } catch {
     // 隐私模式等写入失败：静默忽略，开关仍影响本页会话
+  }
+}
+
+export function setVoiceEnabled(on: boolean): void {
+  prefs = { ...prefs, voice: on }
+  savePrefs(prefs)
+}
+
+export function setAutoReadEnabled(on: boolean): void {
+  prefs = { ...prefs, autoRead: on }
+  savePrefs(prefs)
+}
+
+// ---- 单词发音（srs-audio.md §3.2，M2）----
+// Web Speech 为主、有道 dictvoice 兜底（2026-11-17 拍板 A）；全部失败静默返回 false，发音是增强项。
+
+// Web Speech 可用性（仅判定 API 存在；无 en voice 时 speak 内部走兜底）
+export function speechAvailable(): boolean {
+  return typeof window !== 'undefined' && typeof window.speechSynthesis !== 'undefined'
+}
+
+export async function speak(word: string): Promise<boolean> {
+  if (!prefs.voice || !word.trim()) return false
+  if (speechAvailable()) {
+    const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en'))
+    if (voices.length > 0) {
+      const utter = new SpeechSynthesisUtterance(word)
+      utter.lang = 'en-US'
+      utter.voice = voices[0]
+      utter.rate = 0.9 // 学习场景稍慢
+      window.speechSynthesis.cancel() // 连续作答时不叠音
+      window.speechSynthesis.speak(utter)
+      return true
+    }
+  }
+  // 有道 dictvoice 兜底：new Audio().play() 需手势解锁，本函数只从点击处理器/已解锁页调用
+  try {
+    const audio = new Audio(`https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(word.trim())}&type=1`)
+    await audio.play()
+    return true
+  } catch {
+    return false // 自动播放被挡或网络不可用：静默（听音题有「再听一次」按钮可重试）
   }
 }
 

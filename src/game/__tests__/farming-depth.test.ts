@@ -161,12 +161,12 @@ describe('喜湿（farming-depth.md §3.1）', () => {
 })
 
 describe('存档 v3（farming-depth.md §2）', () => {
-  it('SAVE_VERSION 为 3；v2 档迁移补 fertility=1、lastCrop 不造', () => {
-    expect(SAVE_VERSION).toBe(3)
+  it('v2 档经完整迁移链升到 v4：迁移补 fertility=1、lastCrop 不造', () => {
+    expect(SAVE_VERSION).toBe(4)
     const v2 = { version: 2, savedAt: 1, game: started(3) } as SaveData
     delete (v2.game.fields[0] as { fertility?: number }).fertility
     const migrated = applyMigrations(v2)
-    expect(migrated.version).toBe(3)
+    expect(migrated.version).toBe(4)
     expect(migrated.game.fields[0].fertility).toBe(1)
     expect(migrated.game.fields[0].lastCrop).toBeUndefined()
     expect(validate(migrated.game)).toBeNull()
@@ -176,7 +176,7 @@ describe('存档 v3（farming-depth.md §2）', () => {
     const broken = { version: 2, savedAt: 1, game: { day: 1 } } as unknown as SaveData
     expect(() => applyMigrations(broken)).not.toThrow()
     const out = applyMigrations(broken)
-    expect(out.version).toBe(3)
+    expect(out.version).toBe(4)
     expect(validate(out.game)).toBe('BAD_SHAPE')
   })
 

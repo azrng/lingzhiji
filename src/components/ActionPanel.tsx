@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GONGFA_COST, GONGFA_NAMES } from '../game/constants'
 import { emergencyEligible } from '../game/economy'
+import { dueCount } from '../game/srs'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -44,6 +45,11 @@ export default function ActionPanel() {
         <Btn className="!min-h-11 !px-5" onClick={() => setQuizOpen(true)} variant={g.quizDaily.done ? 'secondary' : 'primary'}
           title="10 道背词题：合格 +3 灵气 +5 贡献 +8 心得（满分心得再 +4）；答错也能继续，完成后才能结束这一天">
           任务堂 {g.quizDaily.done ? '· 已完成 ✓' : '· 今日未完成'}
+          {!g.quizDaily.done && dueCount(g.learning.cards, g.realDay.today) > 0 && (
+            <span className="ml-2 text-xs bg-warning-50 text-warning-500 border border-warning-200 rounded-full px-2 py-0.5">
+              📖 今日到期 {dueCount(g.learning.cards, g.realDay.today)} 词
+            </span>
+          )}
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday}
           title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，全田今日免缺水；缺水累计第 3 天会减产'}>

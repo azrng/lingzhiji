@@ -45,6 +45,7 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
       currentLib: 'cet4',
       seenMap: {},
       libs: { cet4: quizStartStat(), cet6: quizStartStat() },
+      cards: {}, // FSRS 复习卡（srs-audio.md §3.1，随存档 v4）：未学词不建卡
     },
     // 现实日锚（real-day.md §3.6）：开局 today = 创建当日，连胜全零值（lastCheckinDay -1 = 从未打卡）
     realDay: { today: realDayIndex(nowMs), gamesToday: 0 },

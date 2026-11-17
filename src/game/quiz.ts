@@ -1,17 +1,20 @@
-// 任务堂背单词（quiz.md）：抽题与补题链、先学后测、错词池、跨库记录、奖励与学习统计
+// 任务堂背单词（quiz.md + srs-audio.md）：抽题与补题链、先学后测、FSRS 复习调度、
+// 题型注册表、跨库记录、奖励与学习统计。
 // 全部函数在 engine 克隆的 draft 上就地修改，返回失败原因或 null
 import {
   FREEZE_CAP, FREEZE_GRANT_EVERY, HERBS, MILESTONE_REWARD, MILESTONE_TITLES, QUIZ_PASS, QUIZ_SIZE,
   REWARD_FAIL, REWARD_FULL, REWARD_PASS, STREAK_HISTORY_MAX, STREAK_MILESTONES, reviewQuota,
 } from './constants'
 import { addLog } from './log'
+import { buildQuestion, pickKind } from './question-types'
 import { qiCap } from './progression'
 import { createRng, pick, shuffled, type Rng } from './rng'
-import { buildOptions, entryOf, LIBS, normalize } from './wordbank'
+import { dueWords, grade, leastStable } from './srs'
+import { entryOf, LIBS, normalize } from './wordbank'
 import type { GameState, LibId, QuizQuestion, ReasonCode } from './types'
 
-// 抽题（quiz.md §3.2）：复习配额按境界；错词队首优先，再按最近作答时间从早到晚取已见词；
-// 新词从当前库未见词随机；补足链：复习不足→新词补，新词不足→未选入的已见词补
+// 抽题（quiz.md §3.2 + srs-audio.md §3.1）：
+// 复习配额按境界；候选顺序 = 到期词（due 升序）→ 新词（未见随机）→ 已学未到期词（稳定性升序兜底补足）
 export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
   if (s.quizDaily.done) return 'ALREADY_DONE'
   const lib = s.learning.currentLib
@@ -19,55 +22,39 @@ export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
   if (bank.length < QUIZ_SIZE) return 'LIBRARY_INSUFFICIENT'
 
   const quota = reviewQuota(s.realm)
+  const cards = s.learning.cards
   const seen = s.learning.seenMap
-  const stat = s.learning.libs[lib]
   const libWords = new Set(bank.map((w) => normalize(w.word)))
 
-  // 复习候选 1：错词池等待最久（队首）
-  const chosen: string[] = []
-  const queue = [...stat.wrongQueue]
-  while (chosen.length < quota && queue.length > 0) {
-    const w = queue.shift()!
-    if (!chosen.includes(w) && libWords.has(w)) chosen.push(w)
-  }
-  // 复习候选 2：已见未在错池，按最近作答时间从早到晚
-  if (chosen.length < quota) {
-    const seenNotWrong = Object.keys(seen)
-      .filter((w) => libWords.has(w) && !queue.includes(w) && !chosen.includes(w))
-      .sort((a, b) => seen[a] - seen[b])
-    for (const w of seenNotWrong) {
-      if (chosen.length >= quota) break
-      chosen.push(w)
-    }
-  }
-  // 新词：当前库未见随机
+  // 复习候选：到期词按到期最早优先（v4 起调度由 cards 承担，旧错词池队列已迁移退役）
+  const chosen = dueWords(cards, s.realDay.today)
+    .filter((w) => libWords.has(w))
+    .slice(0, quota)
+  // 新词：当前库未学（无卡）随机
   let news = shuffled(
     rng,
-    bank.map((w) => normalize(w.word)).filter((w) => !Object.hasOwn(seen, w) && !chosen.includes(w)),
+    bank.map((w) => normalize(w.word)).filter((w) => !Object.hasOwn(cards, w) && !chosen.includes(w)),
   ).slice(0, QUIZ_SIZE - chosen.length)
-  // 补足链：新词不足 → 尚未选入的已见词补（同场 10 词不重复）
+  // 补足链：新词不足 → 已学未到期词按稳定性升序补（最不稳优先，同场 10 词不重复）
   if (chosen.length + news.length < QUIZ_SIZE) {
-    const filler = Object.keys(seen)
+    const filler = leastStable(cards)
       .filter((w) => libWords.has(w) && !chosen.includes(w) && !news.includes(w))
-      .sort((a, b) => seen[b] - seen[a])
-    news = [...news, ...filler.slice(0, QUIZ_SIZE - chosen.length - news.length)]
+      .slice(0, QUIZ_SIZE - chosen.length - news.length)
+    news = [...news, ...filler]
   }
   const all = [...chosen, ...news]
   if (all.length < QUIZ_SIZE || new Set(all).size < QUIZ_SIZE) return 'LIBRARY_INSUFFICIENT'
 
+  const stat = s.learning.libs[lib]
   const questions: QuizQuestion[] = []
   for (const norm of all) {
     const entry = entryOf(lib, norm)
     if (!entry) return 'LIBRARY_INSUFFICIENT'
-    const opts = buildOptions(rng, entry, lib)
-    if (!opts) return 'LIBRARY_INSUFFICIENT'
-    questions.push({
-      word: entry.word,
-      meaning: entry.meaning,
-      // 补题可能使用已见词，它仍是复习词，不能在学习页提前展示答案。
-      from: chosen.includes(norm) || Object.hasOwn(seen, norm) ? 'review' : 'new',
-      opts,
-    })
+    const from = chosen.includes(norm) || Object.hasOwn(cards, norm) ? 'review' : 'new'
+    const kind = pickKind(rng, stat.sessions, from)
+    const q = buildQuestion(rng, entry, lib, kind, from)
+    if (!q) return 'LIBRARY_INSUFFICIENT'
+    questions.push(q)
   }
   s.quizDaily.session = {
     lib,
@@ -76,7 +63,7 @@ export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
     answers: Array(QUIZ_SIZE).fill(null),
     phase: 'learning',
   }
-  // 见词标记与作答时间立即更新（跨库共享 seenMap）
+  // 见词标记与作答顺序照旧更新（跨库共享，统计口径不变）
   for (const q of s.quizDaily.session.questions) seen[normalize(q.word)] = s.day
   return null
 }
@@ -89,25 +76,25 @@ export function learned(s: GameState): ReasonCode | null {
   return null
 }
 
-// 作答：以首次作答计分；答错入队尾、答对出池（quiz.md §3.4）
+// 作答：以首次作答计分（quiz.md §3.4）；spell 题记录玩家输入并按归一化拼写判对错。
+// FSRS 评级在作答时即时入账（ALREADY_DONE 保证同题不重复推进），反馈行可直接展示「下次复习 N 天后」
 export function answer(s: GameState, choice: string): ReasonCode | null {
   const session = s.quizDaily.session
   if (!session || session.phase !== 'testing') return 'INVALID_TARGET'
   if (session.answers[session.idx] !== null) return 'ALREADY_DONE'
   const q = session.questions[session.idx]
-  if (!q.opts.includes(choice)) return 'INVALID_TARGET'
-  session.answers[session.idx] = choice
-  const norm = normalize(q.word)
-  const stat = s.learning.libs[session.lib]
-  if (q.from === 'review') {
-    if (choice === q.meaning) {
-      stat.wrongQueue = stat.wrongQueue.filter((w) => w !== norm)
-    } else {
-      stat.wrongQueue = [...stat.wrongQueue.filter((w) => w !== norm), norm]
-    }
-  } else if (choice !== q.meaning && !stat.wrongQueue.includes(norm)) {
-    stat.wrongQueue.push(norm)
+  let correct: boolean
+  if (q.kind === 'spell') {
+    const input = choice.trim()
+    if (!input) return 'INVALID_TARGET'
+    session.answers[session.idx] = input
+    correct = normalize(input) === normalize(q.word)
+  } else {
+    if (!q.opts.includes(choice)) return 'INVALID_TARGET'
+    session.answers[session.idx] = choice
+    correct = choice === q.meaning
   }
+  s.learning.cards[normalize(q.word)] = grade(s.learning.cards, normalize(q.word), s.realDay.today, correct)
   return null
 }
 
@@ -124,15 +111,19 @@ export function next(s: GameState): ReasonCode | null {
   return null
 }
 
-// 确认结果：判分、发奖、更新学习统计（quiz.md §3.5/§3.6）；确认即完成当日任务并清空会话
+// 确认结果：判分、发奖、更新学习统计（quiz.md §3.5/§3.6）；SRS 评级已在 answer 时入账。
+// 确认即完成当日任务并清空会话
 export function confirm(s: GameState): ReasonCode | null {
   const session = s.quizDaily.session
   if (!session || session.phase !== 'result') return 'INVALID_TARGET'
   const stat = s.learning.libs[session.lib]
+  const isCorrect = (q: QuizQuestion, i: number): boolean =>
+    q.kind === 'spell'
+      ? normalize(String(session.answers[i] ?? '')) === normalize(q.word)
+      : session.answers[i] === q.meaning
   let score = 0
   session.questions.forEach((q, i) => {
-    const choice = session.answers[i]
-    const correct = choice === q.meaning
+    const correct = isCorrect(q, i)
     const norm = normalize(q.word)
     stat.attempts += 1
     // 首答口径：该词第一次计入本库统计时记首答正确率；重复作答只加 attempts

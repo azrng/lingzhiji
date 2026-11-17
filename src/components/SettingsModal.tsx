@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { loadPrefs, setBgmEnabled, setSfxEnabled } from '../audio'
+import { loadPrefs, setAutoReadEnabled, setBgmEnabled, setSfxEnabled, setVoiceEnabled } from '../audio'
 import { exportCode } from '../game/save'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
@@ -66,7 +66,7 @@ export default function SettingsModal() {
         </div>
         <div>
           <div className="text-gray-600 mb-2">声音</div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button
               type="button"
               aria-pressed={audioPrefs.bgm}
@@ -92,7 +92,36 @@ export default function SettingsModal() {
               🔔 音效 {audioPrefs.sfx ? '开' : '关'}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-1">偏好保存在本浏览器，不随存档导码迁移。</p>
+          <div className="flex gap-3 flex-wrap mt-3">
+            <button
+              type="button"
+              aria-pressed={audioPrefs.voice}
+              onClick={() => {
+                const next = { ...audioPrefs, voice: !audioPrefs.voice }
+                setAudioPrefs(next)
+                setVoiceEnabled(next.voice)
+              }}
+              title="任务堂朗读单词（浏览器语音，不可用时静默）"
+              className={`px-5 py-2.5 rounded-xl text-sm border transition-colors ${audioPrefs.voice ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-primary-400'}`}
+            >
+              🔊 单词发音 {audioPrefs.voice ? '开' : '关'}
+            </button>
+            <button
+              type="button"
+              aria-pressed={audioPrefs.autoRead}
+              disabled={!audioPrefs.voice}
+              onClick={() => {
+                const next = { ...audioPrefs, autoRead: !audioPrefs.autoRead }
+                setAudioPrefs(next)
+                setAutoReadEnabled(next.autoRead)
+              }}
+              title={audioPrefs.voice ? '答题后自动朗读当前单词' : '先开启单词发音'}
+              className={`px-5 py-2.5 rounded-xl text-sm border transition-colors ${!audioPrefs.voice ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : audioPrefs.autoRead ? 'bg-primary-500 text-gray-50 border-primary-500' : 'bg-gray-50 text-gray-700 border-gray-300 hover:border-primary-400'}`}
+            >
+              📢 答题自动读音 {audioPrefs.autoRead ? '开' : '关'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">发音与音效独立开关；偏好保存在本浏览器，不随存档导码迁移。</p>
         </div>
         {confirmImport && (
           <ConfirmOverlay

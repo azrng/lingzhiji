@@ -49,7 +49,12 @@ vi.mock('../wordbank', () => {
 function answerAll(s: GameState, pickIdx = 0): GameState {
   const session = s.quizDaily.session!
   for (let i = 0; i < 10; i++) {
-    s = dispatch(s, { type: 'QUIZ_ANSWER', choice: session.questions[i].opts[pickIdx] }).state
+    const q = session.questions[i]
+    // spell 题（v4 题型扩展）无选项：按 pickIdx 语义给正确/错误拼写
+    const choice = q.kind === 'spell'
+      ? (pickIdx === 0 ? q.word : q.word + 'xx')
+      : q.opts[pickIdx]
+    s = dispatch(s, { type: 'QUIZ_ANSWER', choice }).state
     s = dispatch(s, { type: 'QUIZ_NEXT' }).state
   }
   return s
@@ -99,15 +104,18 @@ describe('抽题与补足链', () => {
 
   it('新词不足时在复习配额之外补入已见词，并保留复习标记', () => {
     let s = createInitialState(7)
-    // 第一场全答错制造错词池
+    // 第一场全答错：全部入卡（Again 短间隔，今日/次日即到期重现）
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
     s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
     s = answerAll(s, 1) // opts[1] 大概率非正确释义
     s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
-    const stat = s.learning.libs.cet4
-    expect(stat.wrongQueue.length).toBeGreaterThan(0)
+    const cards = Object.values(s.learning.cards)
+    expect(cards.length).toBeGreaterThan(0)
+    // 全部入卡（非 new）；至少一张因答错进入短间隔（今日/明日到期重现）
+    expect(cards.every((c) => c.state !== 0)).toBe(true)
+    expect(cards.some((c) => c.due <= s.realDay.today + 1)).toBe(true)
     s = dispatch(s, { type: 'END_DAY' }).state
-    // 第二场：复习配额 3
+    // 第二场：12 词库已学 10、未见 2 → 新词 2 + 已学补足 8（全部标 review）
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
     const q = s.quizDaily.session!
     const reviews = q.questions.filter((x) => x.from === 'review').length
@@ -126,31 +134,36 @@ describe('错词池与奖励', () => {
     expect(bad.state.quizDaily.session!.answers[0]).toBeNull()
   })
 
-  it('答错入池、重现答对移出、再答错排到队尾', () => {
+  it('答错次日到期重现、重现答对拉长间隔（SRS 语义，替代旧错词池）', () => {
     let s = createInitialState(7)
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
     s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
     const q1 = s.quizDaily.session!
-    // 全部选错误选项：保证至少 1 个错词
+    // 全部选错误选项：4 选 1 循环错位必错
     s = answerAll(s, (q1.questions[0].opts.indexOf(q1.questions[0].meaning) + 1) % 4)
     s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
-    const stat = s.learning.libs.cet4
-    expect(stat.wrongQueue.length).toBeGreaterThanOrEqual(1)
-    const wrong = stat.wrongQueue[0]
+    // 首张卡 = 第一场题序第一词；Again 给 1 天间隔（次日到期重现）
+    const [wrong, wrongCard] = Object.entries(s.learning.cards)[0]
+    expect(wrongCard.due).toBe(s.realDay.today + 1)
+    s.realDay.today += 1 // 模拟次日
     s = dispatch(s, { type: 'END_DAY' }).state
-    // 第二场答对所有重现词
+    // 第二场：到期词优先进复习配额（练气一层配额 3，题序第一词 due 最早必入选）
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
     s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
     const q2 = s.quizDaily.session!
+    expect(q2.questions.some((x) => x.word.toLowerCase() === wrong && x.from === 'review')).toBe(true)
     for (let i = 0; i < 10; i++) {
       const item = q2.questions[i]
-      s = dispatch(s, { type: 'QUIZ_ANSWER', choice: item.meaning }).state
+      s = dispatch(s, { type: 'QUIZ_ANSWER', choice: item.kind === 'spell' ? item.word : item.meaning }).state
       s = dispatch(s, { type: 'QUIZ_NEXT' }).state
     }
     s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
-    const stat2 = s.learning.libs.cet4
-    expect(stat2.wrongQueue).not.toContain(wrong)
-    expect(stat2.reviewCorrect.total).toBeGreaterThan(0)
+    const card = s.learning.cards[wrong]
+    // 重现答对：稳定性高于答错时、到期日推远（间隔拉长）
+    expect(card.stability).toBeGreaterThan(wrongCard.stability)
+    expect(card.due).toBeGreaterThan(s.realDay.today)
+    // 重现词计入复习统计（口径不变）
+    expect(s.learning.libs.cet4.reviewCorrect.total).toBeGreaterThan(0)
   })
 
   it('不合格仍计完成任务（可结束当天），奖励为灵气 +1 心得 +2', () => {
@@ -173,7 +186,7 @@ describe('错词池与奖励', () => {
     s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
     const q = s.quizDaily.session!
     for (let i = 0; i < 10; i++) {
-      s = dispatch(s, { type: 'QUIZ_ANSWER', choice: q.questions[i].meaning }).state
+      s = dispatch(s, { type: 'QUIZ_ANSWER', choice: q.questions[i].kind === 'spell' ? q.questions[i].word : q.questions[i].meaning }).state
       s = dispatch(s, { type: 'QUIZ_NEXT' }).state
     }
     s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
@@ -224,7 +237,9 @@ describe('道心打卡（real-day.md §3.4）', () => {
     cur = dispatch(cur, { type: 'QUIZ_LEARNED' }).state
     const session = cur.quizDaily.session!
     for (let i = 0; i < 10; i++) {
-      const wrong = session.questions[i].opts.find((o) => o !== session.questions[i].meaning)!
+      const q = session.questions[i]
+      // spell 题（v4）无选项：给错误拼写；其余题型选非正确释义
+      const wrong = q.kind === 'spell' ? q.word + 'zz' : q.opts.find((o) => o !== q.meaning)!
       cur = dispatch(cur, { type: 'QUIZ_ANSWER', choice: wrong }).state
       cur = dispatch(cur, { type: 'QUIZ_NEXT' }).state
     }

@@ -2,11 +2,12 @@
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
 import { realDayIndex } from './clock'
 import { DAILY_AP, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_DOWN, MARKET_UP, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
+import { grade } from './srs'
 import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 
 export interface SaveData {
   version: number
@@ -85,6 +86,22 @@ function validLibStat(s: unknown): boolean {
   )
 }
 
+// FSRS 复习卡（srs-audio.md §3.1，随存档 v4）：数值范围与 state 枚举校验
+function validCard(c: unknown): boolean {
+  if (typeof c !== 'object' || c === null) return false
+  const x = c as Record<string, unknown>
+  return (
+    nonNegInt(x.due) && nonNegInt(x.last) &&
+    typeof x.stability === 'number' && Number.isFinite(x.stability) && (x.stability as number) >= 0 &&
+    typeof x.difficulty === 'number' && Number.isFinite(x.difficulty) && (x.difficulty as number) >= 0 &&
+    isInt(x.state) && (x.state as number) >= 0 && (x.state as number) <= 3 &&
+    nonNegInt(x.lapses)
+  )
+}
+
+// 题型枚举（srs-audio.md §3.4）
+const QUESTION_KINDS = ['w2c', 'c2w', 'listen', 'spell']
+
 export function validate(game: unknown): ReasonCode | null {
   if (typeof game !== 'object' || game === null) return 'BAD_SHAPE'
   const g = game as GameState
@@ -119,6 +136,8 @@ export function validate(game: unknown): ReasonCode | null {
     Object.values(g.learning.seenMap).every(nonNegInt) &&
     typeof g.learning.libs === 'object' && g.learning.libs !== null &&
     validLibStat(g.learning.libs.cet4) && validLibStat(g.learning.libs.cet6) &&
+    typeof g.learning.cards === 'object' && g.learning.cards !== null &&
+    Object.entries(g.learning.cards).every(([k, c]) => isStr(k) && validCard(c)) &&
     typeof g.month === 'object' && g.month !== null &&
     nonNegInt(g.month.unpaidStreak) && Array.isArray(g.month.ledger) &&
     g.month.ledger.every((entry) => typeof entry === 'object' && entry !== null && nonNegInt(entry.month) && entry.month >= 1 && isBool(entry.paid) && isStr(entry.detail)) &&
@@ -146,11 +165,16 @@ export function validate(game: unknown): ReasonCode | null {
       (q.lib === 'cet4' || q.lib === 'cet6') &&
       Array.isArray(q.questions) && q.questions.length === 10 &&
       q.questions.every((x) => typeof x === 'object' && x !== null && isStr(x.word) && isStr(x.meaning) &&
-        (x.from === 'new' || x.from === 'review') && Array.isArray(x.opts) && x.opts.length === 4 && x.opts.every(isStr) &&
-        new Set(x.opts).size === 4 && x.opts.includes(x.meaning)) &&
+        (x.from === 'new' || x.from === 'review') && Array.isArray(x.opts) && isStr(x.kind) && QUESTION_KINDS.includes(x.kind) &&
+        // spell 题无选项（opts 空），其余题型 4 选 1 且含正确释义
+        (x.kind === 'spell'
+          ? x.opts.length === 0
+          : x.opts.length === 4 && x.opts.every(isStr) && new Set(x.opts).size === 4 && x.opts.includes(x.meaning))) &&
       (q.phase === 'learning' || q.phase === 'testing' || q.phase === 'result') &&
       Array.isArray(q.answers) && q.answers.length === 10 &&
-      q.answers.every((a, i) => a === null || (isStr(a) && q.questions[i].opts.includes(a))) &&
+      q.answers.every((a, i) => a === null || (isStr(a) &&
+        // spell 题记录玩家输入原文（非空），其余题型必须是本场选项之一
+        (q.questions[i].kind === 'spell' ? a.length > 0 : q.questions[i].opts.includes(a)))) &&
       isInt(q.idx) && q.idx >= 0 && q.idx < 10
     if (!okQ) return 'BAD_SHAPE'
   }
@@ -241,6 +265,35 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
       game: {
         ...data.game,
         ...(Array.isArray(data.game?.fields) ? { fields: data.game.fields.map((f) => ({ ...f, fertility: 1 })) } : {}),
+      },
+    }
+  },
+  // v3 → v4（srs-audio.md §3.1）：错词池 + 已见词一次性转为 FSRS 复习卡——
+  // 错词 Again（短间隔尽快重现）、已见非错词 Good（长间隔起步）；wrongQueue 字段保留但此后恒空。
+  // 学习不存在中间态的词（无 seenMap 记录）不建卡 = new。脏档交 validate 拦截
+  (data) => {
+    if (data.version !== 3) return data
+    const learning = data.game?.learning
+    const today = data.game?.realDay?.today ?? 0
+    const cards: Record<string, ReturnType<typeof grade>> = {}
+    if (learning && typeof learning === 'object' && typeof learning.seenMap === 'object' && learning.seenMap !== null) {
+      const wrong = new Set<string>()
+      for (const lib of ['cet4', 'cet6'] as const) {
+        const q = learning.libs?.[lib]?.wrongQueue
+        if (Array.isArray(q)) for (const w of q) wrong.add(w)
+      }
+      for (const w of Object.keys(learning.seenMap)) {
+        cards[w] = grade({}, w, today, !wrong.has(w))
+      }
+    }
+    return {
+      ...data,
+      version: 4,
+      game: {
+        ...data.game,
+        ...(learning && typeof learning === 'object'
+          ? { learning: { ...learning, cards } }
+          : {}),
       },
     }
   },

@@ -56,11 +56,15 @@ export interface LogEntry {
   neg?: boolean // 负面事件标记（toast 用红色）
 }
 
+// 题型（srs-audio.md §3.4，随存档 v4）：认词为默认，其余按学习场次解锁
+export type QuestionKind = 'w2c' | 'c2w' | 'listen' | 'spell'
+
 export interface QuizQuestion {
   word: string // 原词（展示用）
   meaning: string // 正确释义
   from: 'new' | 'review'
-  opts: string[] // 4 选 1 选项（含正确释义）
+  opts: string[] // 4 选 1 选项（w2c=释义组，c2w/listen=单词组）；spell 题恒为空数组
+  kind: QuestionKind // 题型：决定题面渲染与作答校验方式
 }
 
 export type QuizPhase = 'learning' | 'testing' | 'result'
@@ -73,19 +77,31 @@ export interface QuizSession {
   phase: QuizPhase
 }
 
+// FSRS 复习卡（srs-audio.md §3.1，随存档 v4）：只序列化调度所需字段，
+// ts-fsrs Card 其余字段由 srs.toCard 按「现实日索引」重建；未出现的词不建卡 = new 态
+export interface FsrsCardLite {
+  due: number // 到期现实日索引（due <= realDay.today 即到期）
+  stability: number
+  difficulty: number
+  state: number // ts-fsrs State：0 new / 1 learning / 2 review / 3 relearning
+  lapses: number // 遗忘次数（答错 Again 的累计）
+  last: number // 最近复习的现实日索引（elapsed_days 计算依据）
+}
+
 export interface LibStat {
   attempts: number
   distinctWords: string[] // 在该库作答过的不同单词（归一化），distinct 由长度得出
   firstCorrect: { hit: number; total: number } // 首次作答正确率（按词首次计入统计时）
   reviewCorrect: { hit: number; total: number } // 错词重现答对比例
   sessions: number
-  wrongQueue: string[] // 归一化错词队列（队首等待最久）
+  wrongQueue: string[] // v3 遗留字段，v4 起恒空（复习调度改由 learning.cards 承担）
 }
 
 export interface Learning {
   currentLib: LibId
-  seenMap: Record<string, number> // 归一化词 → 最近作答日（跨库共享）
+  seenMap: Record<string, number> // 归一化词 → 最近作答游戏日（跨库共享，作答统计口径保留）
   libs: Record<LibId, LibStat>
+  cards: Record<string, FsrsCardLite> // 归一化词 → FSRS 复习卡（跨库共享，M2 v4）
 }
 
 export interface MonthRecord {

@@ -11,8 +11,8 @@
 
 | ID | 任务名称 | 任务目标 | 当前阶段 | 负责人 | 状态 | 优先级 | 最近更新 |
 |---|---|---|---|---|---|---|---|
+| T32 | 词义清洗与确认弹窗修复 | cleanMeaning v2：复合词性切段/子集去重/残迹剥离（双库 4993 条变化零误伤）+3 处原生 confirm 换游戏内弹窗；vitest 141+e2e 4，见 tasks/T32.md | 已交付 | AI | DONE | 高 | 2026-11-17 |
 | T30 | M6a 种田深化第一批 | 特质/地力轮作/邻作/物候+农谚相生徽章；存档 v3；vitest 137+sim 对照（daily1 62 在带内）+smoke，见 tasks/T30.md | 已交付 | AI | DONE | 高 | 2026-11-17 |
 | T31 | 玩家旅程 e2e 固化 | 试玩全程转 Playwright 三用例（满分/全错/刷新恢复），Edge 通道免装浏览器；vitest 122 不误扫，见 tasks/T31.md | 已交付 | AI | DONE | 中 | 2026-11-17 |
 | T29 | 引擎与前端全面审查 | 12 模块+stores+组件全过：修功法表分叉（常量同源）；5 项建议修与结论清单见 tasks/T29.md | 已交付 | AI | DONE | 高 | 2026-11-17 |
 | T28 | 收获类音效死路径修复 | playSfxForEntries 改喂全量差量，action 类 4 音效复活；vitest 122（+3 store 例）+浏览器复验 sfx-plant/harvest 实播，见 tasks/T28.md | 已交付 | AI | DONE | 高 | 2026-11-16 |
-| T27 | 界面动效包 | 6 项轻动效经 motion+手写 canvas：飘字/摇摆/toast/粒子/按压/降级；vitest 119+build+smoke 全过；T26 音效死路径缺陷已报待拍板，见 tasks/T27.md | 已交付 | AI | DONE | 中 | 2026-11-16 |

@@ -196,4 +196,33 @@ test.describe('灵植记 · 玩家旅程', () => {
     await expect(dialog.getByText('3/10')).toBeVisible()
     await expect(dialog.getByRole('button', { name: '下一题' })).toBeHidden()
   })
+
+  test('覆盖确认：有存档时开始新修行需游戏内弹窗确认，取消不丢档', async ({ page }) => {
+    // 先造出一个存档：完整答完当日任务（弹窗确认只在 hasSave 时出现）
+    await startNewGame(page, 'skip')
+    await finishDailyQuiz(page, 'fullScore')
+    await page.reload()
+    await expect(page.getByRole('button', { name: '继续修行' })).toBeVisible()
+
+    // 点开始修行 → 游戏内确认弹窗（原生 confirm 已替换）
+    await clickButton(page.getByRole('button', { name: '以此形象开始修行' }))
+    const confirmDialog = page.getByRole('alertdialog', { name: '开始新修行' })
+    await expect(confirmDialog).toBeVisible()
+    await expect(confirmDialog.getByText(/覆盖现有存档/)).toBeVisible()
+
+    // 取消 → 留在启动页，旧存档仍在（继续修行入口还在）
+    await clickButton(confirmDialog.getByRole('button', { name: '取消' }))
+    await expect(confirmDialog).toBeHidden()
+    await expect(page.getByRole('heading', { name: '灵植记' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '继续修行' })).toBeVisible()
+
+    // 覆盖并开始 → 进入全新的第 1 天
+    await clickButton(page.getByRole('button', { name: '以此形象开始修行' }))
+    await clickButton(page.getByRole('alertdialog', { name: '开始新修行' }).getByRole('button', { name: '覆盖并开始' }))
+    await expect(page.getByRole('heading', { name: '我的灵田' })).toBeVisible()
+    await expect(page.getByText('第 1 月 · 第 1 天')).toBeVisible()
+    const fresh = await readSave(page)
+    expect(fresh.day).toBe(1)
+    expect(fresh.resources.stones).toBe(50)
+  })
 })

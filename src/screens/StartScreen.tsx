@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { assetUrl } from '../assetUrl'
 import { characters } from '../game/characters'
 import { REASON_TEXT } from '../components/reasonText'
-import { Btn, Modal } from '../components/ui'
+import { Btn, ConfirmOverlay, Modal } from '../components/ui'
 import { useGameStore } from '../stores/useGameStore'
 
 // 启动页负责选择本局形象；所选立绘会同步到游戏中的弟子头像与结算画面。
@@ -11,6 +11,9 @@ export default function StartScreen() {
   const [importOpen, setImportOpen] = useState(false)
   const [code, setCode] = useState('')
   const [importError, setImportError] = useState('')
+  // 覆盖确认（游戏内弹窗替代原生 confirm）：开始新修行 / 导入存档都会覆盖现有档
+  const [confirmStart, setConfirmStart] = useState(false)
+  const [confirmImport, setConfirmImport] = useState(false)
   const startNew = useGameStore((s) => s.startNew)
   const continueSaved = useGameStore((s) => s.continueSaved)
   const importSaved = useGameStore((s) => s.importSaved)
@@ -21,6 +24,11 @@ export default function StartScreen() {
     // 浏览器禁用存储时仍允许进入游戏，保存失败由游戏状态提示。
   }
   const selected = characters.find((character) => character.id === characterId) ?? characters[0]
+  // 导入动作被开始覆盖确认与导入弹窗两处调用，提取为局部函数
+  const doImport = () => {
+    const result = importSaved(code)
+    if (!result.ok) setImportError(result.reason === 'SAVE_FAILED' ? '保存失败，请检查浏览器存储并保留存档码。原存档未被覆盖。' : `${REASON_TEXT[result.reason ?? 'BAD_SHAPE'] ?? '存档码无效'}，原存档未被覆盖。`)
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-primary-100 text-gray-800">
@@ -80,7 +88,7 @@ export default function StartScreen() {
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Btn onClick={() => {
-                if (hasSave && !window.confirm('开始新修行会覆盖现有存档，确定继续吗？')) return
+                if (hasSave) { setConfirmStart(true); return }
                 startNew(characterId)
               }} className="!min-h-12 !flex-1 !px-8 !py-2.5">以此形象开始修行</Btn>
               {hasSave && <Btn variant="secondary" onClick={() => {
@@ -104,12 +112,31 @@ export default function StartScreen() {
           <div className="mt-4 flex flex-wrap justify-end gap-3">
             <Btn variant="secondary" onClick={() => setImportOpen(false)}>取消</Btn>
             <Btn disabled={!code.trim()} onClick={() => {
-              if (hasSave && !window.confirm('导入成功后会覆盖浏览器中的现有存档，确定继续吗？')) return
-              const result = importSaved(code)
-              if (!result.ok) setImportError(result.reason === 'SAVE_FAILED' ? '保存失败，请检查浏览器存储并保留存档码。原存档未被覆盖。' : `${REASON_TEXT[result.reason ?? 'BAD_SHAPE'] ?? '存档码无效'}，原存档未被覆盖。`)
+              if (hasSave) { setConfirmImport(true); return }
+              doImport()
             }}>导入并继续</Btn>
           </div>
         </Modal>
+      )}
+      {confirmStart && (
+        <ConfirmOverlay
+          title="开始新修行"
+          body="开始新修行会覆盖现有存档，确定继续吗？"
+          confirmText="覆盖并开始"
+          tone="danger"
+          onConfirm={() => { setConfirmStart(false); startNew(characterId) }}
+          onCancel={() => setConfirmStart(false)}
+        />
+      )}
+      {confirmImport && (
+        <ConfirmOverlay
+          title="导入存档"
+          body="导入成功后会覆盖浏览器中的现有存档，确定继续吗？原存档可先导出留底。"
+          confirmText="覆盖并导入"
+          tone="danger"
+          onConfirm={() => { setConfirmImport(false); doImport() }}
+          onCancel={() => setConfirmImport(false)}
+        />
       )}
     </main>
   )

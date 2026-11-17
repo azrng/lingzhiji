@@ -12,18 +12,76 @@ export interface WordEntry {
   group: string[]
 }
 
-// 同一词性下完全重复的整段释义只展示一次；不同词性或不同释义都保留。
+// 词性列表：长词在前，避免单字母（n/v/p）截断多字母词性
+const POS_SOURCE = 'vt|vi|pl|adj|adv|aux|art|conj|num|prep|pron|int|n|v'
+// 复合词性（n & v. / adv&prep.）：切分前先占位，防止从复合中间断开产生垃圾段
+const COMPOSITE_POS = new RegExp(`\\b(${POS_SOURCE})(?:\\s*&\\s*(?:${POS_SOURCE}))+`, 'gi')
+// 切分边界：词性标签处，或复合词性占位符（占位符自身不在词性列表内，需显式保留边界）
+const POS_BOUNDARY = new RegExp(`(?=\\b(?:${POS_SOURCE})\\.|\u0001\\d+\u0001\\.)`, 'g')
+// 尾部孤立词性残迹（原始数据脏尾巴，如 '…上诉；vi&n'）
+const TAIL_POS_DEBRIS = new RegExp(`[；;,、]\\s*(?:${POS_SOURCE})(?:\\s*&\\s*(?:${POS_SOURCE}))*\\.?\\s*$`, 'i')
+
+// 比较键：去空白、省略号与标点归一、小写（……与…、全半角逗号分号视为同义）
+const normKey = (s: string): string =>
+  s.replace(/\s+/g, '').replace(/……/g, '…').replace(/[，,]/g, ',').replace(/[；;]/g, ';').toLowerCase()
+// 词性族集合：vt/vi 归一为 v，族以集合语义比较（vt&vi&n ≡ v&n 口径下的覆盖关系）
+const famSet = (posKey: string): Set<string> => new Set(posKey.replace(/vt|vi/g, 'v').split('&'))
+const famSubset = (a: Set<string>, b: Set<string>): boolean => [...a].every((x) => b.has(x))
+// 义项集合：段内释义按中英文分隔符拆开
+const itemsOf = (def: string): Set<string> =>
+  new Set(def.split(/[；;，,、/]/).map((p) => p.replace(/\s+/g, '').replace(/……/g, '…')).filter(Boolean))
+const subsetOf = (a: Set<string>, b: Set<string>): boolean => [...a].every((x) => b.has(x))
+
+// 词义清洗（词库原始数据为多来源拼贴：同义段重复、复合词性写法不一、省略号全半角混用）。
+// 规则：按词性标签切段 → 剥尾部残迹/丢空段 → 同键重复留首现；义项被另一段完全覆盖
+// （义项 ⊆ 且词性族 ⊆，如 vt.{攻击,进攻} ⊆ vt&vi&n.{攻击,进攻}）时丢弃，信息无损合并；
+// 词性族互不覆盖的段（如 n. 滥用 与 v. 滥用）保留——不同词性的释义对学习者是有效信息。
 export function cleanMeaning(meaning: string): string {
-  const seen = new Set<string>()
-  return meaning.split(/(?=\b(?:n|v|vt|vi|adj|adv|prep|conj|pron|art|num|int|aux|pl)\.)/i)
-    .map((part) => part.trim().replace(/[；;]+$/, '').trim())
-    .filter((part) => {
-      if (!part) return false
-      const key = part.replace(/\s+/g, '').replace(/[，,]/g, ',').replace(/[；;]/g, ';').toLowerCase()
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    }).join('；')
+  const stash: string[] = []
+  const stashed = meaning.replace(COMPOSITE_POS, (m) => {
+    stash.push(m)
+    return `\u0001${stash.length - 1}\u0001`
+  })
+  const rawSegs = stashed.split(POS_BOUNDARY).map((s) => s.trim().replace(/[；;]+$/, '').trim()).filter(Boolean)
+  const segs: { pos: string; def: string; items: Set<string> }[] = []
+  for (const raw of rawSegs) {
+    const restored = raw.replace(/\u0001(\d+)\u0001/g, (_, i) => stash[Number(i)])
+    const m = restored.match(new RegExp(`^((?:${POS_SOURCE})(?:\\s*&\\s*(?:${POS_SOURCE}))*)\\.\\s*(.*)$`, 'i'))
+    let pos = ''
+    let def = restored
+    if (m) {
+      pos = m[1]
+      def = m[2]
+    }
+    def = def.replace(TAIL_POS_DEBRIS, '').replace(/\s{2,}/g, ' ').trim()
+    if (!def) continue // 无释义内容的段（尾部孤立词性标签）直接丢弃
+    segs.push({ pos, def, items: itemsOf(def) })
+  }
+  const keys = segs.map((s) => `${normKey(s.pos)}|${normKey(s.def)}`)
+  const fams = segs.map((s) => famSet(normKey(s.pos)))
+  const covered = (i: number, j: number): boolean => subsetOf(segs[i].items, segs[j].items) && famSubset(fams[i], fams[j])
+  const drop = new Array<boolean>(segs.length).fill(false)
+  for (let i = 0; i < segs.length; i++) {
+    if (drop[i]) continue
+    for (let j = i + 1; j < segs.length; j++) {
+      if (drop[j]) continue
+      // 完全等价（同键或互为覆盖）：保留首现
+      if (keys[i] === keys[j] || (covered(i, j) && covered(j, i))) {
+        drop[j] = true
+        continue
+      }
+      // 单向覆盖：丢被覆盖的一段
+      if (covered(i, j)) {
+        drop[i] = true
+        break
+      }
+      if (covered(j, i)) drop[j] = true
+    }
+  }
+  return segs
+    .filter((_, k) => !drop[k])
+    .map((s) => (s.pos ? `${s.pos}. ${s.def}` : s.def).trim())
+    .join('；')
 }
 
 const prepareBank = (entries: WordEntry[]) => entries.map((entry) => ({ ...entry, meaning: cleanMeaning(entry.meaning) }))

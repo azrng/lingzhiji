@@ -34,6 +34,35 @@ export function Btn({
   )
 }
 
+// 覆盖确认弹窗（替代原生 window.confirm：嵌入式 webview 对原生对话框行为不可控，且风格与游戏不符）。
+// 叠加在 Modal（z-40）/toast（z-60）之上；Escape 走 useModalFocus 的 onClose=取消。
+export function ConfirmOverlay({
+  title, body, confirmText, cancelText = '取消', tone = 'primary', onConfirm, onCancel,
+}: {
+  title: string
+  body: string
+  confirmText: string
+  cancelText?: string
+  tone?: 'primary' | 'danger'
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useModalFocus(dialogRef, onCancel)
+  return (
+    <div className="fixed inset-0 z-[65] bg-gray-900/50 flex items-center justify-center p-4">
+      <div ref={dialogRef} data-game-modal tabIndex={-1} role="alertdialog" aria-modal="true" aria-label={title} className="w-full max-w-md rounded-2xl bg-gray-50 p-6 shadow-lg">
+        <h3 className="font-serif text-lg text-info-600 tracking-widest">{title}</h3>
+        <p className="mt-3 text-sm leading-relaxed text-gray-700">{body}</p>
+        <div className="mt-5 flex justify-end gap-3">
+          <Btn variant="secondary" onClick={onCancel}>{cancelText}</Btn>
+          <Btn variant={tone} onClick={onConfirm}>{confirmText}</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // 可关闭与强制结算弹层共用焦点约束；仅最上层响应键盘。
 export function useModalFocus(dialogRef: RefObject<HTMLDivElement | null>, onClose?: () => void) {
   const closeRef = useRef(onClose)

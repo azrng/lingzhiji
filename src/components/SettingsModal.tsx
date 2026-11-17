@@ -4,7 +4,7 @@ import { exportCode } from '../game/save'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
-import { Btn, Modal } from './ui'
+import { Btn, ConfirmOverlay, Modal } from './ui'
 
 // 设置弹层：真实导出/导入（save.md §3.4）与重置开局
 export default function SettingsModal() {
@@ -16,6 +16,7 @@ export default function SettingsModal() {
   const [importCodeText, setImportCodeText] = useState('')
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmImport, setConfirmImport] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState(false)
   const [audioPrefs, setAudioPrefs] = useState(loadPrefs)
@@ -58,17 +59,7 @@ export default function SettingsModal() {
           <Btn
             variant="secondary"
             className="mt-2"
-            onClick={() => {
-              if (!window.confirm('导入会覆盖当前存档，确定继续吗？')) return
-              const r = importSaved(importCodeText)
-              if (r.ok) {
-                setImportResult({ ok: true, msg: '导入成功，存档已覆盖' })
-                const day = useGameStore.getState().game.day
-                pushToasts([{ day, kind: 'settle', icon: '📥', title: '存档导入成功', text: `已恢复到第 ${day} 天` }])
-              } else {
-                setImportResult({ ok: false, msg: r.reason === 'SAVE_FAILED' ? '保存失败，请保留导码并检查浏览器存储（原档已保留）' : `${REASON_TEXT[r.reason ?? 'BAD_SHAPE'] ?? '导码无效'}（原档已保留）` })
-              }
-            }}
+            onClick={() => setConfirmImport(true)}
           >
             导入
           </Btn>
@@ -103,6 +94,26 @@ export default function SettingsModal() {
           </div>
           <p className="text-xs text-gray-400 mt-1">偏好保存在本浏览器，不随存档导码迁移。</p>
         </div>
+        {confirmImport && (
+          <ConfirmOverlay
+            title="导入存档"
+            body="导入会覆盖当前存档，确定继续吗？原档可先复制导码留底。"
+            confirmText="覆盖并导入"
+            tone="danger"
+            onConfirm={() => {
+              setConfirmImport(false)
+              const r = importSaved(importCodeText)
+              if (r.ok) {
+                setImportResult({ ok: true, msg: '导入成功，存档已覆盖' })
+                const day = useGameStore.getState().game.day
+                pushToasts([{ day, kind: 'settle', icon: '📥', title: '存档导入成功', text: `已恢复到第 ${day} 天` }])
+              } else {
+                setImportResult({ ok: false, msg: r.reason === 'SAVE_FAILED' ? '保存失败，请保留导码并检查浏览器存储（原档已保留）' : `${REASON_TEXT[r.reason ?? 'BAD_SHAPE'] ?? '导码无效'}（原档已保留）` })
+              }
+            }}
+            onCancel={() => setConfirmImport(false)}
+          />
+        )}
         <div className="bg-gray-100 rounded-lg p-3 text-xs text-gray-500">
           多标签页：同时游玩多个页面会互相覆盖存档，检测到时会在顶部提示。存档在每次有效操作后自动保存。
         </div>

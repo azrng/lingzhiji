@@ -10,7 +10,7 @@ const TODAY = 20774
 
 describe('FSRS 调度纯函数（srs-audio.md §3.1）', () => {
   it('首见答错 Again：次日到期（短间隔尽快重现）', () => {
-    const cards = {}
+    const cards: Record<string, FsrsCardLite> = {}
     const card = grade(cards, 'abandon', TODAY, false)
     expect(card.state).toBe(2) // short_term 关闭：Again 直接入长期复习态
     expect(card.due).toBe(TODAY + 1)

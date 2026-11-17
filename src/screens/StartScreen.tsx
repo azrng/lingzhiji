@@ -41,7 +41,12 @@ export default function StartScreen() {
             <div aria-hidden="true" className="absolute -left-12 top-12 h-52 w-52 rounded-full border border-white/60" />
             <div aria-hidden="true" className="absolute -right-16 bottom-10 h-64 w-64 rounded-full border border-white/50" />
             <span className="relative z-10 rounded-full border border-[#b8cfc0] bg-white/55 px-4 py-1 text-xs tracking-[.24em] text-primary-700">青云宗 · 灵植堂</span>
-            <img key={selected.id} src={selected.image} alt={selected.name} className="relative z-10 my-1 h-[270px] max-w-full object-contain drop-shadow-[0_16px_12px_rgba(45,69,55,.16)] sm:h-[320px] lg:h-[390px]" />
+            {selected.image ? (
+              <img key={selected.id} src={selected.image} alt={selected.name} className="relative z-10 my-1 h-[270px] max-w-full object-contain drop-shadow-[0_16px_12px_rgba(45,69,55,.16)] sm:h-[320px] lg:h-[390px]" />
+            ) : (
+              // 立绘未交付的过渡态：预览区放大徽记占位（T37），交付后随 characters.ts 点亮
+              <span key={selected.id} aria-hidden="true" className="relative z-10 my-1 flex h-[270px] w-full items-center justify-center text-8xl drop-shadow-[0_16px_12px_rgba(45,69,55,.16)] sm:h-[320px] lg:h-[390px]">{selected.emblem}</span>
+            )}
             <div className="relative z-10 mb-8 text-center">
               <div className="font-serif text-2xl tracking-[.16em] text-primary-800">{selected.name}</div>
               <div className="mt-1 text-sm tracking-[.18em] text-gray-600">{selected.role}</div>
@@ -65,7 +70,7 @@ export default function StartScreen() {
               </div>
               <span className="mb-1 text-xs tracking-wider text-gray-400">选择形象</span>
             </div>
-            <div role="radiogroup" aria-label="选择人物形象" className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-3">
+            <div role="radiogroup" aria-label="选择人物形象" className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
               {characters.map((character) => {
                 const active = character.id === selected.id
                 return (
@@ -78,7 +83,12 @@ export default function StartScreen() {
                     className={`group min-h-[150px] rounded-2xl border p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:p-3 ${active ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-gray-200 bg-white/70 hover:border-primary-300 hover:bg-white'}`}
                   >
                     <span className={`flex h-[82px] items-start justify-center overflow-hidden rounded-xl bg-gradient-to-br ${character.tone}`}>
-                      <img src={character.image} alt="" aria-hidden="true" className="h-[210px] max-w-none object-contain transition-transform group-hover:scale-[1.03]" />
+                      {character.image ? (
+                        <img src={character.image} alt="" aria-hidden="true" className="h-[210px] max-w-none object-contain transition-transform group-hover:scale-[1.03]" />
+                      ) : (
+                        // 立绘未交付（T37 过渡态）：emoji 徽记兜底，PNG 填回 characters.ts 即点亮
+                        <span aria-hidden="true" className="flex h-full w-full items-center justify-center text-4xl transition-transform group-hover:scale-110">{character.emblem}</span>
+                      )}
                     </span>
                     <span className="mt-2 block text-center text-xs font-medium leading-5 text-gray-800 sm:text-sm">{character.name}</span>
                     <span className="block text-center text-[11px] text-gray-500">{character.role}</span>

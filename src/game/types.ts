@@ -1,7 +1,7 @@
 // 灵植记 · 核心类型定义（CON-LINGZHIJI-SAVE-001 落地点，契约草案落地后为唯一事实来源）
 
 export type LibId = 'cet4' | 'cet6'
-export type CharacterId = 'junior-sister' | 'senior-brother' | 'senior-sister'
+export type CharacterId = 'junior-sister' | 'senior-brother' | 'senior-sister' | 'sweeping-monk' | 'junior-brother' | 'eldest-brother' | 'bookworm' | 'old-herbalist'
 
 export type HerbId = 'qingling' | 'ninglu' | 'ziyun' | 'chisui' | 'longxue' | 'jiuye'
 

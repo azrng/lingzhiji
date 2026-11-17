@@ -89,7 +89,8 @@ export function validate(game: unknown): ReasonCode | null {
   if (typeof game !== 'object' || game === null) return 'BAD_SHAPE'
   const g = game as GameState
   const ok =
-    (g.characterId === undefined || g.characterId === 'junior-sister' || g.characterId === 'senior-brother' || g.characterId === 'senior-sister') &&
+    // 白名单与 types.CharacterId 同步维护（T37：漏改=新角色存档被判无效，导入/刷新恢复失败）
+    (g.characterId === undefined || g.characterId === 'junior-sister' || g.characterId === 'senior-brother' || g.characterId === 'senior-sister' || g.characterId === 'sweeping-monk' || g.characterId === 'junior-brother' || g.characterId === 'eldest-brother' || g.characterId === 'bookworm' || g.characterId === 'old-herbalist') &&
     nonNegInt(g.day) && g.day >= 1 &&
     (g.phase === 'day' || g.phase === 'quota') &&
     nonNegInt(g.ap) && g.ap <= DAILY_AP &&

@@ -75,7 +75,7 @@ export default function MarketPanel() {
           })}
           <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
             <Sprite sheet="market-goods-sheet.png" cols={4} rows={2} col={2} row={1} size={38} />
-            <div className="flex-1">
+            <div className="flex-1" title="心得用于功法进阶（每级需 100 心得）">
               <div className="text-sm font-medium text-gray-800">功法残卷</div>
               <div className="text-xs text-gray-500">120 灵石 · 打开后心得 +30</div>
             </div>

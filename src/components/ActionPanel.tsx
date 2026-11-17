@@ -30,7 +30,7 @@ export default function ActionPanel() {
     <section className="bg-gray-50/95 border border-gray-50 rounded-3xl shadow-lg px-5 py-5 sm:px-7">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
         <div><h2 className="font-serif text-xl tracking-widest text-info-600">今日修行</h2><p className="mt-1 text-xs text-gray-600">照料灵田，积累修为</p></div>
-        <div className="flex items-center gap-2 rounded-full bg-warning-50 px-4 py-2">
+        <div className="flex items-center gap-2 rounded-full bg-warning-50 px-4 py-2" title="每日 3 点、次日回满：浇灌/吐纳/收获各 1 点，开荒 2 点；坊市、播种、灌注不消耗">
           <span className="text-xs text-gray-600 tracking-widest">行动力</span>
           <span className="flex gap-1">
             {[0, 1, 2].map((i) => (
@@ -41,11 +41,12 @@ export default function ActionPanel() {
         </div>
       </div>
       <div className="flex items-center gap-3 flex-wrap">
-        <Btn className="!min-h-11 !px-5" onClick={() => setQuizOpen(true)} variant={g.quizDaily.done ? 'secondary' : 'primary'}>
+        <Btn className="!min-h-11 !px-5" onClick={() => setQuizOpen(true)} variant={g.quizDaily.done ? 'secondary' : 'primary'}
+          title="10 道背词题：合格 +3 灵气 +5 贡献 +8 心得（满分心得再 +4）；答错也能继续，完成后才能结束这一天">
           任务堂 {g.quizDaily.done ? '· 已完成 ✓' : '· 今日未完成'}
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday}
-          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，全田今日免缺水'}>
+          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，全田今日免缺水；缺水累计第 3 天会减产'}>
           浇灌 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'IRRIGATE' }))} disabled={g.resources.qi < 1 || noGrowing}
@@ -56,15 +57,17 @@ export default function ActionPanel() {
           title={g.tunaUsedToday ? '今日已修炼' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，修为 +1'}>
           吐纳 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
-        <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)}>坊市</Btn>
-        <Btn className="!min-h-11" variant="secondary" onClick={() => setGongfaOpen(true)}>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)} title="买卖种子、灵草与残卷，不消耗行动力">坊市</Btn>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setGongfaOpen(true)} title="查看功法加成；攒足心得与贡献可进阶">
           功法 Lv{g.gongfa}
         </Btn>
         {canEmergency && (
-          <Btn className="!min-h-11" variant="gold" onClick={() => tryAct(() => act({ type: 'EMERGENCY_SEED' }))}>应急领种</Btn>
+          <Btn className="!min-h-11" variant="gold" onClick={() => tryAct(() => act({ type: 'EMERGENCY_SEED' }))}
+            title="山穷水尽的救助：库存清空且无种可播时，领 1 枚青灵草种子">应急领种</Btn>
         )}
         <div className="ml-auto">
-          <Btn className="!min-h-11 !px-5" variant="gold" onClick={() => (g.quizDaily.done ? tryAct(() => act({ type: 'END_DAY' })) : setGateOpen(true))}>
+          <Btn className="!min-h-11 !px-5" variant="gold" onClick={() => (g.quizDaily.done ? tryAct(() => act({ type: 'END_DAY' })) : setGateOpen(true))}
+            title="结算当日并进入次日；需先完成任务堂">
             结束这一天 →
           </Btn>
         </div>

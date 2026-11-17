@@ -1,4 +1,4 @@
-import { FREEZE_CAP, MILESTONE_TITLES, QUIZ_SIZE, STREAK_MILESTONES } from '../game/constants'
+import { FREEZE_CAP, FREEZE_GRANT_EVERY, MILESTONE_TITLES, QUIZ_SIZE, STREAK_MILESTONES } from '../game/constants'
 import { indexToDate, realDayIndex } from '../game/clock'
 import { useGameStore } from '../stores/useGameStore'
 import { Btn, Modal } from './ui'
@@ -67,9 +67,9 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-4">
         {/* 统计行：连胜 / 历史最高 / 护道符 */}
         <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-gray-700">
-          <span>道心连胜 <b className="text-primary-600">{g.streak.count}</b> 🔥</span>
+          <span title="每个现实日完成一次任务堂（10 题，答错也算）即打卡；连胜达成里程碑可得称号">道心连胜 <b className="text-primary-600">{g.streak.count}</b> 🔥</span>
           <span>历史最高 <b className="text-primary-600">{g.streak.best}</b></span>
-          <span>护道符 <b className="text-primary-600">{g.streak.freezes}/{FREEZE_CAP}</b> 🧿</span>
+          <span title={`上限 ${FREEZE_CAP} 枚：每累计打卡 ${FREEZE_GRANT_EVERY} 次自动 +1；漏签时自动消耗，保住连胜`}>护道符 <b className="text-primary-600">{g.streak.freezes}/{FREEZE_CAP}</b> 🧿</span>
         </div>
         {/* 称号与下一里程碑：称号由已达成最高里程碑派生，不存档 */}
         <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-gray-600">

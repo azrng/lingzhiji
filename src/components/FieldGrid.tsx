@@ -87,7 +87,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         </div>
         <div className="text-xs text-gray-600">生长 {f.progress}/{eff} 天 · 预计产量 {f.curYield} 株</div>
         <div className="text-xs text-primary-700">{g.wateredToday ? '今日已浇灌' : '今日尚未浇灌'}</div>
-        {f.dry! > 0 && !f.halved && <div className="text-xs text-warning-500">⚠ 缺水 {f.dry} 天</div>}
+        {f.dry! > 0 && !f.halved && <div className="text-xs text-warning-500" title="未浇灌日累计：连续缺水第 3 天产量减半一次；浇灌后清零（凝露花喜湿免疫）">⚠ 缺水 {f.dry} 天</div>}
         {f.halved && <div className="text-xs text-error-400">已减产</div>}
       </div>
     )
@@ -140,9 +140,13 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         <span className="ml-1.5 text-primary-600" title={`地力：${['贫瘠', '常沃', '肥沃'][f.fertility]}`}>
           {'●'.repeat(f.fertility)}{'○'.repeat(2 - f.fertility)}
         </span>
-        {f.lastCrop && <span className="ml-1.5 text-gray-400">上茬 {HERB_BY_ID[f.lastCrop].name}</span>}
+        {f.lastCrop && (
+          <span className="ml-1.5 text-gray-400" title={`轮作提示：换种不同灵草可养地（换固氮的青灵草地力 +1）；连作同草地力 −1（青灵草、深根的龙血藤除外）`}>
+            上茬 {HERB_BY_ID[f.lastCrop].name}
+          </span>
+        )}
         {f.status !== 'empty' && f.status !== 'confiscated' && f.herb && shadeAdj(g.fields, f.id, f.herb) > 0 && (
-          <span className="ml-1.5 rounded-md border border-gold px-1 text-[10px] text-gold-ink fx-glow-gold">相生</span>
+          <span className="ml-1.5 rounded-md border border-gold px-1 text-[10px] text-gold-ink fx-glow-gold" title="喜阴灵草邻着高秆灵草（赤髓参/龙血藤/九叶莲），本茬预计产量 +1">相生</span>
         )}
       </div>
       {body}
@@ -179,10 +183,17 @@ function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-sm font-medium text-gray-800">{h.name}</span>
-                    <span className={`text-[11px] px-1 rounded ${h.allSeason ? 'text-gold-ink border border-gold' : sAdj > 0 ? 'text-success-500 bg-success-50' : 'text-error-500 bg-error-50'}`}>{seasonTag}</span>
+                    <span
+                      className={`text-[11px] px-1 rounded ${h.allSeason ? 'text-gold-ink border border-gold' : sAdj > 0 ? 'text-success-500 bg-success-50' : 'text-error-500 bg-error-50'}`}
+                      title={h.allSeason ? '任何季节播种产量不变' : sAdj > 0 ? '当季播种：预计产量 +1 株' : '反季播种：预计产量 −1 株'}
+                    >{seasonTag}</span>
                     <span className="text-xs text-gray-600">库存 {g.seeds[h.id]}</span>
                   </div>
-                  {traits && <div className="mt-0.5 text-[11px] text-primary-600">特质：{traits}</div>}
+                  {traits && (
+                    <div className="mt-0.5 text-[11px] text-primary-600" title="固氮：轮作换种可 +1 地力 · 喜湿：免疫缺水减产 · 喜阴：邻高秆草产量 +1 · 驱虫：护邻田免产量灾 · 深根：连作不耗地力 · 灵韵：全季适播">
+                      特质：{traits}
+                    </div>
+                  )}
                   <div className="mt-1 text-xs leading-5 text-gray-600">灵气 {h.qi} · 生长 {effDays(h.id, g.gongfa)} 天<br />收获 {h.yield} 株 · 售价 {h.sell} 灵石</div>
                 </div>
                 <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!min-h-11 !px-3">

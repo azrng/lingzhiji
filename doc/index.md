@@ -13,6 +13,8 @@ last_updated: 2026-11-16
 | 模块 | 功能 | 类型 | 文档 | 状态 | 关联 |
 |---|---|---|---|---|---|
 | lingzhiji | 灵植记（修仙种田 × 背单词） | 需求 | `requirements/lingzhiji/v0.1-prd.md` | approved | REQ-LINGZHIJI-001 |
+| lingzhiji | 灵植堂委托（M6b） | 需求 | `requirements/lingzhiji/cultivation-commissions.md` | in-review | REQ-LINGZHIJI-COMMISSION-001 |
+| lingzhiji | 灵植堂委托（M6b） | 设计 | `design/lingzhiji/cultivation-commissions.md` | in-review | DES-LINGZHIJI-COMMISSION-001 → REQ-LINGZHIJI-COMMISSION-001 |
 | lingzhiji | 阶段 0 设计文档索引（架构 / 核心循环 / 种植 / 任务堂 / 经济 / 境界 / 存档 / 界面） | 设计 | `design/index.md` | approved | DES-INDEX → 各功能设计 |
 | lingzhiji | 氛围包音频候选（M3 前置素材选定） | 设计 | `design/lingzhiji/mood-pack-audio.md` | approved | DES-LINGZHIJI-AUDIO → PRD §19 / T25 M3 |
 | lingzhiji | 氛围音频（BGM / 音效 / 声音开关） | 设计 | `design/lingzhiji/audio-impl.md` | approved | DES-LINGZHIJI-AUDIO-IMPL → PRD §20 |

@@ -64,6 +64,20 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     </span>
   )
 
+  // 成长阶段植株（T40 图集 6 行 × 4 列）：plot 裸土底图 + 透明植株叠加，底部对齐；
+  // 成熟态仅植株摇摆（底图静止），swayDelay 供田格间错相
+  const growthCrop = (stage: number, swayDelay?: string) => (
+    <span className="relative inline-flex items-end justify-center">
+      <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={140} />
+      <span
+        className={`absolute bottom-2 left-1/2 -translate-x-1/2${swayDelay === undefined ? '' : ' fx-sway'}`}
+        style={swayDelay === undefined ? undefined : { animationDelay: `${swayDelay}s` }}
+      >
+        <Sprite sheet="spirit-herbs-growth-sheet.png" cols={4} rows={6} col={stage} row={herbIdx} size={104} />
+      </span>
+    </span>
+  )
+
   let body: ReactNode
   if (f.status === 'empty') {
     body = (
@@ -74,10 +88,12 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     )
   } else if (f.status === 'growing') {
     const pct = Math.round((f.progress! / eff) * 100)
+    // 四阶段切分（T40）：进度 0-24% 发芽 / 25-49% 幼苗 / 50-74% 半成熟 / 75%+ 成熟形
+    const stage = Math.min(3, Math.floor((f.progress! / eff) * 4))
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
         {herbPortrait}
-        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={f.progress! / eff >= 0.5 ? 0 : 1} row={f.progress! / eff >= 0.5 ? 1 : 0} size={140} />
+        {growthCrop(stage)}
         <div className="flex items-center gap-1.5">
           <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
           <span className="text-sm font-medium text-gray-800">{herb!.name}</span>
@@ -95,10 +111,8 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     body = (
       <div className="w-full h-full flex flex-col items-center justify-center gap-2 relative">
         {herbPortrait}
-        {/* 成熟摇摆：仅待收状态，田格间按 id 错相（motion-pack.md §3.3） */}
-        <span className="fx-sway" style={{ animationDelay: `${(((fid * 7) % 35) / 10).toFixed(1)}s` }}>
-          <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={1} row={1} size={140} />
-        </span>
+        {/* 成熟摇摆：仅待收状态，田格间按 id 错相（motion-pack.md §3.3）；植株用 T40 图集成熟列 */}
+        {growthCrop(3, (((fid * 7) % 35) / 10).toFixed(1))}
         <div className="text-sm font-medium text-gray-800">{herb!.name} · 成熟</div>
         <div className="text-xs text-gray-500">产量 {f.curYield}{g.gongfa >= 3 ? '（收获另有加成）' : ''}</div>
         <Btn

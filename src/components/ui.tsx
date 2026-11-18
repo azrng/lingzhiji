@@ -166,11 +166,11 @@ export function LogIcon({ icon, size = 18, className = '' }: { icon?: string | n
 // 行动力 / 灵气点阵
 export function Pips({ value, cap }: { value: number; cap: number }) {
   return (
-    <span className="inline-flex gap-1 align-middle">
+    <span className="inline-flex gap-0.5 align-middle">
       {Array.from({ length: cap }, (_, i) => (
         <span
           key={i}
-          className={`w-2.5 h-2.5 rounded-full border ${i < value ? 'bg-primary-500 border-primary-600' : 'bg-transparent border-gray-300'}`}
+          className={`w-2 h-2 rounded-full border ${i < value ? 'bg-primary-500 border-primary-600' : 'bg-transparent border-gray-300'}`}
         />
       ))}
     </span>

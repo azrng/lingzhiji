@@ -50,13 +50,14 @@ export default function TopBar() {
       <div className="order-5 md:order-none col-span-2 flex items-center gap-x-4 gap-y-2 flex-wrap text-sm rounded-xl bg-primary-50/70 px-3 py-2">
         <Res col={0} row={0} label="灵石" value={g.resources.stones} />
         <Res col={1} row={0} label="贡献" value={g.resources.contribution} />
-        <div title="任务堂获得（合格 +3）；播种与灌注消耗，各境界有上限">
+        {/* 与 Res 同构（上行图标+数值、下行二字标签），上限并入数值展示保证上限变化时当前值清晰 */}
+        <div title={`任务堂获得（合格 +3）；播种与灌注消耗；当前上限 ${QI_CAP[g.realm]}`}>
           <div className="flex items-center gap-1.5">
             <Sprite sheet="resource-icons-sheet.png" cols={4} rows={2} col={2} row={0} size={18} />
-            <b className="text-info-600">{g.resources.qi}</b>
+            <b className="text-info-600 tabular-nums">{g.resources.qi}/{QI_CAP[g.realm]}</b>
             <Pips value={g.resources.qi} cap={QI_CAP[g.realm]} />
           </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">灵气 / 上限 {QI_CAP[g.realm]}</div>
+          <div className="text-xs text-gray-600 mt-0.5">灵气</div>
         </div>
         <Res col={3} row={0} label="心得" value={g.resources.insight} />
       </div>
@@ -96,7 +97,7 @@ function Res({ col, row, label, value }: { col: number; row: number; label: stri
     <div title={RES_TIPS[label]}>
       <div className="flex items-center gap-1.5">
         <Sprite sheet="resource-icons-sheet.png" cols={4} rows={2} col={col} row={row} size={18} />
-        <b className="text-info-600">{value}</b>
+        <b className="text-info-600 tabular-nums">{value}</b>
       </div>
       <div className="text-xs text-gray-600 mt-0.5">{label}</div>
     </div>

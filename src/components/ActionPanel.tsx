@@ -13,6 +13,7 @@ export default function ActionPanel() {
   const act = useGameStore((s) => s.act)
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
   const setMarketOpen = useUiStore((s) => s.setMarketOpen)
+  const setCommissionOpen = useUiStore((s) => s.setCommissionOpen)
   const [gateOpen, setGateOpen] = useState(false)
   const [gongfaOpen, setGongfaOpen] = useState(false)
   const [failHint, setFailHint] = useState<string | null>(null)
@@ -64,6 +65,8 @@ export default function ActionPanel() {
           吐纳 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)} title="买卖种子、灵草与残卷，不消耗行动力">坊市</Btn>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setCommissionOpen(true)}
+          title="灵植堂委托：交付灵草换奖励，不消耗行动力；每月最多接取 1 份">灵植堂</Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setGongfaOpen(true)} title="查看功法加成；攒足心得与贡献可进阶">
           功法 Lv{g.gongfa}
         </Btn>

@@ -166,10 +166,11 @@ export function validate(game: unknown): ReasonCode | null {
       Array.isArray(q.questions) && q.questions.length === 10 &&
       q.questions.every((x) => typeof x === 'object' && x !== null && isStr(x.word) && isStr(x.meaning) &&
         (x.from === 'new' || x.from === 'review') && Array.isArray(x.opts) && isStr(x.kind) && QUESTION_KINDS.includes(x.kind) &&
-        // spell 题无选项（opts 空），其余题型 4 选 1 且含正确释义
+        // spell 题无选项（opts 空）；w2c 四释义含正确释义，c2w/listen 四单词含正确单词（选项语义随题型）
         (x.kind === 'spell'
           ? x.opts.length === 0
-          : x.opts.length === 4 && x.opts.every(isStr) && new Set(x.opts).size === 4 && x.opts.includes(x.meaning))) &&
+          : x.opts.length === 4 && x.opts.every(isStr) && new Set(x.opts).size === 4 &&
+            (x.kind === 'w2c' ? x.opts.includes(x.meaning) : x.opts.includes(x.word)))) &&
       (q.phase === 'learning' || q.phase === 'testing' || q.phase === 'result') &&
       Array.isArray(q.answers) && q.answers.length === 10 &&
       q.answers.every((a, i) => a === null || (isStr(a) &&

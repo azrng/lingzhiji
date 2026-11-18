@@ -111,4 +111,29 @@ describe('存档 v1 → v2 迁移（real-day.md §3.6）', () => {
     expect(importCode(encode({ version: 0, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
     expect(importCode(encode({ version: '2', savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
   })
+
+  it('quiz 会话新题型校验按 kind 分流：c2w/listen 选项含正确单词判合法，正确项缺失仍拦截', () => {
+    // 修复前：非 spell 题一律要求 opts 含 meaning → 含 c2w/listen 的存档被误判 BAD_SHAPE（测验中途刷新即丢档）
+    const withSession = (kind: 'c2w' | 'listen' | 'w2c', opts: string[]) => {
+      const g = structuredClone(createInitialState(5))
+      g.quizDaily.session = {
+        lib: 'cet4',
+        questions: [
+          { word: 'colony', meaning: 'n. 殖民地', from: 'review', opts, kind },
+          ...Array.from({ length: 9 }, () => ({ word: 'apple', meaning: 'n. 苹果', from: 'new' as const, opts: ['n. 苹果', 'n. 梨', 'n. 橙', 'n. 桃'], kind: 'w2c' as const })),
+        ],
+        idx: 0,
+        answers: Array(10).fill(null),
+        phase: 'learning',
+      }
+      return importCode(exportCode(g))
+    }
+    expect(withSession('c2w', ['airport', 'colony', 'angle', 'animal']).ok).toBe(true)
+    expect(withSession('listen', ['colony', 'apply', 'approach', 'april']).ok).toBe(true)
+    // 正确项缺失仍拦截：c2w/listen 不含正确单词
+    expect(withSession('c2w', ['airport', 'airports', 'angle', 'animal']).reason).toBe('BAD_SHAPE')
+    expect(withSession('listen', ['apply', 'approach', 'april', 'applies']).reason).toBe('BAD_SHAPE')
+    // w2c 不含正确释义仍拦截（旧拦截口径保持）
+    expect(withSession('w2c', ['n. 殖民', 'n. 殖民地面积', 'n. 角度', 'n. 动物']).reason).toBe('BAD_SHAPE')
+  })
 })

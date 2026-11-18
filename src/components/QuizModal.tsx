@@ -3,21 +3,16 @@ import { loadPrefs, playSfx, setBgmScene, speak } from '../audio'
 import { QUIZ_PASS, QUIZ_SIZE } from '../game/constants'
 import { reviewQuota } from '../game/constants'
 import { canFormSession, entryOf, LIBS, normalize } from '../game/wordbank'
+import { isCorrectChoice } from '../game/quiz'
 import { dueCount, dueInDays } from '../game/srs'
 import { assetUrl } from '../assetUrl'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import { Btn, useModalFocus } from './ui'
-import type { QuizQuestion } from '../game/types'
 
 // 任务堂：全屏弹层，四相位 入口 → 先学（新词）→ 测验 → 结果（quiz.md + srs-audio.md）
-
 // 题面渲染按题型分流（srs-audio.md §3.4）：w2c 词→释义；c2w 释义→词；listen 听音→词；spell 拼写
-function correctOf(q: QuizQuestion, chosen: string | null): boolean {
-  if (chosen === null) return false
-  return q.kind === 'spell' ? normalize(chosen) === normalize(q.word) : chosen === q.meaning
-}
 export default function QuizModal() {
   const session = useGameStore((s) => s.game.quizDaily.session)
   const done = useGameStore((s) => s.game.quizDaily.done)
@@ -157,7 +152,7 @@ function Testing() {
   const optionsRef = useRef<HTMLDivElement>(null)
   const nextRef = useRef<HTMLDivElement>(null)
   const phonetic = entryOf(lib, normalize(q.word))?.phonetic ?? ''
-  const correct = correctOf(q, chosen)
+  const correct = isCorrectChoice(q, chosen)
   // 听音辨词进题自动朗读；其余题型答题后朗读（开关独立，srs-audio.md §3.2）
   const prefs = loadPrefs()
   useEffect(() => {
@@ -321,8 +316,8 @@ function Result() {
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
   // 结果相位时 session 仍在档（confirm 后清空并置 done），此处直接从 session 计算展示
   const session = g.quizDaily.session!
-  const score = session.questions.filter((q, i) => correctOf(q, session.answers[i])).length
-  const wrongs = session.questions.filter((q, i) => !correctOf(q, session.answers[i]))
+  const score = session.questions.filter((q, i) => isCorrectChoice(q, session.answers[i])).length
+  const wrongs = session.questions.filter((q, i) => !isCorrectChoice(q, session.answers[i]))
   const pass = score >= QUIZ_PASS
   return (
     <div className="flex flex-col gap-5">

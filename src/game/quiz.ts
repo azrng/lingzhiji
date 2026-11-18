@@ -76,24 +76,30 @@ export function learned(s: GameState): ReasonCode | null {
   return null
 }
 
-// 作答：以首次作答计分（quiz.md §3.4）；spell 题记录玩家输入并按归一化拼写判对错。
+// 判对口径按题型分流（srs-audio.md §3.4）：w2c 选项是释义，对 meaning 精确匹配；
+// c2w/listen 选项是英文单词、spell 是拼写输入，均按归一化单词比对。
+// 引擎计分与 QuizModal 反馈共用本函数，避免两处口径漂移（M2 曾因两处各自判 meaning 出错）
+export function isCorrectChoice(q: QuizQuestion, chosen: string | null): boolean {
+  if (q.kind === 'w2c') return chosen === q.meaning
+  return normalize(String(chosen ?? '')) === normalize(q.word)
+}
+
+// 作答：以首次作答计分（quiz.md §3.4）；spell 题记录玩家输入（判对口径见 isCorrectChoice）。
 // FSRS 评级在作答时即时入账（ALREADY_DONE 保证同题不重复推进），反馈行可直接展示「下次复习 N 天后」
 export function answer(s: GameState, choice: string): ReasonCode | null {
   const session = s.quizDaily.session
   if (!session || session.phase !== 'testing') return 'INVALID_TARGET'
   if (session.answers[session.idx] !== null) return 'ALREADY_DONE'
   const q = session.questions[session.idx]
-  let correct: boolean
   if (q.kind === 'spell') {
     const input = choice.trim()
     if (!input) return 'INVALID_TARGET'
     session.answers[session.idx] = input
-    correct = normalize(input) === normalize(q.word)
   } else {
     if (!q.opts.includes(choice)) return 'INVALID_TARGET'
     session.answers[session.idx] = choice
-    correct = choice === q.meaning
   }
+  const correct = isCorrectChoice(q, session.answers[session.idx])
   s.learning.cards[normalize(q.word)] = grade(s.learning.cards, normalize(q.word), s.realDay.today, correct)
   return null
 }
@@ -117,10 +123,7 @@ export function confirm(s: GameState): ReasonCode | null {
   const session = s.quizDaily.session
   if (!session || session.phase !== 'result') return 'INVALID_TARGET'
   const stat = s.learning.libs[session.lib]
-  const isCorrect = (q: QuizQuestion, i: number): boolean =>
-    q.kind === 'spell'
-      ? normalize(String(session.answers[i] ?? '')) === normalize(q.word)
-      : session.answers[i] === q.meaning
+  const isCorrect = (q: QuizQuestion, i: number): boolean => isCorrectChoice(q, session.answers[i])
   let score = 0
   session.questions.forEach((q, i) => {
     const correct = isCorrect(q, i)

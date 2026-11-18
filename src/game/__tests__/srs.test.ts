@@ -4,7 +4,7 @@ import { dispatch, createInitialState } from '../engine'
 import { dueCount, dueInDays, dueWords, grade, leastStable } from '../srs'
 import { buildQuestion, pickKind, QUESTION_TYPES } from '../question-types'
 import { createRng } from '../rng'
-import type { FsrsCardLite } from '../types'
+import type { FsrsCardLite, GameState } from '../types'
 
 const TODAY = 20774
 
@@ -112,5 +112,54 @@ describe('spell 作答（quiz.answer 分支）', () => {
     expect(dispatch(s, { type: 'QUIZ_ANSWER', choice: '   ' }).reason).toBe('INVALID_TARGET')
     s = dispatch(s, { type: 'QUIZ_ANSWER', choice: 'colonies' }).state
     expect(s.learning.cards['colony'].due).toBe(s.realDay.today + 1)
+  })
+})
+
+describe('c2w/listen 作答判对（quiz.answer/confirm 按 kind 分流）', () => {
+  function beginAndTest(): ReturnType<typeof createInitialState> {
+    let s = dispatch(createInitialState(7), { type: 'QUIZ_BEGIN' }).state
+    s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
+    return s
+  }
+  // 强制两题为新题型（直接构造会话态），其余题保持引擎产出（首场全 w2c）——走真实 dispatch 验全链
+  const forceNewKinds = (s0: GameState): GameState => {
+    const session = s0.quizDaily.session!
+    session.questions[0] = { word: 'Colony', meaning: 'n. 殖民地', from: 'review', opts: ['airport', 'Colony', 'angle', 'animal'], kind: 'c2w' }
+    session.questions[1] = { word: 'Apple', meaning: 'n. 苹果', from: 'review', opts: ['Apple', 'apply', 'approach', 'April'], kind: 'listen' }
+    return { ...s0, quizDaily: { ...s0.quizDaily, session } }
+  }
+
+  it('答对单词计满分：10/10 且复习正确率入账（修复前拿 word 对 meaning 恒判错 → 8/10）', () => {
+    let s: GameState = forceNewKinds(beginAndTest())
+    const lib = s.quizDaily.session!.lib
+    for (let i = 0; i < 10; i++) {
+      const q = s.quizDaily.session!.questions[i]
+      s = dispatch(s, { type: 'QUIZ_ANSWER', choice: q.kind === 'w2c' ? q.meaning : q.word }).state
+      s = dispatch(s, { type: 'QUIZ_NEXT' }).state
+    }
+    s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
+    expect(s.log.some((e) => e.kind === 'settle' && e.title === '任务堂 10/10')).toBe(true)
+    expect(s.learning.libs[lib].reviewCorrect.total).toBe(2)
+    expect(s.learning.libs[lib].reviewCorrect.hit).toBe(2)
+  })
+
+  it('答错单词判错：8/10 且复习正确率计 total 不计 hit', () => {
+    let s: GameState = forceNewKinds(beginAndTest())
+    const lib = s.quizDaily.session!.lib
+    for (let i = 0; i < 10; i++) {
+      const q = s.quizDaily.session!.questions[i]
+      const right = q.kind === 'w2c' ? q.meaning : q.word
+      s = dispatch(s, { type: 'QUIZ_ANSWER', choice: i === 0 ? 'airport' : i === 1 ? 'apply' : right }).state
+      s = dispatch(s, { type: 'QUIZ_NEXT' }).state
+    }
+    s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
+    expect(s.log.some((e) => e.kind === 'settle' && e.title === '任务堂 8/10')).toBe(true)
+    expect(s.learning.libs[lib].reviewCorrect.total).toBe(2)
+    expect(s.learning.libs[lib].reviewCorrect.hit).toBe(0)
+  })
+
+  it('c2w 传释义被拒（释义不在选项内；balance-sim 曾因此卡死）', () => {
+    const s = forceNewKinds(beginAndTest())
+    expect(dispatch(s, { type: 'QUIZ_ANSWER', choice: 'n. 殖民地' }).reason).toBe('INVALID_TARGET')
   })
 })

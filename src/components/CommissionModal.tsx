@@ -43,6 +43,10 @@ export default function CommissionModal() {
 
   return (
     <Modal title={`灵植堂委托 · 第 ${snap.month} 月`} onClose={() => setCommissionOpen(false)}>
+      {/* 原型演示横幅：Fake 库存与真实仓库数字不一致会误导玩家（试玩实录：新档 0 库存却显示 6 株），转正接引擎时随 Fake 一起移除 */}
+      <div className="mb-4 text-xs leading-relaxed text-warning-500 bg-warning-50 border border-warning-200 rounded-xl px-4 py-2.5">
+        ⚠ 原型演示：本弹窗的仓库数量、定额储备与奖励均为示例数据，尚未接入您的真实仓库。
+      </div>
       {snap.invalid ? (
         <p className="text-sm text-error-400 bg-error-400/10 border border-error-400/30 rounded-xl p-4 leading-relaxed">
           委托数据无效，请导入有效存档。

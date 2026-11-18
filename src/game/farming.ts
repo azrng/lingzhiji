@@ -1,5 +1,5 @@
 // 灵田种植（farming.md + farming-depth.md）：全部函数在 engine 已克隆的 draft 上就地修改，返回失败原因或 null
-import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID, DIMINISH_EXP_MULT, seasonOf } from './constants'
+import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID, seasonOf } from './constants'
 import { monthOf } from './economy'
 import { addLog } from './log'
 import { gainCultivation, qiCap } from './progression'
@@ -89,7 +89,7 @@ export function water(s: GameState): ReasonCode | null {
 
 // 收获：1 AP/块；产量顺序（farming.md §3.7）：事件→缺水已在日终处理，收获时应用功法加成；
 // 取整后掷上品（PRD §6）：20% 概率灵性涌现额外 +1 株。
-// 地力透支期（real-day.md §3.5）：修为 ×DIMINISH_EXP_MULT 向上取整（含上品株数）；灵草株数与售价不减
+// 地力透支修为减半已随 T49 时间解耦删除（real-day.md §3.5 移除）
 export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | null {
   const field = s.fields.find((f) => f.id === fieldId)
   if (!field || field.status !== 'mature') return 'NOT_MATURE'
@@ -100,8 +100,7 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
   const base = Math.ceil(field.curYield! * bonus)
   const prime = rng.next() < HARVEST_PRIME_CHANCE ? HARVEST_PRIME_BONUS : 0
   const got = base + prime
-  const diminishing = s.realDay.gamesToday >= 1
-  const expGain = Math.ceil(def.exp * got * (diminishing ? DIMINISH_EXP_MULT : 1))
+  const expGain = Math.ceil(def.exp * got)
   s.inventory[field.herb!] += got
   // 地力与茬口结算（farming-depth.md §3.2）：固氮仅在真轮作进茬时 +1（防单作锁死肥沃档，sim 校准）；
   // 连作 −1 对非固氮草生效（深根减半为 0）——青灵草单作中性、轮作才有增益；地力 clamp 0-2
@@ -112,7 +111,7 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
     kind: 'action',
     icon: '🌾',
     title: `收获 · ${def.name}`,
-    text: `+${got} 株，修为 +${expGain}${prime ? '，灵性涌现 +1 上品' : ''}${diminishing ? '，地力透支修为减半' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
+    text: `+${got} 株，修为 +${expGain}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
   })
   gainCultivation(s, expGain)
   // 清茬但保留田属性（fertility / lastCrop 是田的属性，§5）；lastCrop 更新为本茬

@@ -69,7 +69,7 @@ function Entry({ done }: { done: boolean }) {
     <div className="flex flex-col gap-5">
       {done && (
         <div className="bg-success-50 border border-success-200 rounded-xl p-4 text-sm text-gray-700">
-          今日任务已完成 ✓ 明日再来。可切换词库继续学习，今日不再重复计奖。
+          今日奖励已领 ✓（资源奖励每个现实日一次）。仍可加练：本场只更新复习计划与统计，不再发资源。
         </div>
       )}
       <div className="bg-primary-50 border border-primary-200 rounded-2xl p-5 sm:p-6">
@@ -93,13 +93,11 @@ function Entry({ done }: { done: boolean }) {
           复习计划：今日到期 <b className="text-primary-600">{dueCount(g.learning.cards, g.realDay.today)}</b> 词 · 累计学过 {Object.keys(g.learning.cards).length} 词，到期词会自动排进每场功课。
         </div>
       </div>
-      {!done && (
-        <div className="flex justify-center">
-          <Btn className="!px-10 !py-3" onClick={() => { const result = act({ type: 'QUIZ_BEGIN' }); setError(result.ok ? null : REASON_TEXT[result.reason ?? 'LIBRARY_INSUFFICIENT'] ?? '当前词库无法开始任务') }}>开始今日任务</Btn>
-        </div>
-      )}
+      <div className="flex justify-center">
+        <Btn className="!px-10 !py-3" onClick={() => { const result = act({ type: 'QUIZ_BEGIN' }); setError(result.ok ? null : REASON_TEXT[result.reason ?? 'LIBRARY_INSUFFICIENT'] ?? '当前词库无法开始任务') }}>{done ? '加练一场' : '开始今日任务'}</Btn>
+      </div>
       {error && <p role="alert" className="text-center text-sm text-error-500">{error}</p>}
-      <p className="text-xs text-gray-400 text-center">完成 10 题并确认结果后才能结束当天；答错也能继续</p>
+      <p className="text-xs text-gray-400 text-center">答错也能继续；资源奖励每个现实日一次，加练只更新复习计划</p>
     </div>
   )
 }
@@ -319,16 +317,20 @@ function Result() {
   const score = session.questions.filter((q, i) => isCorrectChoice(q, session.answers[i])).length
   const wrongs = session.questions.filter((q, i) => !isCorrectChoice(q, session.answers[i]))
   const pass = score >= QUIZ_PASS
+  // 结果相位时 quizDaily.done 是「确认前」状态：true = 本现实日已领过奖励，本场不再发资源
+  const rewarded = !g.quizDaily.done
   return (
     <div className="flex flex-col gap-5">
       <div className="text-center py-6 rounded-2xl bg-primary-50 border border-primary-100">
         <div className={`font-serif text-6xl ${pass ? 'text-success-500' : 'text-warning-500'}`}>{score}<span className="text-2xl text-gray-400">/{QUIZ_SIZE}</span></div>
-        <div className="text-sm text-gray-600 mt-2">{pass ? '合格 · 灵气充盈' : '未达合格线 · 仍可结束当天，错词已排入复习计划'}</div>
+        <div className="text-sm text-gray-600 mt-2">{pass ? '合格 · 灵气充盈' : '未达合格线 · 错词已排入复习计划'}</div>
       </div>
       <div className={`${pass ? 'bg-success-50 border-success-200' : 'bg-warning-50 border-warning-200'} border rounded-xl p-4 text-sm text-gray-700`}>
-        {pass
-          ? `奖励：灵气 +${3 + (g.gongfa >= 4 ? 1 : 0)} · 贡献 +5 · 心得 +${8 + (score === QUIZ_SIZE ? 4 : 0)}${score === QUIZ_SIZE ? '（含满分加成）' : ''}`
-          : '奖励：灵气 +1 · 心得 +2'}
+        {!rewarded
+          ? '今日奖励已领（每现实日一次），本场只更新复习计划与统计'
+          : pass
+            ? `奖励：灵气 +${3 + (g.gongfa >= 4 ? 1 : 0)} · 贡献 +5 · 心得 +${8 + (score === QUIZ_SIZE ? 4 : 0)}${score === QUIZ_SIZE ? '（含满分加成）' : ''}`
+            : '奖励：灵气 +1 · 心得 +2'}
       </div>
       {wrongs.length > 0 && (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">

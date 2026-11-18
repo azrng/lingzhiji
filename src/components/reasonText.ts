@@ -14,7 +14,7 @@ export const REASON_TEXT: Record<string, string> = {
   NO_INSIGHT: '心得不足',
   NO_STONES: '灵石不足',
   ALREADY_DONE: '今日已完成',
-  QUIZ_NOT_DONE: '今日任务堂尚未完成',
+  EXCEEDS_MONTH: '入定跨度超出本月剩余天数',
   LIBRARY_INSUFFICIENT: '当前词库无法组成 10 个不同单词',
   NOT_ENOUGH_QUOTA: '折算合计不足 15 株',
   NOT_ELIGIBLE: '当前不满足条件',

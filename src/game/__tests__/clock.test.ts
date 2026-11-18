@@ -1,4 +1,4 @@
-// 现实日锚单测（real-day.md §6）：日切边界、倒流不动作、跨多日漏签、晨露发放、gamesToday 计数
+// 现实日锚单测（real-day.md §6）：日切边界、倒流不动作、跨多日漏签、晨露发放、测验奖励锚重置
 import { describe, expect, it } from 'vitest'
 import { MORNING_GIFT } from '../constants'
 import { indexToDate, realDayIndex, syncRealDay } from '../clock'
@@ -13,9 +13,8 @@ function baseState(): GameState {
   return createInitialState(42, at(2026, 11, 10, 12))
 }
 
-// 标记当日任务完成后推进游戏日（失败即抛错，用例只关心推进后的计数）
+// 推进游戏日（T49 后 END_DAY 无任务堂门控，失败即抛错）
 function mustEndDay(s: GameState): GameState {
-  s.quizDaily.done = true
   const r = dispatch(s, { type: 'END_DAY' })
   if (!r.ok) throw new Error(`END_DAY 失败: ${r.reason}`)
   return r.state!
@@ -81,11 +80,11 @@ describe('syncRealDay：晨露与倒流', () => {
     expect(s.log.some((l) => l.title === '晨露凝而复聚')).toBe(false)
   })
 
-  it('跨日重置 gamesToday 并更新 today', () => {
+  it('跨日重置测验奖励锚（quizDaily.done）并更新 today', () => {
     const s = baseState()
-    s.realDay.gamesToday = 3
+    s.quizDaily.done = true
     const r = syncRealDay(s, at(2026, 11, 12, 8))
-    expect(r.state.realDay.gamesToday).toBe(0)
+    expect(r.state.quizDaily.done).toBe(false)
     expect(r.state.realDay.today).toBe(realDayIndex(at(2026, 11, 12, 8)))
   })
 })
@@ -146,25 +145,25 @@ describe('syncRealDay：连胜漏签检查', () => {
   })
 })
 
-describe('gamesToday 计数（engine 集成）', () => {
-  it('END_DAY 成功推进 +1；月末 QUOTA_RESOLVE 推进同样 +1；跨日 sync 归零', () => {
+describe('测验奖励锚现实日（time-decouple.md §3.4，engine 集成）', () => {
+  it('END_DAY 推进不重置 quizDaily.done；跨日 sync 重置；月末 QUOTA_RESOLVE 照常推进', () => {
     const s = baseState()
+    s.quizDaily.done = true
+    // 游戏日推进不再重置奖励锚：同一现实日内连续多日保持已领
     const d1 = mustEndDay(s)
-    expect(d1.realDay.gamesToday).toBe(1)
+    expect(d1.quizDaily.done).toBe(true)
     const d2 = mustEndDay(d1)
-    expect(d2.realDay.gamesToday).toBe(2)
-    // 跨现实日后归零
+    expect(d2.quizDaily.done).toBe(true)
+    // 跨现实日重置：次日可再领
     const { state: d3 } = syncRealDay(d2, at(2026, 11, 11, 12))
-    expect(d3.realDay.gamesToday).toBe(0)
-    // 月末路径：第 30 天 END_DAY 进定额交互，QUOTA_RESOLVE 推进同样计数
+    expect(d3.quizDaily.done).toBe(false)
+    // 月末路径：第 30 天 END_DAY 进定额交互，QUOTA_RESOLVE 推进
     d3.day = 30
-    d3.quizDaily.done = true
     const quota = dispatch(d3, { type: 'END_DAY' })
     expect(quota.ok).toBe(true)
     expect(quota.state!.phase).toBe('quota')
     const resolved = dispatch(quota.state, { type: 'QUOTA_RESOLVE', pay: false, plan: {} })
     expect(resolved.ok).toBe(true)
     expect(resolved.state!.day).toBe(31)
-    expect(resolved.state!.realDay.gamesToday).toBe(1)
   })
 })

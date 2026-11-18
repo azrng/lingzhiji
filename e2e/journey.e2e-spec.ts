@@ -19,19 +19,23 @@ async function clickButton(locator: Locator): Promise<void> {
 // 读当前存档：断言资源与引擎状态的真相源，避免依赖顶栏 DOM 顺序
 async function readSave(page: Page): Promise<{
   day: number
+  phase: string
   resources: { stones: number; contribution: number; qi: number; insight: number }
   cultivation: number
   quizDone: boolean
   streakCount: number
+  fields: { status: string; herb?: string; halved?: boolean }[]
 }> {
   return page.evaluate((key) => {
     const game = JSON.parse(localStorage.getItem(key) ?? '{}').game
     return {
       day: game.day,
+      phase: game.phase,
       resources: game.resources,
       cultivation: game.cultivation,
       quizDone: game.quizDaily.done,
       streakCount: game.streak.count,
+      fields: game.fields.map((f: { status: string; herb?: string; halved?: boolean }) => ({ status: f.status, herb: f.herb, halved: f.halved })),
     }
   }, SAVE_KEY)
 }
@@ -92,7 +96,7 @@ async function startNewGame(page: Page, tutorial: 'finish' | 'skip'): Promise<vo
 
 // 完成当日任务：选四级词库 → 先学（抓词表）→ 后测 → 确认领奖
 async function finishDailyQuiz(page: Page, mode: 'fullScore' | 'allWrong'): Promise<void> {
-  await clickButton(page.getByRole('button', { name: /任务堂 · 今日未完成/ }))
+  await clickButton(page.getByRole('button', { name: /任务堂 · 今日可领奖励/ }))
   const dialog = page.getByRole('dialog', { name: '任务堂' })
   await expect(dialog.getByText('今日功课')).toBeVisible()
   await clickButton(dialog.getByRole('button', { name: /英语四级/ }))
@@ -117,7 +121,7 @@ test.describe('灵植记 · 玩家旅程', () => {
 
     // 任务堂满分：合格奖励灵气 +3、贡献 +5、心得 +8 + 满分加成 +4，并完成道心打卡
     await finishDailyQuiz(page, 'fullScore')
-    await expect(page.getByRole('button', { name: /任务堂 · 已完成 ✓/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /任务堂 · 今日奖励已领 ✓/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /道心 1 今日已打卡/ })).toBeVisible()
     const afterQuiz = await readSave(page)
     expect(afterQuiz.quizDone).toBe(true)
@@ -132,7 +136,7 @@ test.describe('灵植记 · 玩家旅程', () => {
     await expect(plantDialog.getByText('库存 3')).toBeVisible() // 初始青灵草种子 ×3，其余种子均为 0
     await clickButton(plantDialog.getByRole('button', { name: '播种', exact: true }).first())
     await expect(plantDialog).toBeHidden()
-    await expect(page.getByText(/生长 0\/15 天/)).toBeVisible()
+    await expect(page.getByText(/生长 0\/5 天/)).toBeVisible()
 
     // 照料：浇灌与吐纳各耗 1 行动力（3 → 1）
     await clickButton(page.getByRole('button', { name: '浇灌 1 行动力' }))
@@ -146,16 +150,16 @@ test.describe('灵植记 · 玩家旅程', () => {
     await expect(marketDialog.getByText('持有灵石 50')).toBeVisible()
     await clickButton(marketDialog.getByRole('button', { name: '关闭坊市' }))
 
-    // 结束一天：日结算管线 → 次日重置（行动力 3/3、任务未完成、自然生长 +1）
+    // 结束一天：日结算管线 → 次日重置（行动力 3/3、测验奖励锚现实日不随游戏日重置、自然生长 +1）
     await clickButton(page.getByRole('button', { name: /结束这一天/ }))
     await expect(page.getByText('第 1 月 · 第 2 天')).toBeVisible()
-    // 同现实日推第二个游戏日 → 现实日锚 M1 的地力透支提示（顶栏标签唯一文案）
-    await expect(page.getByText('地力透支 · 今日第 2 个游戏日')).toBeVisible()
-    await expect(page.getByRole('button', { name: /任务堂 · 今日未完成/ })).toBeVisible()
+    // T49 时间解耦：地力透支已删，同现实日推第二个游戏日无任何惩罚标签
+    await expect(page.getByText(/地力透支/)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /任务堂 · 今日奖励已领 ✓/ })).toBeVisible()
     await expect(page.getByRole('button', { name: '浇灌 1 行动力' })).toBeEnabled()
     const nextDay = await readSave(page)
     expect(nextDay.day).toBe(2)
-    expect(nextDay.quizDone).toBe(false)
+    expect(nextDay.quizDone).toBe(true) // 奖励锚现实日：游戏日推进不重置
   })
 
   test('答题全错：未达合格线仍放行，按未合格档发奖', async ({ page }) => {
@@ -169,12 +173,12 @@ test.describe('灵植记 · 玩家旅程', () => {
     expect(saved.resources.insight).toBe(2)
     expect(saved.resources.contribution).toBe(0)
     expect(saved.streakCount).toBe(1)
-    await expect(page.getByRole('button', { name: /任务堂 · 已完成 ✓/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /任务堂 · 今日奖励已领 ✓/ })).toBeVisible()
   })
 
   test('刷新恢复：测验中途关页，继续修行回到作答进度', async ({ page }) => {
     await startNewGame(page, 'skip')
-    await clickButton(page.getByRole('button', { name: /任务堂 · 今日未完成/ }))
+    await clickButton(page.getByRole('button', { name: /任务堂 · 今日可领奖励/ }))
     const dialog = page.getByRole('dialog', { name: '任务堂' })
     await clickButton(dialog.getByRole('button', { name: /英语四级/ }))
     await clickButton(dialog.getByRole('button', { name: '开始今日任务' }))
@@ -192,7 +196,7 @@ test.describe('灵植记 · 玩家旅程', () => {
 
     // 恢复后仍在第 1 天，任务堂回到第 3 题（已答 2 题）
     await expect(page.getByText('第 1 月 · 第 1 天')).toBeVisible()
-    await clickButton(page.getByRole('button', { name: /任务堂 · 今日未完成/ }))
+    await clickButton(page.getByRole('button', { name: /任务堂 · 今日可领奖励/ }))
     await expect(dialog.getByText('3/10')).toBeVisible()
     await expect(dialog.getByRole('button', { name: '下一题' })).toBeHidden()
   })
@@ -224,5 +228,41 @@ test.describe('灵植记 · 玩家旅程', () => {
     const fresh = await readSave(page)
     expect(fresh.day).toBe(1)
     expect(fresh.resources.stones).toBe(50)
+  })
+
+  test('入定快进：种下青灵草入定 5 天，出关摘要可见、田块成熟可收获（T49 时间解耦）', async ({ page }) => {
+    await startNewGame(page, 'skip')
+    // 领测验奖励拿灵气并种一块青灵草（新周期 5 天成熟）
+    await finishDailyQuiz(page, 'fullScore')
+    await clickButton(page.getByRole('button', { name: '1 号灵田，选择种子' }))
+    const plantDialog = page.getByRole('dialog', { name: '1 号田 · 播种' })
+    await clickButton(plantDialog.getByRole('button', { name: '播种', exact: true }).first())
+    await expect(plantDialog).toBeHidden()
+
+    // 入定 5 天：滑条设值后执行
+    await clickButton(page.getByRole('button', { name: '入定', exact: true }))
+    const meditateDialog = page.getByRole('dialog', { name: '入定' })
+    await expect(meditateDialog.getByText(/出关预演/)).toBeVisible()
+    await meditateDialog.locator('input[type="range"]').fill('5')
+    await expect(meditateDialog.getByText(/推进至 第 6 日/)).toBeVisible()
+    await clickButton(meditateDialog.getByRole('button', { name: '入定 5 天' }))
+
+    // 出关结果面板：弹层标题切换为「入定 · 已出关」，重新定位后断言逐日摘要 + 明日预告
+    const resultDialog = page.getByRole('dialog', { name: '入定 · 已出关' })
+    await expect(resultDialog).toBeVisible()
+    await expect(resultDialog.getByText('一晃 5 天过去')).toBeVisible()
+    await expect(resultDialog.getByText(/明日预告/)).toBeVisible()
+    await clickButton(resultDialog.getByRole('button', { name: '回到灵田' }))
+    await expect(resultDialog).toBeHidden()
+
+    // 存档真相源：第 6 天、1 号田成熟（入定期间缺水减产为设计内取舍）
+    const saved = await readSave(page)
+    expect(saved.day).toBe(6)
+    expect(saved.fields[0]).toMatchObject({ status: 'mature', herb: 'qingling' })
+
+    // 收获闭环：出关后当天即可收获
+    await clickButton(page.getByRole('button', { name: /收获 · 1 行动力/ }).first())
+    const after = await readSave(page)
+    expect(after.fields[0].status).toBe('empty')
   })
 })

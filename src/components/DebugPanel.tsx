@@ -23,12 +23,9 @@ export default function DebugPanel() {
     persist(g)
   }
 
-  // 跳到本月第 30 天：等效推进若干游戏日，须同步计入当日游戏日数（advanceDay 同款口径），
-  // 否则地力透支判定与真实 END_DAY 路径不一致，调试结论会失真
+  // 跳到本月第 30 天：等效推进若干游戏日（T49 后无地力透支计数，直接改日即可）
   const jumpDay30 = () => patch((g) => {
-    const to = Math.floor((g.day - 1) / 30) * 30 + 30
-    g.realDay.gamesToday += to - g.day
-    g.day = to
+    g.day = Math.floor((g.day - 1) / 30) * 30 + 30
   })
 
   return (

@@ -2,13 +2,13 @@
 import type { Herb, HerbId, Season } from './types'
 
 export const HERBS: Herb[] = [
-  // 特质与适播季（farming-depth.md §3.1/§3.4）
-  { id: 'qingling', name: '青灵草', price: 5, realm: 0, qi: 1, days: 15, yield: 5, sell: 4, exp: 1, seasons: ['sprout'], nitrogen: true },
-  { id: 'ninglu', name: '凝露花', price: 12, realm: 0, qi: 1, days: 20, yield: 4, sell: 9, exp: 1, seasons: ['grow'], wet: true },
-  { id: 'ziyun', name: '紫云芝', price: 40, realm: 2, qi: 2, days: 30, yield: 3, sell: 35, exp: 3, seasons: ['grow', 'store'], shade: true },
-  { id: 'chisui', name: '赤髓参', price: 60, realm: 3, qi: 2, days: 35, yield: 3, sell: 50, exp: 3, seasons: ['store'], insectWard: true },
-  { id: 'longxue', name: '龙血藤', price: 180, realm: 6, qi: 3, days: 50, yield: 2, sell: 210, exp: 10, seasons: ['store', 'sprout'], deepRoot: true },
-  { id: 'jiuye', name: '九叶莲', price: 260, realm: 8, qi: 3, days: 60, yield: 2, sell: 290, exp: 10, seasons: [], allSeason: true },
+  // 特质与适播季（farming-depth.md §3.1/§3.4）；生长期 ÷3 取整（time-decouple.md §3.2，T49 节奏压缩）
+  { id: 'qingling', name: '青灵草', price: 5, realm: 0, qi: 1, days: 5, yield: 5, sell: 4, exp: 1, seasons: ['sprout'], nitrogen: true },
+  { id: 'ninglu', name: '凝露花', price: 12, realm: 0, qi: 1, days: 7, yield: 4, sell: 9, exp: 1, seasons: ['grow'], wet: true },
+  { id: 'ziyun', name: '紫云芝', price: 40, realm: 2, qi: 2, days: 10, yield: 3, sell: 35, exp: 3, seasons: ['grow', 'store'], shade: true },
+  { id: 'chisui', name: '赤髓参', price: 60, realm: 3, qi: 2, days: 12, yield: 3, sell: 50, exp: 3, seasons: ['store'], insectWard: true },
+  { id: 'longxue', name: '龙血藤', price: 180, realm: 6, qi: 3, days: 17, yield: 2, sell: 210, exp: 10, seasons: ['store', 'sprout'], deepRoot: true },
+  { id: 'jiuye', name: '九叶莲', price: 260, realm: 8, qi: 3, days: 20, yield: 2, sell: 290, exp: 10, seasons: [], allSeason: true },
 ]
 
 // 物候三季（farming-depth.md §3.4）：6 月一循环、每季 2 月，与月度灵潮并行
@@ -133,6 +133,21 @@ export const EVENT_CHANCE = 0.3
 export const MARKET_UP = 1.5
 export const MARKET_DOWN = 0.7
 
+// 明日预告池（time-decouple.md §3.6）：行情 / 灵潮 / 天象 / 后山四类氛围钩子；
+// 首版纯文案不绑定真实事件触发（预告 ≠ 必然发生），由 drawTomorrowHint 按 rngState 确定性抽取
+export const TOMORROW_HINTS: string[] = [
+  '坊市风声：凝露花行情似有上扬之意',
+  '坊市风声：灵草价或有小幅回落，宜早出货',
+  '灵潮低语：今夜灵气涨落未定，明日方知',
+  '天象：月朗星稀，夜里或有灵露凝结',
+  '天象：云聚风起，明日或有一场灵雨',
+  '后山隐有异象：似乎有野生灵植将熟',
+  '后山传来淡淡药香，长老说是吉兆',
+  '护山阵法微微发烫，明日波动难免',
+  '灵雀成群掠过田垄，偷食的心思又活了',
+  '井水映出微光，明日灌溉或事半功倍',
+]
+
 export const SCROLL_PRICE = 120
 export const SCROLL_INSIGHT = 30
 export const SEED_DISCOUNT_REALM = 5 // 练气六层起种子 9 折
@@ -140,11 +155,10 @@ export const REDEEM_COST = 100
 export const QUOTA_FAIL_CONTRIBUTION = 20
 export const QUOTA_FAIL_STONES = 10
 
-// 现实日锚（real-day.md §3.7，PRD §12 同步）：晨露 / 地力透支 / 道心连胜全部数值入口
+// 现实日锚（real-day.md §3.7，PRD §12 同步）：晨露 / 道心连胜数值入口；
+// 地力透支常量已随 T49 时间解耦删除（事件率恒 0.3、收获修为不减半）
 export const DAY_CUT_HOUR = 4 // 日切凌晨 4 点（照顾夜猫子，4 点前算前一现实日）
 export const MORNING_GIFT = { stones: 8, insight: 5 } // 晨露礼包（不碰灵气，避开上限溢出口径）
-export const DIMINISH_EVENT_CHANCE = 0.15 // 地力透支期（当日第 2+ 游戏日）日终事件触发率
-export const DIMINISH_EXP_MULT = 0.5 // 地力透支期收获修为系数（向上取整，灵草株数与售价不减）
 export const STREAK_MILESTONES = [7, 30, 100, 365] // 道心里程碑天数
 export const MILESTONE_REWARD: Record<number, number> = { 7: 30, 30: 80, 100: 200, 365: 888 } // 里程碑灵石奖励
 export const MILESTONE_TITLES: Record<number, string> = { 7: '初萌道心', 30: '渐入佳境', 100: '道心弥坚', 365: '大道可期' } // 称号不存档，由已达成最高里程碑派生

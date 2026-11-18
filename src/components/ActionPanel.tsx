@@ -7,14 +7,14 @@ import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import { Btn, Modal } from './ui'
 
-// 底部行动面板：AP、行动按钮与「结束这一天」门控（core-loop.md）
+// 底部行动面板：AP 与行动按钮（core-loop.md；T49 后 END_DAY 不再门控任务堂，奖励锚现实日）
 export default function ActionPanel() {
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
   const setQuizOpen = useUiStore((s) => s.setQuizOpen)
+  const setMeditateOpen = useUiStore((s) => s.setMeditateOpen)
   const setMarketOpen = useUiStore((s) => s.setMarketOpen)
   const setCommissionOpen = useUiStore((s) => s.setCommissionOpen)
-  const [gateOpen, setGateOpen] = useState(false)
   const [gongfaOpen, setGongfaOpen] = useState(false)
   const [failHint, setFailHint] = useState<string | null>(null)
 
@@ -44,8 +44,8 @@ export default function ActionPanel() {
       </div>
       <div className="flex items-center gap-3 flex-wrap">
         <Btn className="!min-h-11 !px-5" onClick={() => setQuizOpen(true)} variant={g.quizDaily.done ? 'secondary' : 'primary'}
-          title="10 道背词题：合格 +3 灵气 +5 贡献 +8 心得（满分心得再 +4）；答错也能继续，完成后才能结束这一天">
-          任务堂 {g.quizDaily.done ? '· 已完成 ✓' : '· 今日未完成'}
+          title="10 道背词题：合格 +3 灵气 +5 贡献 +8 心得（满分心得再 +4）；资源奖励每个现实日一次，加练只更新复习计划">
+          任务堂 {g.quizDaily.done ? '· 今日奖励已领 ✓' : '· 今日可领奖励'}
           {!g.quizDaily.done && dueCount(g.learning.cards, g.realDay.today) > 0 && (
             <span className="ml-2 text-xs bg-warning-50 text-warning-500 border border-warning-200 rounded-full px-2 py-0.5">
               📖 今日到期 {dueCount(g.learning.cards, g.realDay.today)} 词
@@ -65,6 +65,8 @@ export default function ActionPanel() {
           吐纳 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)} title="买卖种子、灵草与残卷，不消耗行动力">坊市</Btn>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setMeditateOpen(true)}
+          title="入定快进 N 天：灵田照常生长，但无法浇灌；月末自动出关">入定</Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setCommissionOpen(true)}
           title="灵植堂委托：交付灵草换奖励，不消耗行动力；每月最多接取 1 份">灵植堂</Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setGongfaOpen(true)} title="查看功法加成；攒足心得与贡献可进阶">
@@ -75,8 +77,8 @@ export default function ActionPanel() {
             title="山穷水尽的救助：库存清空且无种可播时，领 1 枚青灵草种子">应急领种</Btn>
         )}
         <div className="ml-auto">
-          <Btn className="!min-h-11 !px-5" variant="gold" onClick={() => (g.quizDaily.done ? tryAct(() => act({ type: 'END_DAY' })) : setGateOpen(true))}
-            title="结算当日并进入次日；需先完成任务堂">
+          <Btn className="!min-h-11 !px-5" variant="gold" onClick={() => tryAct(() => act({ type: 'END_DAY' }))}
+            title="结算当日并进入次日；不要求任务堂（测验奖励锚现实日）">
             结束这一天 →
           </Btn>
         </div>
@@ -87,18 +89,6 @@ export default function ActionPanel() {
           {g.tunaUsedToday && '今日已吐纳 ✓ '}
           {failHint && <span className="text-warning-500">{failHint}</span>}
         </div>
-      )}
-
-      {gateOpen && (
-        <Modal title="还不能结束这一天" onClose={() => setGateOpen(false)}>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            今日任务堂尚未完成。完成 10 题并确认结果后才能推进游戏日，<b>答错也能继续</b>。
-          </p>
-          <div className="flex justify-end gap-3 mt-5">
-            <Btn variant="secondary" onClick={() => setGateOpen(false)}>返回</Btn>
-            <Btn onClick={() => { setGateOpen(false); setQuizOpen(true) }}>进入任务堂</Btn>
-          </div>
-        </Modal>
       )}
 
       {gongfaOpen && <GongfaModal onClose={() => setGongfaOpen(false)} />}

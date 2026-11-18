@@ -1,6 +1,6 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, DIMINISH_EVENT_CHANCE, seasonDefOf, tideOf, type EventDef } from './constants'
+import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EventDef } from './constants'
 import { realDayIndex } from './clock'
 import { convertRate, dayInMonth, monthOf } from './economy'
 import * as economy from './economy'
@@ -9,7 +9,7 @@ import { addLog } from './log'
 import { clampResources, gainCultivation } from './progression'
 import * as quiz from './quiz'
 import { createRng, pick, type Rng } from './rng'
-import type { GameAction, GameState, ReasonCode } from './types'
+import type { GameAction, GameState, LogEntry, ReasonCode } from './types'
 
 // 两库学习统计的零值起点（仅引擎内 createInitialState / QUIZ 相关动作使用）
 function quizStartStat() {
@@ -47,7 +47,7 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
       cards: {}, // FSRS 复习卡（srs-audio.md §3.1，随存档 v4）：未学词不建卡
     },
     // 现实日锚（real-day.md §3.6）：开局 today = 创建当日，连胜全零值（lastCheckinDay -1 = 从未打卡）
-    realDay: { today: realDayIndex(nowMs), gamesToday: 0 },
+    realDay: { today: realDayIndex(nowMs) },
     streak: { count: 0, best: 0, lastCheckinDay: -1, checkins: 0, freezes: 0, milestones: [], history: [] },
     month: { unpaidStreak: 0, ledger: [] },
     milestoneShown: false,
@@ -67,9 +67,10 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
   let note = '' // 结算附注（如驱虫护邻），拼进事件日志 text
   switch (eff.kind) {
     case 'yield': {
-      // 目标选取走 PRNG；无生长中田则无事发生
+      // 目标选取走 PRNG；无生长中田则无事发生（日志附注说明，避免「产量 −1」与实际效果不符）
       const growing = s.fields.filter((f) => f.status === 'growing')
       const t = eff.randomField && growing.length ? pick(rng, growing) : null
+      if (!t) note = '田里没有生长中的灵草'
       if (t) {
         // 驱虫护邻（farming-depth.md §3.3）：负向产量事件的目标田相邻有赤髓参 → 产量无损，日志附注
         if (eff.delta < 0 && farming.wardedByNeighbor(s.fields, t.id)) {
@@ -82,7 +83,9 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
     }
     case 'growth':
       // 全部生长中田进度增减（灵雨 +1 与日终管线 +1 合计 +2；阵法波动 −1）；
-      // 生长中田 progress 恒小于生长期，成熟停驻检查只对 +delta 生效，对 −delta 是空操作
+      // 生长中田 progress 恒小于生长期，成熟停驻检查只对 +delta 生效，对 −delta 是空操作；
+      // 无生长中田时进度不变，日志附注说明（同 yield，避免「全田 +2」空转失真）
+      if (!s.fields.some((f) => f.status === 'growing')) note = '田里没有生长中的灵草'
       for (const f of s.fields) {
         if (f.status !== 'growing') continue
         f.progress = Math.max(0, f.progress! + eff.delta)
@@ -137,16 +140,17 @@ export function drawEvent(rng: Rng, month: number): EventDef {
   return (weighted.find((x) => (roll -= x.w) <= 0) ?? weighted[weighted.length - 1]).e
 }
 
-// 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定
-function endDay(s: GameState, rng: Rng): ReasonCode | null {
-  if (!s.quizDaily.done) return 'QUIZ_NOT_DONE'
+// 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定。
+// 不再要求当日任务堂完成（T49 时间解耦：经营节奏与背词解绑，测验奖励锚现实日）。
+// trace 仅供入定批量结算收集逐日事件与预告；手动 END_DAY 不传，零开销。
+function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: string }): ReasonCode | null {
   // 当日效果到此结束；本次事件产生的效果需要保留到下一日。
   s.pendingTomorrow = {}
-  // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）；
-  //    地力透支期（当日第 2+ 游戏日，real-day.md §3.5）触发率降为 DIMINISH_EVENT_CHANCE
-  const eventChance = s.realDay.gamesToday >= 1 ? DIMINISH_EVENT_CHANCE : EVENT_CHANCE
-  if (rng.next() < eventChance) {
-    applyEvent(s, drawEvent(rng, monthOf(s.day)), rng)
+  // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）
+  if (rng.next() < EVENT_CHANCE) {
+    const ev = drawEvent(rng, monthOf(s.day))
+    applyEvent(s, ev, rng)
+    if (trace) trace.event = ev
   }
   // 2. 全田自然生长 +1（灵雨已在事件步 +1，合计 +2）
   farming.applyGrowth(s)
@@ -160,29 +164,112 @@ function endDay(s: GameState, rng: Rng): ReasonCode | null {
   }
   // 5. 推进到下一天
   advanceDay(s)
+  // 6. 明日预告（time-decouple.md §3.6）：日终一行氛围钩子，按 rngState 确定性抽取；
+  //    kind 'action' 不弹 toast，只在日志流可见；月末过渡不出（定额结算接管）
+  const hint = TOMORROW_HINTS[Math.floor(rng.next() * TOMORROW_HINTS.length)]
+  addLog(s, { kind: 'action', icon: '🔮', title: '明日预告', text: hint })
+  if (trace) trace.hint = hint
   return null
 }
 
 function advanceDay(s: GameState): void {
-  // 地力透支（real-day.md §3.5）：游戏日成功推进计入当日；第 2+ 个游戏日递减。
-  // 预警只在真第 2 推发生时说明一次（T29 建议修）：单日单推玩家不再每日被「再推会减半」预警；
-  // 递减进行中的实时提示由顶栏「地力透支」标签承担
-  if (s.realDay.gamesToday >= 1) {
-    addLog(s, {
-      kind: 'settle',
-      icon: '⛰️',
-      title: '地力透支',
-      text: '今日已多推游戏日：收获修为减半、日终事件更频繁；灵草株数、测验奖励与自然生长不受影响',
-    })
-  }
-  s.realDay.gamesToday += 1
   s.day += 1
   s.phase = 'day'
   farming.resetDaily(s)
-  s.quizDaily.done = false
-  s.quizDaily.session = null
+  // quizDaily 不随游戏日重置：奖励锚现实日，跨日重置在 clock.syncRealDay（time-decouple.md §3.4）；
+  // 进行中的测验会话保留，跨游戏日可续答
   // 跨入新月时提示本月灵潮（core-loop.md 步骤 6 / PRD §11.1）
   if (dayInMonth(s.day) === 1) addTideLog(s)
+}
+
+// ---- 入定批量结算（time-decouple.md §3.1，T49 时间解耦）----
+
+// 逐日轨迹：出关结果面板按天展示（meditate.ts 消费）；预演不走此路径（只给确定性汇总）
+export interface MeditateDayTrace {
+  day: number // 推进后落在的游戏日
+  dayOffset: number // 入定第几天（1 起）
+  events: { name: string; desc: string; neg?: boolean }[]
+  matured: { field: number; herbName: string }[]
+  dryHit?: { field: number; herbName: string } // 当日触发缺水减产（每田一茬最多一次）
+}
+
+export interface MeditateRunInfo {
+  advancedDays: number
+  stoppedAtMonthEnd: boolean // 落在月末（含定额未结算的提前出关）
+  newMonthDay: number // 出关后月内日
+  perDay: MeditateDayTrace[]
+  tomorrowHint: string // 末日预告；月末出关为空（定额结算接管过渡）
+}
+
+// 入定：逐日调用 endDay（五步管线原样复用，不建第二套结算逻辑），月末自动出关。
+// 就地修改传入 state 并折叠批次日志（保留突破与月末条目）；rng 由调用方传入，
+// UI 预演/结果面板用状态副本走同一路径保证与真实落盘确定性一致。
+// days 非法（非正整数、或当日推进 days 天会越过月末）返回 null 不动状态。
+export function runMeditationBatch(state: GameState, rng: Rng, days: number): MeditateRunInfo | null {
+  if (!Number.isInteger(days) || days < 1) return null
+  if (economy.dayInMonth(state.day) + days > MONTH_DAYS) return null
+  // 折叠底稿：入定前日志字符串快照，收尾时从尾部找重叠区分新增（环形截断后也能正确对齐）
+  const oldLog = state.log.map((e) => JSON.stringify(e))
+  const perDay: MeditateDayTrace[] = []
+  let lastHint = ''
+  for (let i = 1; i <= days; i++) {
+    // 当日田块快照：成熟/减产按状态差分检测，不依赖日志文本
+    const before = state.fields.map((f) => ({ id: f.id, herb: f.herb, status: f.status, halved: !!f.halved }))
+    const trace: { event?: EventDef; hint?: string } = {}
+    endDay(state, rng, trace)
+    const entry: MeditateDayTrace = { day: state.day, dayOffset: i, events: [], matured: [] }
+    if (trace.event) entry.events.push({ name: trace.event.name, desc: trace.event.desc, neg: trace.event.negative })
+    for (const b of before) {
+      const f = state.fields.find((x) => x.id === b.id)!
+      if (b.status === 'growing' && f.status === 'mature' && f.herb) {
+        entry.matured.push({ field: f.id, herbName: HERB_BY_ID[f.herb].name })
+      }
+      // halved 只在缺水减产时置位，false→true 即当日触发
+      if (!b.halved && f.halved && f.herb) entry.dryHit = { field: f.id, herbName: HERB_BY_ID[f.herb].name }
+    }
+    perDay.push(entry)
+    if (trace.hint) lastHint = trace.hint
+    if (state.phase === 'quota') break // 月末定额未结算时提前出关（防御：正常跨度上限不会走到）
+  }
+  // 落在月末（第 30 天早晨）：直接进入定额结算——月末是入定的唯一中断点，
+  // 第 30 天的日终管线不补跑（手动路径由玩家当日自行 END_DAY 进入同一交互）
+  const stopped = state.phase === 'quota' || economy.dayInMonth(state.day) === MONTH_DAYS
+  if (stopped && state.phase !== 'quota') {
+    state.phase = 'quota'
+    addLog(state, { kind: 'settle', icon: '🧾', title: '月末已至', text: '执事前来核对定额' })
+    lastHint = ''
+  }
+  // 折叠批次日志：保留突破与月末条目，其余（事件/缺水/逐日预告）收拢为 ≤2 条汇总
+  const after = state.log
+  let overlap = Math.min(oldLog.length, after.length)
+  while (overlap > 0 && !after.slice(after.length - overlap).every((e, k) => JSON.stringify(e) === oldLog[k])) {
+    overlap -= 1
+  }
+  const added = after.slice(0, after.length - overlap)
+  const survivors = after.slice(after.length - overlap)
+  const kept = added.filter((l) => l.kind === 'breakthrough' || l.title === '月末已至')
+  const events = perDay.reduce((a, d) => a + d.events.length, 0)
+  const maturedTotal = perDay.reduce((a, d) => a + d.matured.length, 0)
+  const dryTotal = perDay.filter((d) => d.dryHit).length
+  const breaks = added.filter((l) => l.kind === 'breakthrough').length
+  const summary: LogEntry = {
+    day: state.day,
+    kind: 'settle',
+    icon: '🧘',
+    title: `入定 ${perDay.length} 天`,
+    text: `事件 ${events} 起、成熟 ${maturedTotal} 田次、缺水减产 ${dryTotal} 次${breaks ? `、突破 ${breaks} 次` : ''}`,
+  }
+  const hintEntry: LogEntry[] = lastHint
+    ? [{ day: state.day, kind: 'action', icon: '🔮', title: '明日预告', text: lastHint }]
+    : []
+  state.log = [...[summary, ...hintEntry], ...kept, ...survivors]
+  return {
+    advancedDays: perDay.length,
+    stoppedAtMonthEnd: stopped,
+    newMonthDay: economy.dayInMonth(state.day),
+    perDay,
+    tomorrowHint: lastHint,
+  }
 }
 
 // 功法升级：心得 100 + 贡献消耗；Lv2 生长期缩短后立即检查成熟状态（farming.md）。
@@ -276,6 +363,10 @@ export function applyAction(state: GameState, action: GameAction): { ok: boolean
         break
       case 'END_DAY':
         err = endDay(state, rng)
+        break
+      case 'MEDITATE':
+        // 月末定额交互中的拒绝由上方 phase 门控承担（INVALID_TARGET）；此处只校验跨度
+        err = runMeditationBatch(state, rng, action.days) ? null : 'EXCEEDS_MONTH'
         break
       case 'MILESTONE_SHOWN':
         state.milestoneShown = true

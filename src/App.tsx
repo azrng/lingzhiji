@@ -9,10 +9,11 @@ import MarketPanel from './components/MarketPanel'
 import QuotaModal from './components/QuotaModal'
 import MilestoneScreen from './components/MilestoneScreen'
 import SettingsModal from './components/SettingsModal'
+import MeditateModal from './components/MeditateModal'
 import CommissionModal from './components/CommissionModal'
-import Tutorial from './components/Tutorial'
 import DebugPanel from './components/DebugPanel'
 import StartScreen from './screens/StartScreen'
+import Tutorial from './components/Tutorial'
 import { EventToasts, TabBanner } from './components/EventToast'
 import { useGameStore } from './stores/useGameStore'
 import { useUiStore } from './stores/useUiStore'
@@ -39,6 +40,7 @@ function GameScreen() {
   const settingsOpen = useUiStore((s) => s.settingsOpen)
   const commissionOpen = useUiStore((s) => s.commissionOpen)
   const tutorialStep = useUiStore((s) => s.tutorialStep)
+  const meditateOpen = useUiStore((s) => s.meditateOpen)
 
   // 日志差量 → toast：dispatch 更新 game 后，与上次快照比对新增条目
   const lastLogRef = useRef<string[] | null>(null)
@@ -90,6 +92,7 @@ function GameScreen() {
       {phase !== 'quota' && marketOpen && <MarketPanel />}
       {phase !== 'quota' && settingsOpen && <SettingsModal />}
       {phase !== 'quota' && commissionOpen && <CommissionModal />}
+      {phase !== 'quota' && meditateOpen && <MeditateModal />}
       {milestonePending && <MilestoneScreen />}
       {tutorialStep > 0 && phase !== 'quota' && <Tutorial />}
       {saveError && (

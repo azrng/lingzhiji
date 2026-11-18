@@ -194,15 +194,25 @@ describe('错词池与奖励', () => {
     expect(s.resources.insight).toBe(12) // 8 + 4 满分
   })
 
-  it('已完成当天后不可重复开始（不重复计奖）', () => {
+  it('同现实日加练：可再开一场但不再发资源；打卡仍只记一次（time-decouple.md §3.4）', () => {
     let s = createInitialState(7)
     s = dispatch(s, { type: 'QUIZ_BEGIN' }).state
     s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
     s = answerAll(s, 0)
     s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
+    const afterFirst = structuredClone(s)
+    // 加练照常可开（会话为空即允许；quizDaily.done 只封资源奖励不封入口）
     const r = dispatch(s, { type: 'QUIZ_BEGIN' })
-    expect(r.ok).toBe(false)
-    expect(r.reason).toBe('ALREADY_DONE')
+    expect(r.ok).toBe(true)
+    s = r.state
+    s = dispatch(s, { type: 'QUIZ_LEARNED' }).state
+    s = answerAll(s, 0)
+    s = dispatch(s, { type: 'QUIZ_CONFIRM' }).state
+    expect(s.quizDaily.done).toBe(true)
+    // 资源零变化（第二场无奖励），打卡也只记一次
+    expect(s.resources).toEqual(afterFirst.resources)
+    expect(s.streak.count).toBe(afterFirst.streak.count)
+    expect(s.log.some((l) => l.text.includes('今日奖励已领'))).toBe(true)
   })
 
   it('跨库共享见词标记：四级见过的词在六级作为复习候选（数据口径）', () => {

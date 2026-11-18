@@ -29,15 +29,6 @@ export default function TopBar() {
           第 {monthOf(g.day)} 月 · 第 {((g.day - 1) % 30) + 1} 天
           <span className="ml-1.5 text-xs font-normal text-primary-600">{seasonDefOf(monthOf(g.day)).name}</span>
         </div>
-        {/* 地力透支标签（real-day.md §4）：当日第 2+ 游戏日起附在日期区 */}
-        {g.realDay.gamesToday >= 1 && (
-          <span
-            className="mt-1 inline-block rounded-md border border-warning-200 bg-warning-50 px-1.5 py-0.5 text-[11px] text-warning-500"
-            title="同一现实日推进多个游戏日，灵田疲惫：收获修为减半、日终事件更频繁"
-          >
-            地力透支 · 今日第 {g.realDay.gamesToday + 1} 个游戏日
-          </span>
-        )}
       </div>
       <div className="order-3 md:order-none min-w-0 md:min-w-40" title="修为满后自动突破：解锁更高境界灵草与更多灵田；吐纳与收获可得修为">
         <div className="text-xs text-gray-500 tracking-widest">当前境界</div>

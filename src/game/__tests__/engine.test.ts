@@ -81,10 +81,10 @@ describe('日结算管线（core-loop.md 五步）', () => {
   it('功法升至二级时立即检查作物成熟', () => {
     const s = started()
     s.resources.insight = 100
-    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 14, curYield: 5, dry: 0, halved: false, fertility: 1 }
+    s.fields[0] = { id: 1, status: 'growing', herb: 'qingling', progress: 4, curYield: 5, dry: 0, halved: false, fertility: 1 }
     const r = dispatch(s, { type: 'GONGFA_UP' })
     expect(r.ok).toBe(true)
-    expect(r.state.fields[0].status).toBe('mature')
+    expect(r.state.fields[0].status).toBe('mature') // Lv1 生长期 5，Lv2 起 4：4 ≥ 4 立即成熟
   })
 
   it('可变调用缴纳不足时不扣库存', () => {
@@ -94,13 +94,13 @@ describe('日结算管线（core-loop.md 五步）', () => {
     expect(applyAction(s, { type: 'QUOTA_RESOLVE', pay: true, plan: { qingling: 2 } }).reason).toBe('NOT_ENOUGH_QUOTA')
     expect(s.inventory.qingling).toBe(2)
   })
-  it('未完成任务堂不能结束当天', () => {
+  it('未完成任务堂也可结束当天（T49 门控删除：测验奖励锚现实日，不再门控推进）', () => {
     const r = dispatch(started(), { type: 'END_DAY' })
-    expect(r.ok).toBe(false)
-    expect(r.reason).toBe('QUIZ_NOT_DONE')
+    expect(r.ok).toBe(true)
+    expect(r.state!.day).toBe(2)
   })
 
-  it('完成任务后结束当天：日推进、AP/浇灌/吐纳/任务重置', () => {
+  it('完成测验后结束当天：日推进、AP/浇灌/吐纳重置；quizDaily.done 不随游戏日重置', () => {
     let s = finishQuiz(started())
     s.resources.qi = 5
     s = dispatch(s, { type: 'IRRIGATE' }).state
@@ -111,8 +111,11 @@ describe('日结算管线（core-loop.md 五步）', () => {
     expect(r.state!.day).toBe(2)
     expect(r.state!.ap).toBe(DAILY_AP)
     expect(r.state!.wateredToday).toBe(false)
-    expect(r.state!.quizDaily.done).toBe(false)
+    // 奖励锚现实日：游戏日推进不清 done（跨现实日由 syncRealDay 重置）
+    expect(r.state!.quizDaily.done).toBe(true)
     expect(r.state!.phase).toBe('day')
+    // 明日预告：日终追加一行（time-decouple.md §3.6）
+    expect(r.state!.log[0]).toMatchObject({ kind: 'action', title: '明日预告' })
   })
 
   it('第 30 天结束后进入月末定额交互而非直接推进', () => {
@@ -133,8 +136,8 @@ describe('日结算管线（core-loop.md 五步）', () => {
     const rain = EVENTS.find((e) => e.id === 'rain')!
     applyEvent(s, rain, createRng(1))
     expect(s.fields[0].progress).toBe(1) // 事件 +1，日终管线随后再 +1
-    // 进度达生长期时事件步直接成熟停驻
-    s.fields[0].progress = 14
+    // 进度达生长期时事件步直接成熟停驻（生长期 5：4 + 1 = 5）
+    s.fields[0].progress = 4
     applyEvent(s, rain, createRng(1))
     expect(s.fields[0].status).toBe('mature')
   })
@@ -252,7 +255,7 @@ describe('收获上品（farming.md §3.5 / PRD §6）', () => {
     let s = started(seed)
     s.resources.qi = 5
     s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
-    s.fields[0].progress = 15
+    s.fields[0].progress = 5
     s.fields[0].status = 'mature'
     return s
   }
@@ -327,108 +330,79 @@ describe('缺水减产（farming.md）', () => {
   })
 })
 
-describe('地力透支（real-day.md §3.5，罚经营不罚学习）', () => {
-  // 首个使 rng.next() < 0.2 / ≥ 0.2 / ≥ 0.3 的种子（沿用收获上品用例的找种子手法）
-  const primeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() < HARVEST_PRIME_CHANCE)!
-  const noPrimeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= HARVEST_PRIME_CHANCE)!
-  const noEventSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= EVENT_CHANCE)!
-
-  function matured(seed: number): GameState {
-    let s = started(seed)
+describe('入定批量结算（time-decouple.md §3.1，MEDITATE ≡ END_DAY×N）', () => {
+  // 两块青灵草固定开局：1 号田近熟（入定第 2 天成熟）、2 号田远熟（覆盖缺水取舍）
+  function planted(seed: number): GameState {
+    let s = createInitialState(seed)
     s.resources.qi = 5
     s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
-    s.fields[0].progress = 15
-    s.fields[0].status = 'mature'
+    s = dispatch(s, { type: 'PLANT', fieldId: 2, herb: 'qingling' }).state
+    s.fields[0].progress = 3 // 3/5：入定第 2 天成熟
     return s
   }
 
-  // 统计事件触发率：全空田、清空日志后逐日推进，看当日是否出现 event 条目
-  function eventRate(diminished: boolean): number {
-    let s = started(2026)
-    let fired = 0
-    const N = 4000
-    for (let i = 0; i < N; i++) {
-      s.quizDaily.done = true
-      s.day = 5 // 固定月中：避开月末 quota 交互与月初灵潮日志
-      s.realDay.gamesToday = diminished ? 1 : 0
-      s.log = [] // 只看本日新增条目
-      s = dispatch(s, { type: 'END_DAY' }).state
-      if (s.log.some((l) => l.kind === 'event')) fired++
-    }
-    return fired / N
-  }
-
-  it('当日第 2+ 游戏日事件触发率降为 0.15（固定种子统计）', () => {
-    const rate = eventRate(true)
-    expect(Math.abs(rate - 0.15)).toBeLessThan(0.025)
-    // 对照组：当日第 1 个游戏日仍为 0.3，且递减期显著更低
-    const base = eventRate(false)
-    expect(Math.abs(base - 0.3)).toBeLessThan(0.03)
-    expect(rate).toBeLessThan(base)
+  it('MEDITATE 与手动 END_DAY×N 全状态等价（固定种子；日志除外——入定折叠）', () => {
+    const batch = dispatch(planted(1234), { type: 'MEDITATE', days: 5 })
+    let manual = planted(1234)
+    for (let i = 0; i < 5; i++) manual = dispatch(manual, { type: 'END_DAY' }).state
+    expect(batch.ok).toBe(true)
+    const { log: _bl, ...batchRest } = batch.state!
+    const { log: _ml, ...manualRest } = manual
+    expect(batchRest).toEqual(manualRest) // 含 day/fields/resources/rngState/quizDaily/streak 等全部字段
   })
 
-  it('递减期收获修为减半向上取整（含上品株数），灵草株数不减', () => {
-    // 对照：非递减期 5 株 → 修为 +5
-    const ctrl = dispatch(matured(noPrimeSeed), { type: 'HARVEST', fieldId: 1 })
-    expect(ctrl.state!.inventory.qingling).toBe(6)
-    expect(ctrl.state!.cultivation).toBe(6)
-    expect(ctrl.state!.log[0].text).not.toContain('地力透支')
-    // 递减期：6 株照常入库，修为 ⌈6×1×0.5⌉ = 3
-    const dimState = matured(noPrimeSeed)
-    dimState.realDay.gamesToday = 1
-    const r = dispatch(dimState, { type: 'HARVEST', fieldId: 1 })
+  it('多日结算折叠为汇总条目：新增日志 ≤ 2 条（汇总 + 预告），不再逐日刷穿', () => {
+    const before = planted(77)
+    const r = dispatch(before, { type: 'MEDITATE', days: 5 })
     expect(r.ok).toBe(true)
-    expect(r.state!.inventory.qingling).toBe(6) // 株数不减
-    expect(r.state!.cultivation).toBe(3)
-    expect(r.state!.log[0].text).toContain('地力透支')
+    const added = r.state!.log.filter((l) => !before.log.some((b) => JSON.stringify(b) === JSON.stringify(l)))
+    // 环形截断下 added 可能被挤出，上限判定不受影响
+    expect(added.length).toBeLessThanOrEqual(2)
+    expect(r.state!.log[0]).toMatchObject({ kind: 'settle', title: '入定 5 天' })
+    expect(r.state!.log.some((l) => l.title === '明日预告')).toBe(true)
   })
 
-  it('递减期上品株数计入减半基数：6 株修为 ⌈6×0.5⌉ = 3', () => {
-    const s = matured(primeSeed)
-    s.realDay.gamesToday = 1
-    const r = dispatch(s, { type: 'HARVEST', fieldId: 1 })
+  it('入定期间成熟与缺水照常结算（复用 endDay 管线，干旱是入定的核心取舍）', () => {
+    const r = dispatch(planted(9), { type: 'MEDITATE', days: 5 })
     expect(r.ok).toBe(true)
-    expect(r.state!.inventory.qingling).toBe(7) // 当令 6 + 1 上品 上品，株数不减
-    expect(r.state!.cultivation).toBe(4) // ⌈7×0.5⌉
+    expect(r.state!.fields[0].status).toBe('mature') // 3/5 → 第 2 天成熟停驻
+    // 未浇灌：2 号田第 3 天缺水减产（当令 6 → 3）后清零重计
+    expect(r.state!.fields[1].halved).toBe(true)
+    expect(r.state!.fields[1].curYield).toBe(3)
   })
 
-  it('测验奖励与打卡不受递减影响（同种子差分）', () => {
-    const run = (gamesToday: number) => {
-      const s = started(42)
-      s.realDay.gamesToday = gamesToday
-      return finishQuiz(s)
+  it('推进到月末自动出关进入定额结算（月末是唯一中断点）', () => {
+    const s = started(7)
+    s.day = 27
+    const r = dispatch(s, { type: 'MEDITATE', days: 3 }) // 27 + 3 = 30：落在月末早晨
+    expect(r.ok).toBe(true)
+    expect(r.state!.day).toBe(30)
+    expect(r.state!.phase).toBe('quota')
+  })
+
+  it('跨度越过当月末或非正整数被拒（EXCEEDS_MONTH），状态不动', () => {
+    const s = started(7)
+    s.day = 29
+    for (const days of [2, 0, -1, 1.5]) {
+      const r = dispatch(s, { type: 'MEDITATE', days })
+      expect(r.ok).toBe(false)
+      expect(r.reason).toBe('EXCEEDS_MONTH')
+      expect(r.state!.day).toBe(29)
+      expect(r.state!.rngState).toBe(s.rngState)
     }
-    const base = run(0)
-    const dim = run(1)
-    expect(dim.resources).toEqual(base.resources)
-    expect(dim.cultivation).toBe(base.cultivation)
-    expect(dim.streak.count).toBe(base.streak.count) // 首次打卡同样计数
   })
 
-  it('自然生长与缺水不受递减影响（同种子差分）', () => {
-    const grow = (gamesToday: number) => {
-      let s = started(noEventSeed)
-      s.resources.qi = 5
-      s = dispatch(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' }).state
-      s.realDay.gamesToday = gamesToday
-      s.quizDaily.done = true
-      return dispatch(s, { type: 'END_DAY' }).state!
-    }
-    const base = grow(0)
-    const dim = grow(1)
-    expect(dim.fields[0].progress).toBe(base.fields[0].progress) // 均 +1 天
-    expect(dim.fields[0].dry).toBe(base.fields[0].dry) // 未浇灌同样缺水 +1
-  })
-
-  it('单日单推不发预警，真第 2 推才记录地力透支日志（T29 建议修：降噪）', () => {
-    let s = started(noEventSeed)
-    s.quizDaily.done = true
-    s = dispatch(s, { type: 'END_DAY' }).state
-    expect(s.log.some((l) => l.title === '地力透支')).toBe(false)
-    // 第 2 推（进入递减期后）才说明规则
-    s.quizDaily.done = true
-    s.log = []
-    s = dispatch(s, { type: 'END_DAY' }).state
-    expect(s.log.some((l) => l.title === '地力透支')).toBe(true)
+  it('入定中自然触发突破不打断批量结算，突破日志保留', () => {
+    // 找「首日必触发师姐指点（修为 +3）」的种子：首个 rng.next() 判事件，再由 drawEvent 抽中 senior
+    const seniorSeed = Array.from({ length: 10000 }, (_, i) => i).find((i) => {
+      const rng = createRng(i)
+      return rng.next() < EVENT_CHANCE && drawEvent(rng, 1).id === 'senior'
+    })!
+    const s = started(seniorSeed)
+    s.cultivation = 18 // +3 → 21 ≥ 20：突破练气二层
+    const r = dispatch(s, { type: 'MEDITATE', days: 2 })
+    expect(r.ok).toBe(true)
+    expect(r.state!.realm).toBe(1)
+    expect(r.state!.log.some((l) => l.kind === 'breakthrough')).toBe(true) // 折叠后仍保留
   })
 })

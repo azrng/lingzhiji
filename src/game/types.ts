@@ -117,10 +117,10 @@ export interface Resources {
   insight: number
 }
 
-// 现实日锚（real-day.md §3.2，随存档 v2）：索引由 clock.realDayIndex 派生，日切凌晨 4 点
+// 现实日锚（real-day.md §3.2，随存档 v2）：索引由 clock.realDayIndex 派生，日切凌晨 4 点。
+// 地力透支 gamesToday 字段已随 T49 时间解耦删除（v5 迁移清理）
 export interface RealDayState {
   today: number // 最近一次同步的现实日索引（开局 = 创建当日）
-  gamesToday: number // 当日已推进的游戏日数（跨日重置 0；END_DAY 成功推进后 +1）
 }
 
 // 道心连胜（real-day.md §3.4，随存档 v2）
@@ -175,7 +175,7 @@ export type ReasonCode =
   | 'NO_STONES'
   | 'NO_HERB'
   | 'ALREADY_DONE'
-  | 'QUIZ_NOT_DONE'
+  | 'EXCEEDS_MONTH' // 入定跨度越过当月末（月末定额是唯一中断点）
   | 'LIBRARY_INSUFFICIENT'
   | 'NOT_ENOUGH_QUOTA'
   | 'NOT_ELIGIBLE'
@@ -213,6 +213,7 @@ export type GameAction =
   | { type: 'QUIZ_CONFIRM' }
   | { type: 'QUIZ_SET_LIB'; lib: LibId }
   | { type: 'END_DAY' }
+  | { type: 'MEDITATE'; days: number } // 入定：逐日批量跑 endDay 管线，月末自动出关（time-decouple.md §3.1）
   | { type: 'MILESTONE_SHOWN' } // 筑基结算成绩单已展示（一次性标记）
   | { type: 'TUTORIAL_DONE' } // 新手引导完成/跳过
   | { type: 'DEBUG_CULTIVATE'; amount: number } // 调试：修为入账（走突破检查，仅 ?debug=1 使用）

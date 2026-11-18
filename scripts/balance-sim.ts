@@ -16,35 +16,34 @@ const SAMPLE_DAYS = [30, 90, 180, 365]
 const SIM_NOW_START = Date.UTC(2026, 0, 10, 12, 0, 0)
 const REAL_DAY_MS = 86_400_000
 
-// 策略定义（PRD §14，行为规则逐条对齐；PRD §16.9 现实日玩家三档）
+// 策略定义（PRD §14，行为规则逐条对齐；T49 时间解耦后口径改 session）
 interface Strategy {
   key: string
   label: string
   pNew: number
   pReview: number
   pick: 'steady' | 'aggressive' | 'rotate' // 稳健/学习起步只种青灵草；进取选标价最高；轮作青灵草⇄凝露花换茬
-  gamesPerRealDay: number // 每推进 N 个游戏日跨 1 次现实日（调用 syncRealDay）
+  gamesPerSession: number // 每 session 推进 N 个游戏日，session 结束跨 1 次现实日（入定或手动连推）
 }
 
-// 现有三策略为「连推档」近似：每 30 游戏日（= 1 个游戏月）跨 1 次现实日。
-// 若完全不跨日，gamesToday 只增不减会让它们从第 2 游戏日起永久处于地力递减期，
-// 与现实玩家节奏不符且和历史报告口径混淆；30 游戏日粒度对齐定额周期，报告注明口径。
+// 前三档为「连推档」（入定玩法近似）：每 30 游戏日（= 1 个游戏月）为 1 个 session，对齐定额周期。
+// session1/2/3 = 每 session 推 1/2/3 个游戏日（每场只领一次测验资源，引擎按现实日锚自动生效）
 const STRATEGIES: Strategy[] = [
-  { key: 'steady', label: '稳健经营', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 30 },
-  { key: 'aggressive', label: '进取投资', pNew: 0.8, pReview: 0.95, pick: 'aggressive', gamesPerRealDay: 30 },
-  { key: 'beginner', label: '学习起步', pNew: 0.4, pReview: 0.6, pick: 'steady', gamesPerRealDay: 30 },
-  // 现实日玩家三档（real-day.md §6 / PRD §16.9）：经营动作沿用稳健策略，仅节奏不同
-  { key: 'daily1', label: '现实日·每日 1 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 1 },
-  { key: 'daily2', label: '现实日·每日 2 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 2 },
-  { key: 'daily3', label: '现实日·每日 3 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerRealDay: 3 },
+  { key: 'steady', label: '稳健·月度连推', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerSession: 30 },
+  { key: 'aggressive', label: '进取·月度连推', pNew: 0.8, pReview: 0.95, pick: 'aggressive', gamesPerSession: 30 },
+  { key: 'beginner', label: '学习起步·月度连推', pNew: 0.4, pReview: 0.6, pick: 'steady', gamesPerSession: 30 },
+  // session 节奏三档（time-decouple.md §3.2）：经营动作沿用稳健策略，仅节奏不同
+  { key: 'daily1', label: 'session·每次 1 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerSession: 1 },
+  { key: 'daily2', label: 'session·每次 2 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerSession: 2 },
+  { key: 'daily3', label: 'session·每次 3 游戏日', pNew: 0.8, pReview: 0.95, pick: 'steady', gamesPerSession: 3 },
   // 轮作对照（farming-depth.md §3.5）：与 daily1 同节奏，仅播种决策改轮作，验证地力/物候机制的增益幅度
-  { key: 'daily1-rotate', label: '现实日·每日 1·轮作', pNew: 0.8, pReview: 0.95, pick: 'rotate', gamesPerRealDay: 1 },
+  { key: 'daily1-rotate', label: 'session·每次 1·轮作', pNew: 0.8, pReview: 0.95, pick: 'rotate', gamesPerSession: 1 },
 ]
 
 interface RunResult {
   seed: number
   foundationDay: number | null
-  foundationRealDay: number | null // 筑基所需现实日 = ceil(筑基游戏日 / 每现实日游戏日数)
+  foundationRealDay: number | null // 筑基所需 session 数 = ceil(筑基游戏日 / 每 session 游戏日数)；每 session 跨 1 现实日
   finalRealm: number
   monthsUnpaid: boolean[] // 下标 0 = 第 1 月
   gongfa: number
@@ -240,13 +239,12 @@ function runSim(strat: Strategy, seed: number): RunResult {
     if (emergency.shortage && emergency.recovered) res.sameDayRecoveryDays++
     if (s.realm >= 9) {
       res.foundationDay = playedDay
-      // 筑基发生在第 ceil(游戏日 / 每现实日游戏日数) 个现实日（当日在推进中，按整天计）
-      res.foundationRealDay = Math.ceil(playedDay / strat.gamesPerRealDay)
+      // 筑基发生在第 ceil(游戏日 / 每 session 游戏日数) 个 session（当日在推进中，按整 session 计）
+      res.foundationRealDay = Math.ceil(playedDay / strat.gamesPerSession)
     }
-    // 跨现实日（real-day.md §3.1）：推进完当日 N 个游戏日后调用 syncRealDay，
-    // 晨露入账、gamesToday 重置、连胜漏签检查均由引擎结算，模拟器不重复实现
+    // session 结束跨 1 现实日（time-decouple.md）：晨露、测验奖励锚重置、连胜漏签检查均由引擎结算，模拟器不重复实现
     gamesSinceSync++
-    if (gamesSinceSync >= strat.gamesPerRealDay) {
+    if (gamesSinceSync >= strat.gamesPerSession) {
       simNow += REAL_DAY_MS
       s = syncRealDay(s, simNow).state
       gamesSinceSync = 0
@@ -287,8 +285,8 @@ function report(strat: Strategy, results: RunResult[]): string {
   lines.push(`- 局数 ${results.length}，突破筑基 ${done.length}（${fmtPct(done.length, results.length)}）`)
   if (days.length) {
     lines.push(`- 筑基天数：中位数 ${median(days)}，P90 ${p90(days)}，最快 ${Math.min(...days)}，最慢 ${Math.max(...days)}`)
-    const realDays = done.map((r) => r.foundationRealDay!)
-    lines.push(`- 筑基现实日：中位数 ${median(realDays)}，P90 ${p90(realDays)}（按每 ${strat.gamesPerRealDay} 游戏日 = 1 现实日折算）`)
+    const sessions = done.map((r) => r.foundationRealDay!)
+    lines.push(`- 筑基所需 session：中位数 ${median(sessions)}，P90 ${p90(sessions)}（每 session 推 ${strat.gamesPerSession} 游戏日并跨 1 现实日）`)
   }
   const unfinished = results.filter((r) => r.foundationDay === null)
   const realmAvg = unfinished.length ? (unfinished.reduce((a, r) => a + r.finalRealm, 0) / unfinished.length).toFixed(2) : '—'
@@ -323,46 +321,54 @@ function report(strat: Strategy, results: RunResult[]): string {
   return lines.join('\n')
 }
 
-// ---- 现实日节奏对照（PRD §16.9）----
-// 汇总六档的筑基游戏日/现实日数据，核对「每日 1-2 游戏日 → 60-90 现实日筑基」目标与 daily3 劣化情况
+// ---- session 节奏对照（time-decouple.md §3.2，T49 重校）----
+// 汇总各档的筑基游戏日/session 数据，核对「单 session 完整一茬」体验与月定额达成率 ≥95% 目标
 function compareSection(strategies: Strategy[], byKey: Map<string, RunResult[]>): string {
-  const lines: string[] = ['## 现实日节奏对照（PRD §16.9）', '']
+  const lines: string[] = ['## session 节奏对照（time-decouple.md §3.2）', '']
   const stat = (key: string) => {
     const rs = byKey.get(key)!
     const done = rs.filter((r) => r.foundationDay !== null)
     return {
       gMed: median(done.map((r) => r.foundationDay!)),
       gP90: p90(done.map((r) => r.foundationDay!)),
-      rMed: median(done.map((r) => r.foundationRealDay!)),
-      rP90: p90(done.map((r) => r.foundationRealDay!)),
+      sMed: median(done.map((r) => r.foundationRealDay!)),
+      sP90: p90(done.map((r) => r.foundationRealDay!)),
       unpaid: fmtPct(rs.length - done.length, rs.length),
     }
   }
-  lines.push('| 策略 | 游戏日/现实日 | 筑基游戏日 中位/P90 | 筑基现实日 中位/P90 | 未达成 |')
+  lines.push('| 策略 | 游戏日/session | 筑基游戏日 中位/P90 | 筑基 session 中位/P90 | 未达成 |')
   lines.push('|---|---|---|---|---|')
   for (const strat of strategies) {
     const m = stat(strat.key)
-    const pace = strat.gamesPerRealDay >= 30 ? `≈${strat.gamesPerRealDay}（连推近似）` : strat.gamesPerRealDay
+    const pace = strat.gamesPerSession >= 30 ? `≈${strat.gamesPerSession}（入定连推近似）` : strat.gamesPerSession
     const g = Number.isFinite(m.gMed) ? `${m.gMed} / ${m.gP90}` : '—'
-    const r = Number.isFinite(m.rMed) ? `${m.rMed} / ${m.rP90}` : '—'
-    lines.push(`| ${strat.label} | ${pace} | ${g} | ${r} | ${m.unpaid} |`)
+    const s = Number.isFinite(m.sMed) ? `${m.sMed} / ${m.sP90}` : '—'
+    lines.push(`| ${strat.label} | ${pace} | ${g} | ${s} | ${m.unpaid} |`)
   }
   lines.push('')
-  const d1 = stat('daily1')
-  const d2 = stat('daily2')
+  // 定额达成率（time-decouple.md 验收：≥95%）：全部局全部已结算月的付清占比，按策略汇总
+  lines.push('| 策略 | 定额达成率（已结算月付清占比） |')
+  lines.push('|---|---|')
+  for (const strat of strategies) {
+    const rs = byKey.get(strat.key)!
+    let reached = 0
+    let paid = 0
+    for (const r of rs) {
+      for (const m of r.monthsUnpaid) {
+        if (m !== undefined) {
+          reached++
+          if (!m) paid++
+        }
+      }
+    }
+    lines.push(`| ${strat.label} | ${fmtPct(paid, reached)} |`)
+  }
+  lines.push('')
   const d3 = stat('daily3')
-  const st = stat('steady')
-  if ([d1, d2, d3].every((m) => Number.isFinite(m.rMed))) {
-    // 目标核对：两档中位数均落在 60-90 为达成；越出区间时写明档位与偏差方向
-    const inRange = (v: number) => v >= 60 && v <= 90
-    const tag = (name: string, v: number) => `${name}=${v}${inRange(v) ? '' : v < 60 ? '（低于 60，偏快）' : '（超过 90，偏慢）'}`
-    lines.push(`- 每日 1-2 游戏日目标（60-90 现实日）：${tag('daily1', d1.rMed)}，${tag('daily2', d2.rMed)}（P90 分别 ${d1.rP90} / ${d2.rP90}）→ ${inRange(d1.rMed) && inRange(d2.rMed) ? '达成' : '部分达成'}`)
-    const slower = ((d3.gMed - d2.gMed) / d2.gMed) * 100
-    lines.push(`- daily3 劣化核对：游戏日中位 ${d3.gMed}，较 daily2（${d2.gMed}）${slower >= 0 ? `多 ${slower.toFixed(1)}%` : `少 ${(-slower).toFixed(1)}%`}；现实日中位 ${d3.rMed}（P90 ${d3.rP90}）——递减期占当日 2/3，连推被${d3.gMed > d2.gMed ? '有效钝化' : '未明显钝化'}`)
+  if (Number.isFinite(d3.sMed)) {
+    lines.push(`- 单 session 一茬体验：青灵草生长期 5 游戏日，session≥5 档一次入定即可 种→长→收；session1/2 档跨 2-3 个 session 一茬（较短周期为设计内取舍）`)
   }
-  if (Number.isFinite(st.gMed) && Number.isFinite(d2.gMed)) {
-    lines.push(`- 连推参照：稳健经营连推档游戏日中位 ${st.gMed}，vs daily2 ${d2.gMed}——${st.gMed > d2.gMed ? '连推反而更慢，地力递减使连推不占优' : '连推仍快于每日 2 游戏日，递减力度可再评估'}`)
-  }
+  lines.push(`- 月定额达成率目标 ≥95%：见上表；不足时按设计 §3.2 优先调 QUOTA_TARGET 与售价，不动 days 表`)
   lines.push('')
   return lines.join('\n')
 }
@@ -376,11 +382,11 @@ const runs = numArg > 0 ? numArg : quick ? 50 : 500
 const sections: string[] = [
   `# 灵植记平衡模拟报告`,
   '',
-  `- 局数：${runs}/策略；截止日：${DAY_LIMIT}；策略与规则对齐 PRD §14，现实日口径见 PRD §16.9 / real-day.md`,
+  `- 局数：${runs}/策略；截止日：${DAY_LIMIT}；策略与规则对齐 PRD §14，session 口径见 time-decouple.md §3.2（T49 时间解耦）`,
   '- 随机种子：第 i 局为 i × 7919，i 从 1 开始；筑基后停止模拟，后续日期不再采样。',
   '- 资源耗尽指没有可种种子和在田作物，且灵石不足以购买可种种子；恢复指出售或应急领种后当日获得可种种子。',
-  '- 现实日口径：daily1/2/3 = 每现实日推进 1/2/3 个游戏日；稳健/进取/学习起步为连推档近似（每 30 游戏日跨 1 次现实日）。跨日由引擎 syncRealDay 结算晨露（灵石 +8 / 心得 +5，属设计内经济）与连胜漏签；地力递减（当日第 2+ 游戏日事件率 0.15、收获修为减半）由引擎按 gamesToday 自动生效。',
-  '- 口径提示：连推档大部分游戏日处于地力递减期，其数字与「现实日机制上线前」的历史报告不可直接对比。',
+  '- session 口径：daily1/2/3 = 每 session 推进 1/2/3 个游戏日；稳健/进取/学习起步为入定连推近似（每 30 游戏日 = 1 session）。每 session 结束跨 1 现实日，由引擎 syncRealDay 结算晨露（灵石 +8 / 心得 +5，属设计内经济）、测验奖励锚重置与连胜漏签。',
+  '- 口径提示：T49 后生长期全表 ÷3、地力透支删除（事件率恒 0.3、收获修为不减半）、测验资源每现实日一次；与 T49 前的历史报告不可直接对比。',
   `- 生成时间：${new Date().toISOString()}`,
   '',
 ]

@@ -15,8 +15,9 @@ import type { GameState, LibId, QuizQuestion, ReasonCode } from './types'
 
 // 抽题（quiz.md §3.2 + srs-audio.md §3.1）：
 // 复习配额按境界；候选顺序 = 到期词（due 升序）→ 新词（未见随机）→ 已学未到期词（稳定性升序兜底补足）
+// 进行中的会话不可重开；quizDaily.done 不再拦截——同现实日可加练多场（资源奖励每现实日一次，confirm 内判）
 export function beginSession(s: GameState, rng: Rng): ReasonCode | null {
-  if (s.quizDaily.done) return 'ALREADY_DONE'
+  if (s.quizDaily.session) return 'ALREADY_DONE'
   const lib = s.learning.currentLib
   const bank = LIBS[lib]
   if (bank.length < QUIZ_SIZE) return 'LIBRARY_INSUFFICIENT'
@@ -118,7 +119,8 @@ export function next(s: GameState): ReasonCode | null {
 }
 
 // 确认结果：判分、发奖、更新学习统计（quiz.md §3.5/§3.6）；SRS 评级已在 answer 时入账。
-// 确认即完成当日任务并清空会话
+// 确认即清空会话。资源奖励锚现实日（time-decouple.md §3.4）：本现实日首场照常发奖，
+// 同日加练只更新统计与 FSRS 卡、打卡照常只记一次，不再发资源
 export function confirm(s: GameState): ReasonCode | null {
   const session = s.quizDaily.session
   if (!session || session.phase !== 'result') return 'INVALID_TARGET'
@@ -144,7 +146,15 @@ export function confirm(s: GameState): ReasonCode | null {
   stat.sessions += 1
   const pass = score >= QUIZ_PASS
 
-  if (pass) {
+  if (s.quizDaily.done) {
+    // 同现实日加练：不发资源，日志注明口径，避免玩家以为奖励丢失
+    addLog(s, {
+      kind: 'settle',
+      icon: '✅',
+      title: `任务堂 ${score}/${QUIZ_SIZE}`,
+      text: '今日奖励已领（每现实日一次），本场只更新复习计划与统计',
+    })
+  } else if (pass) {
     const gain = REWARD_PASS.qi + (s.gongfa >= 4 ? 1 : 0)
     const before = s.resources.qi
     s.resources.qi = Math.min(qiCap(s.realm), before + gain)

@@ -7,7 +7,7 @@ import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5
 
 export interface SaveData {
   version: number
@@ -143,7 +143,7 @@ export function validate(game: unknown): ReasonCode | null {
     g.month.ledger.every((entry) => typeof entry === 'object' && entry !== null && nonNegInt(entry.month) && entry.month >= 1 && isBool(entry.paid) && isStr(entry.detail)) &&
     // 现实日锚与道心连胜（real-day.md §3.6，存档 v2 新增）：数值范围、history 升序去重、milestones 合法、freezes ≤ 上限
     typeof g.realDay === 'object' && g.realDay !== null &&
-    nonNegInt(g.realDay.today) && nonNegInt(g.realDay.gamesToday) &&
+    nonNegInt(g.realDay.today) &&
     typeof g.streak === 'object' && g.streak !== null &&
     nonNegInt(g.streak.count) && nonNegInt(g.streak.best) && nonNegInt(g.streak.checkins) &&
     isInt(g.streak.lastCheckinDay) && g.streak.lastCheckinDay >= -1 &&
@@ -243,7 +243,8 @@ export function importCode(code: string): ImportResult {
 
 // 顺序迁移链（save.md §3.3）：每项只把自家源版本升一格，按 data.version 判定是否命中
 export const migrations: ((data: SaveData) => SaveData)[] = [
-  // v1 → v2（real-day.md §3.6）：补现实日锚与道心连胜默认值；realDay.today 用迁移时刻的当前现实日，旧档连胜从 0 起算
+  // v1 → v2（real-day.md §3.6）：补现实日锚与道心连胜默认值；realDay.today 用迁移时刻的当前现实日，旧档连胜从 0 起算。
+  // v1 档从未携带 gamesToday，无需补（v5 起该字段已删除）
   (data) => {
     if (data.version !== 1) return data
     return {
@@ -251,7 +252,7 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
       version: 2,
       game: {
         ...data.game,
-        realDay: { today: realDayIndex(Date.now()), gamesToday: 0 },
+        realDay: { today: realDayIndex(Date.now()) },
         streak: { count: 0, best: 0, lastCheckinDay: -1, checkins: 0, freezes: 0, milestones: [], history: [] },
       },
     }
@@ -308,6 +309,40 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
                   : learning.libs,
               },
             }
+          : {}),
+      },
+    }
+  },
+  // v4 → v5（time-decouple.md §3.5，T49 时间解耦）：生长期全表 ÷3——生长中田块进度按新旧天数比例折算，
+  // 折算后恰达新生长期即置成熟（不丢收成）；删除地力透支 gamesToday 字段；
+  // quizDaily.done 语义改为「本现实日已领奖励」，迁移时刻已完成则保持 true（当日不重复发奖）。脏档交 validate 拦截
+  (data) => {
+    if (data.version !== 4) return data
+    // 折算基准：v4 时代的生长期（constants 现值已 ÷3，旧值只能在此留档）
+    const OLD_DAYS: Record<string, number> = { qingling: 15, ninglu: 20, ziyun: 30, chisui: 35, longxue: 50, jiuye: 60 }
+    const fields = Array.isArray(data.game?.fields)
+      ? data.game.fields.map((f) => {
+          if (f.status !== 'growing' || !f.herb) return f
+          const oldDays = OLD_DAYS[f.herb]
+          const newDays = HERB_BY_ID[f.herb]?.days
+          if (!oldDays || !newDays || typeof f.progress !== 'number') return f
+          // 功法 Lv2 生长期 −1 对新旧表同向生效：折算后与新 effDays 比对，达标即成熟
+          const eff = Math.max(1, newDays - (data.game.gongfa >= 2 ? 1 : 0))
+          const progress = Math.round(f.progress * (newDays / oldDays))
+          return progress >= eff
+            ? { ...f, progress: eff, status: 'mature' as const }
+            : { ...f, progress }
+        })
+      : data.game?.fields
+    const realDay = data.game?.realDay
+    return {
+      ...data,
+      version: 5,
+      game: {
+        ...data.game,
+        ...(fields ? { fields } : {}),
+        ...(realDay && typeof realDay === 'object'
+          ? { realDay: { today: realDay.today } }
           : {}),
       },
     }

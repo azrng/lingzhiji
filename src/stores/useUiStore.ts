@@ -19,12 +19,14 @@ interface UiStore {
   marketOpen: boolean
   settingsOpen: boolean
   commissionOpen: boolean
+  meditateOpen: boolean
   tutorialStep: number // 0 不显示；1-3 引导步骤
   toasts: Toast[]
   setQuizOpen: (v: boolean) => void
   setMarketOpen: (v: boolean) => void
   setSettingsOpen: (v: boolean) => void
   setCommissionOpen: (v: boolean) => void
+  setMeditateOpen: (v: boolean) => void
   setTutorialStep: (v: number) => void
   pushToasts: (entries: LogEntry[]) => void
   dismissToast: (id: number) => void
@@ -37,12 +39,14 @@ export const useUiStore = create<UiStore>((set) => ({
   marketOpen: false,
   settingsOpen: false,
   commissionOpen: false,
+  meditateOpen: false,
   tutorialStep: 0,
   toasts: [],
   setQuizOpen: (v) => set({ quizOpen: v }),
   setMarketOpen: (v) => set({ marketOpen: v }),
   setSettingsOpen: (v) => set({ settingsOpen: v }),
   setCommissionOpen: (v) => set({ commissionOpen: v }),
+  setMeditateOpen: (v) => set({ meditateOpen: v }),
   setTutorialStep: (v) => set({ tutorialStep: v }),
   // 新日志条目转 toast：事件/结算/突破需要即时反馈，普通行动不弹（core-loop.md）
   pushToasts: (entries) => {

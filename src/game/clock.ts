@@ -59,7 +59,9 @@ export function syncRealDay(state: GameState, nowMs: number): { state: GameState
       })
     }
   }
-  s.realDay.gamesToday = 0
+  // 跨现实日重置测验奖励锚（time-decouple.md §3.4）：quizDaily.done 语义 = 本现实日已领奖励，
+  // 不再随游戏日推进重置；进行中的会话保留可续答
+  s.quizDaily.done = false
   s.realDay.today = today
   return { state: s, changed: true }
 }

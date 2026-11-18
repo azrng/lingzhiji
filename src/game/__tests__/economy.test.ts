@@ -102,10 +102,10 @@ describe('月末定额与欠缴（economy.md §3.4）', () => {
     let s = atDay30()
     s.month.unpaidStreak = 1
     s.day = 60 // 第 2 月月末（第 60 天）
-    // 1 号田有作物，2、3 号空 → 必须优先收空田
+    // 1 号田有作物，2、3 号空 → 必须优先收空田（progress 3：END_DAY 生长 +1 后 4/5 仍在长）
     s.fields[0].status = 'growing'
     s.fields[0].herb = 'qingling'
-    s.fields[0].progress = 5
+    s.fields[0].progress = 3
     s.fields[0].curYield = 5
     s.fields[0].dry = 0
     s.fields[0].halved = false
@@ -127,7 +127,7 @@ describe('月末定额与欠缴（economy.md §3.4）', () => {
     for (const f of s.fields) {
       f.status = 'growing'
       f.herb = 'qingling'
-      f.progress = 5
+      f.progress = 3
       f.curYield = 5
       f.dry = 0
       f.halved = false

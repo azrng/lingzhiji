@@ -20,7 +20,8 @@ export default function DayLog() {
         <div><div className="font-serif text-lg text-info-600 tracking-widest">修行手记</div><div className="text-xs text-gray-500 mt-1">记录灵田里的点滴</div></div>
         <span className="text-xs text-gray-500">最近 {log.length} 条</span>
       </div>
-      <div className="flex flex-col gap-3 overflow-y-auto max-h-80">
+      {/* 固定列表区高度：新日志只在内部增长/滚动，不再把整个页面撑高造成布局跳动 */}
+      <div className="flex flex-col gap-3 overflow-y-auto h-80">
         {log.length === 0 && (
           <div className="rounded-xl bg-gray-100 px-4 py-6 text-center text-sm leading-6 text-gray-600">今日的故事还未写下<br />去灵田看看吧</div>
         )}

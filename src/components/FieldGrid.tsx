@@ -49,7 +49,7 @@ export default function FieldGrid() {
             onClick={() => act({ type: 'RECLAIM_LAND' })}
             disabled={!!reclaimReason}
             title={reclaimReason ?? '开荒 1 块新灵田（2 行动力）'}
-            className="min-h-52 rounded-2xl border-2 border-dashed border-primary-300 bg-gray-50/50 text-primary-700 hover:bg-gray-50/80 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-2"
+            className="min-h-65 rounded-2xl border-2 border-dashed border-primary-300 bg-gray-50/50 text-primary-700 hover:bg-gray-50/80 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-2"
           >
             <span className="text-2xl">＋</span>
             <span className="text-sm">开荒 · 2 行动力</span>
@@ -171,8 +171,9 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
     )
   }
 
+  // 卡片统一最小高度：取生长态内容高度（~250px）+ 余量，空田/生长/成熟切换不改变行高，避免播种瞬间整行跳动
   return (
-    <div className="relative bg-gray-50/90 border border-gray-50 rounded-2xl shadow-md min-h-52 p-3 hover:shadow-lg transition-shadow">
+    <div className="relative bg-gray-50/90 border border-gray-50 rounded-2xl shadow-md min-h-65 p-3 hover:shadow-lg transition-shadow">
       {/* 田属性行（farming-depth.md §3.2/§3.3）：地力点 + 上茬记忆 + 喜阴相生徽章 */}
       <div className="absolute top-4 left-4 text-xs text-gray-600 tracking-widest">
         {fid} 号灵田

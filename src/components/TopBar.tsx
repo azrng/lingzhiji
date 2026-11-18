@@ -53,7 +53,7 @@ export default function TopBar() {
         {/* 与 Res 同构（上行图标+数值、下行二字标签），上限并入数值展示保证上限变化时当前值清晰 */}
         <div title={`任务堂获得（合格 +3）；播种与灌注消耗；当前上限 ${QI_CAP[g.realm]}`}>
           <div className="flex items-center gap-1.5">
-            <Sprite sheet="resource-icons-sheet.png" cols={4} rows={2} col={2} row={0} size={18} />
+            <Sprite sheet="resource-icons-sheet.webp" cols={4} rows={2} col={2} row={0} size={18} />
             <b className="text-info-600 tabular-nums">{g.resources.qi}/{QI_CAP[g.realm]}</b>
             <Pips value={g.resources.qi} cap={QI_CAP[g.realm]} />
           </div>
@@ -72,7 +72,7 @@ export default function TopBar() {
           }`}
         >
           {/* 道心烛火图标（roadmap-assets.md #11）：替换原 emoji 🕯 兜底 */}
-          <img src={assetUrl('icon-daoxin-candle.png')} alt="" aria-hidden width={18} height={18} className="flex-none" />
+          <img src={assetUrl('icon-daoxin-candle.webp')} alt="" aria-hidden width={18} height={18} className="flex-none" />
           <span>道心 {g.streak.count}</span>
           <span aria-label={checkedToday ? '今日已打卡' : '今日未打卡'}>{checkedToday ? '✓' : '⚠'}</span>
         </button>
@@ -96,7 +96,7 @@ function Res({ col, row, label, value }: { col: number; row: number; label: stri
   return (
     <div title={RES_TIPS[label]}>
       <div className="flex items-center gap-1.5">
-        <Sprite sheet="resource-icons-sheet.png" cols={4} rows={2} col={col} row={row} size={18} />
+        <Sprite sheet="resource-icons-sheet.webp" cols={4} rows={2} col={col} row={row} size={18} />
         <b className="text-info-600 tabular-nums">{value}</b>
       </div>
       <div className="text-xs text-gray-600 mt-0.5">{label}</div>

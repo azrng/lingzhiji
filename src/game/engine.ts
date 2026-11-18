@@ -125,7 +125,7 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
 function addTideLog(s: GameState): void {
   const tide = tideOf(monthOf(s.day))
   const season = seasonDefOf(monthOf(s.day))
-  addLog(s, { kind: 'settle', evPos: [4, 0], evSheet: 'event-icons-sheet-extra.png', icon: '🌗', title: `灵潮 · ${tide.name}`, text: `${tide.desc}。${season.name} · 农谚：${season.proverb}` })
+  addLog(s, { kind: 'settle', evPos: [4, 0], evSheet: 'event-icons-sheet-extra.webp', icon: '🌗', title: `灵潮 · ${tide.name}`, text: `${tide.desc}。${season.name} · 农谚：${season.proverb}` })
 }
 
 // 按当月灵潮调制后的权重抽取事件（core-loop.md §3.4）：基础权重 × 灵潮系数后走轮盘

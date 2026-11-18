@@ -25,7 +25,7 @@ export function EventToasts() {
             }`}
           >
             {t.evPos ? (
-              <Sprite sheet={t.evSheet ?? 'event-icons-sheet.png'} cols={5} rows={t.evSheet ? 1 : 2} col={t.evPos[0]} row={t.evPos[1]} size={22} className="mt-0.5" />
+              <Sprite sheet={t.evSheet ?? 'event-icons-sheet.webp'} cols={5} rows={t.evSheet ? 1 : 2} col={t.evPos[0]} row={t.evPos[1]} size={22} className="mt-0.5" />
             ) : (
               <LogIcon icon={t.icon} size={22} className="text-lg leading-none mt-0.5" />
             )}

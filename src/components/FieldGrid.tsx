@@ -59,11 +59,11 @@ export default function FieldGrid() {
         {planting !== null && <PlantModal fid={planting} onClose={() => setPlanting(null)} />}
       </div>
       {/* M3 氛围层（roadmap-assets.md #2/#3）：灵田雾带 + 萤火，纯装饰不拦截交互；雾带 URL 经 CSS 变量注入 */}
-      <div className="fx-mist-layer" style={{ '--mist-url': `url(${assetUrl('fx-mist.png')})` } as CSSProperties} aria-hidden />
+      <div className="fx-mist-layer" style={{ '--mist-url': `url(${assetUrl('fx-mist.webp')})` } as CSSProperties} aria-hidden />
       {FIREFLIES.map((f, i) => (
         <img
           key={i}
-          src={assetUrl('fx-firefly.png')}
+          src={assetUrl('fx-firefly.webp')}
           alt="" aria-hidden
           className="fx-firefly pointer-events-none absolute h-5 w-5"
           style={{ left: `${f.x}%`, top: `${f.y}%`, animationDelay: `${f.delay}s`, animationDuration: `${f.dur}s` }}
@@ -82,7 +82,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   const herbIdx = f.herb ? HERBS.findIndex((h) => h.id === f.herb) : 0
   const herbPortrait = herb && (
     <span className="absolute right-3 top-3 overflow-hidden rounded-full border-2 border-gray-50 shadow-md" aria-label={herb.name} role="img">
-      <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={52} />
+      <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={52} />
     </span>
   )
 
@@ -91,14 +91,14 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   const growthCrop = (stage: number, swayDelay?: string, glow?: boolean) => (
     <span className="relative inline-flex items-end justify-center">
       {glow && (
-        <img src={assetUrl('fx-mature-glow.png')} alt="" aria-hidden className="fx-mature-glow absolute bottom-0 left-1/2 -translate-x-1/2 w-40 max-w-none" />
+        <img src={assetUrl('fx-mature-glow.webp')} alt="" aria-hidden className="fx-mature-glow absolute bottom-0 left-1/2 -translate-x-1/2 w-40 max-w-none" />
       )}
-      <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={140} />
+      <Sprite sheet="plot-states-sheet.webp" cols={2} rows={2} col={0} row={0} size={140} />
       <span
         className={`absolute bottom-2 left-1/2 -translate-x-1/2${swayDelay === undefined ? '' : ' fx-sway'}`}
         style={swayDelay === undefined ? undefined : { animationDelay: `${swayDelay}s` }}
       >
-        <Sprite sheet="spirit-herbs-growth-sheet.png" cols={4} rows={6} col={stage} row={herbIdx} size={104} />
+        <Sprite sheet="spirit-herbs-growth-sheet.webp" cols={4} rows={6} col={stage} row={herbIdx} size={104} />
       </span>
     </span>
   )
@@ -107,7 +107,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   if (f.status === 'empty') {
     body = (
       <button onClick={onPlant} aria-label={`${fid} 号灵田，选择种子`} className="w-full h-full min-h-44 flex flex-col items-center justify-center gap-1 group rounded-xl focus-visible:outline-2 focus-visible:outline-primary-600">
-        <Sprite sheet="plot-states-sheet.png" cols={2} rows={2} col={0} row={0} size={136} />
+        <Sprite sheet="plot-states-sheet.webp" cols={2} rows={2} col={0} row={0} size={136} />
         <span className="rounded-full border border-primary-200 bg-primary-50 px-4 py-1.5 text-sm text-primary-700 group-hover:bg-primary-100">＋ 选择种子</span>
       </button>
     )
@@ -120,7 +120,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         {herbPortrait}
         {growthCrop(stage)}
         <div className="flex items-center gap-1.5">
-          <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
+          <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
           <span className="text-sm font-medium text-gray-800">{herb!.name}</span>
         </div>
         <div className="w-4/5 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -219,7 +219,7 @@ function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
           return (
             <div key={h.id}>
               <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
-                <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={40} />
+                <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={40} />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-sm font-medium text-gray-800">{h.name}</span>

@@ -57,7 +57,7 @@ export default function QuotaModal() {
           <div className="flex flex-col gap-2">
             {HERBS.map((h, i) => g.inventory[h.id] > 0 && (
               <div key={h.id} className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2">
-                <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={30} />
+                <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={30} />
                 <div className="flex-1 text-sm">
                   {h.name}
                   <span className="text-xs text-gray-500 ml-1">1 株 = {convertRate(h)} 株当量</span>

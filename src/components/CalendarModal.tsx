@@ -73,7 +73,7 @@ export default function CalendarModal({ onClose }: { onClose: () => void }) {
           <span title={`上限 ${FREEZE_CAP} 枚：每累计打卡 ${FREEZE_GRANT_EVERY} 次自动 +1；漏签时自动消耗，保住连胜`}>
             护道符 <b className="text-primary-600">{g.streak.freezes}/{FREEZE_CAP}</b>
             {/* 护道符图标（roadmap-assets.md #12）：替换原 emoji 🧿 兜底 */}
-            <img src={assetUrl('icon-talisman.png')} alt="" aria-hidden width={16} height={16} className="inline-block align-middle ml-0.5" />
+            <img src={assetUrl('icon-talisman.webp')} alt="" aria-hidden width={16} height={16} className="inline-block align-middle ml-0.5" />
           </span>
         </div>
         {/* 称号与下一里程碑：称号由已达成最高里程碑派生，不存档 */}

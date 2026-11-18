@@ -152,9 +152,9 @@ export function Sprite({
 // 日志/徽标 emoji → 图标素材映射（roadmap-assets.md #11–#13）：
 // 存档 icon 字段仍是 emoji 字符串（旧档兼容），展示层命中的三个用素材渲染，其余原样兜底
 const ICON_IMG: Record<string, string> = {
-  '🌅': 'icon-dew.png',
-  '🧿': 'icon-talisman.png',
-  '🕯': 'icon-daoxin-candle.png',
+  '🌅': 'icon-dew.webp',
+  '🧿': 'icon-talisman.webp',
+  '🕯': 'icon-daoxin-candle.webp',
 }
 
 export function LogIcon({ icon, size = 18, className = '' }: { icon?: string | null; size?: number; className?: string }) {

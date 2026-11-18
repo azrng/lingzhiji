@@ -49,7 +49,7 @@ export interface LogEntry {
   day: number
   kind: LogKind
   evPos?: [number, number] // 事件图标在对应素材图集中的位置
-  evSheet?: 'event-icons-sheet-extra.png' // 未设置时沿用原 5×2 事件图集
+  evSheet?: 'event-icons-sheet-extra.webp' // 未设置时沿用原 5×2 事件图集
   icon?: string
   title: string
   text: string

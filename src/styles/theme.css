@@ -79,7 +79,7 @@ body {
 .game-world {
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--color-gray-50) 22%, transparent), color-mix(in srgb, var(--color-primary-100) 54%, transparent)),
-    url('../assets/spirit-garden-background.jpg') center top / cover fixed;
+    url('../assets/spirit-garden-background.webp') center top / cover fixed;
 }
 
 .field-garden {

@@ -68,7 +68,7 @@ export default function CommissionModal() {
           {active ? (
             <>
               <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-3">
-                <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={herbIndex(active.herb) % 3} row={Math.floor(herbIndex(active.herb) / 3)} size={30} />
+                <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={herbIndex(active.herb) % 3} row={Math.floor(herbIndex(active.herb) / 3)} size={30} />
                 <div className="flex-1 text-sm">
                   <b>{HERB_BY_ID[active.herb].name} ×{active.count}</b>
                   <div className="text-xs text-gray-500">奖励：{rewardText(active.reward)}（示例值，待平衡）</div>
@@ -102,7 +102,7 @@ export default function CommissionModal() {
               const idx = herbIndex(offer.herb)
               return (
                 <div key={offer.id} className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-3">
-                  <Sprite sheet="spirit-herbs-sheet.png" cols={3} rows={2} col={idx % 3} row={Math.floor(idx / 3)} size={30} />
+                  <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={idx % 3} row={Math.floor(idx / 3)} size={30} />
                   <div className="flex-1 text-sm">
                     <b>{HERB_BY_ID[offer.herb].name} ×{offer.count}</b>
                     <div className="text-xs text-gray-500">

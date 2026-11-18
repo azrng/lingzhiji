@@ -236,7 +236,7 @@ function Testing() {
         className={`relative rounded-2xl bg-primary-50 border border-primary-100 px-5 py-8 text-center overflow-hidden${goldFlash ? ' fx-flash-gold' : ''}`}
         onAnimationEnd={() => setGoldFlash(false)}
       >
-        <img src={assetUrl('quiz-paper-texture.png')} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-30" />
+        <img src={assetUrl('quiz-paper-texture.webp')} alt="" aria-hidden className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-30" />
         <div className="relative">{prompt}</div>
       </div>
       {q.kind === 'spell' ? (

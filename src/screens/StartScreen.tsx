@@ -8,7 +8,17 @@ import { useGameStore } from '../stores/useGameStore'
 
 // 启动页负责选择本局形象；所选立绘会同步到游戏中的弟子头像与结算画面。
 export default function StartScreen() {
-  const [characterId, setCharacter] = useState(characters[0].id)
+  // 默认选中上次选择的形象：从现有存档读 characterId（开始修行时写入），无档或角色已下线回落首卡
+  const [characterId, setCharacter] = useState(() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(SAVE_KEY) : null
+      const saved: string | null | undefined = raw ? JSON.parse(raw)?.game?.characterId : undefined
+      return characters.find((c) => c.id === saved)?.id ?? characters[0].id
+    } catch {
+      // 存档损坏或浏览器禁用存储时回落首卡，与下方 hasSave 的防御口径一致
+      return characters[0].id
+    }
+  })
   const [importOpen, setImportOpen] = useState(false)
   const [code, setCode] = useState('')
   const [importError, setImportError] = useState('')

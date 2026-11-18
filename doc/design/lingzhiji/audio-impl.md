@@ -45,7 +45,7 @@ localStorage['lingzhiji.audio'] = {"bgm":true,"sfx":true}
 ### 3.3 解锁与 BGM 场景切换
 
 - 浏览器自动播放策略：AudioContext 需用户手势解锁。开始页三个入口（开始修行/继续修行/导入并继续）成功进入游戏时调用 `unlockAudio()`（同步调用，处于点击调用栈内），随后 `setBgmScene('field')`。
-- `setBgmScene(scene: 'field' | 'study' | null)`：当前曲 1s 淡出 → 新曲循环播放 1s 淡入（BGM 音量 0.5）；同场景幂等不重播。
+- `setBgmScene(scene: 'field' | 'study' | null)`：当前曲 1s 淡出 → 新曲循环播放 1s 淡入（BGM 音量按场景，见 §3.5）；同场景幂等不重播。
 - 任务堂弹层（QuizModal）挂载 → `'study'`；卸载 → `'field'`。月末定额弹层不切场景（无专属曲，保持灵田曲）。
 - 页面刷新回到开始页，重新走手势路径，无残留状态问题（Howl 缓存随页面销毁）。
 
@@ -74,7 +74,7 @@ localStorage['lingzhiji.audio'] = {"bgm":true,"sfx":true}
 
 | 通道 | 默认音量 |
 |---|---|
-| BGM | 0.5 |
+| BGM | 灵田 0.5 / 任务堂 0.25（2026-11-18 T43 试玩反馈：任务堂 BGM 盖住单词读音，降半为发音让出清晰度；答题自动朗读频繁，不做朗读时闪避以免音量反复起伏） |
 | 事件音效 | 0.8 |
 | UI 点击 | 0.3 |
 

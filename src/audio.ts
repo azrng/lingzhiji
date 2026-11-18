@@ -15,7 +15,9 @@ export type BgmScene = 'field' | 'study'
 export type AudioPrefs = { bgm: boolean; sfx: boolean; voice: boolean; autoRead: boolean }
 
 const PREFS_KEY = 'lingzhiji.audio'
-const BGM_VOLUME = 0.5
+// BGM 音量按场景：任务堂降到 0.25 给单词发音让出清晰度（T43 试玩反馈 BGM 盖住读音；
+// 答题自动朗读频繁，不做朗读时闪避以免 BGM 反复起伏，低音量常驻更稳）
+const BGM_VOLUME: Record<BgmScene, number> = { field: 0.5, study: 0.25 }
 const SFX_VOLUME = 0.8
 const CLICK_VOLUME = 0.3
 const FADE_MS = 1000
@@ -205,7 +207,7 @@ function applyBgm(): void {
       }
       currentBgm = howl
       howl.play()
-      howl.fade(0, BGM_VOLUME, FADE_MS)
+      howl.fade(0, BGM_VOLUME[scene], FADE_MS)
     })
     .catch(() => {
       // BGM 加载失败：静默，游戏可玩性不受影响（§5）

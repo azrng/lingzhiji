@@ -139,6 +139,8 @@ function simDay(s: GameState, strat: Strategy, rng: ReturnType<typeof createRng>
     if (s.resources.contribution >= REDEEM_COST) act({ type: 'RECLAIM', fieldId: f.id })
   }
   // 任务堂（每游戏日先完成测验）
+  // 按题型分流作答（M2 后 opts 语义随 kind 变化：w2c=释义组、c2w/listen=单词组、spell=拼写输入；
+  // 旧写法对 c2w/listen 传 meaning、对 spell 传 undefined 均会 INVALID_TARGET 卡死不推进）
   if (act({ type: 'QUIZ_BEGIN' }).ok) {
     act({ type: 'QUIZ_LEARNED' })
     const session = s.quizDaily.session
@@ -146,8 +148,15 @@ function simDay(s: GameState, strat: Strategy, rng: ReturnType<typeof createRng>
       for (let i = 0; i < 10; i++) {
         const q = session.questions[i]
         const correct = rng.next() < (q.from === 'new' ? strat.pNew : strat.pReview)
-        const wrong = q.opts.find((o) => o !== q.meaning) ?? q.opts[0]
-        act({ type: 'QUIZ_ANSWER', choice: correct ? q.meaning : wrong })
+        let choice: string
+        if (q.kind === 'spell') {
+          choice = correct ? q.word : `${q.word}x`
+        } else if (q.kind === 'w2c') {
+          choice = correct ? q.meaning : (q.opts.find((o) => o !== q.meaning) ?? q.opts[0])
+        } else {
+          choice = correct ? q.word : (q.opts.find((o) => o !== q.word) ?? q.opts[0])
+        }
+        act({ type: 'QUIZ_ANSWER', choice })
         act({ type: 'QUIZ_NEXT' })
       }
       act({ type: 'QUIZ_CONFIRM' })

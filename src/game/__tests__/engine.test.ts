@@ -180,6 +180,18 @@ describe('事件效果解释器与月度灵潮（core-loop.md §3.4 / PRD §11�
     expect(s.fields[0].curYield).toBe(8) // 当令 6 + 2（生发季青灵草 +1，farming-depth.md）
   })
 
+  it('无目标事件日志附注实情：空田虫害/灵雨、空仓灵雀照常入日志但不误导（T53 实玩修复）', () => {
+    const s = started() // 三块田全空、仓库为空
+    applyEvent(s, eventOf('pest'), createRng(1))
+    expect(s.log[0].text).toContain('田里没有生长中的灵草')
+    expect(s.fields.every((f) => f.status === 'empty')).toBe(true)
+    applyEvent(s, eventOf('rain'), createRng(1))
+    expect(s.log[0].text).toContain('田里没有生长中的灵草')
+    applyEvent(s, eventOf('bird'), createRng(1))
+    expect(s.log[0].text).toContain('仓库空空如也')
+    expect(Object.values(s.inventory).every((n) => n === 0)).toBe(true)
+  })
+
   it('仙人残梦：心得 +5；灵气涌动：灵气 +2 受上限截断', () => {
     const s = started()
     applyEvent(s, eventOf('dream'), createRng(1))

@@ -111,6 +111,7 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
       const owned = Object.entries(s.inventory).filter(([, n]) => n > 0)
       const pool: [string, number][] = eff.delta < 0 ? owned : Object.entries(s.inventory)
       const t = pool.length ? pick(rng, pool) : null
+      if (!t) note = '仓库空空如也'
       if (t) s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
       break
     }

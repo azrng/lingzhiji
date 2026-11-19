@@ -57,7 +57,7 @@ export default function MeditateModal() {
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-600 leading-relaxed">
-            入定期间灵田照常生长、事件照常发生，但<b>无法浇灌</b>——缺水累计 3 天将减产一次。月末自动出关，定额结算不受影响。
+            入定期间灵田照常生长、事件照常发生，但<b>无法浇灌</b>——缺水累计 3 天将当茬产量减半。月末自动出关，定额结算不受影响。
           </p>
 
           <div className="rounded-xl border border-gray-200 bg-gray-100 p-4 flex flex-col gap-3">
@@ -146,10 +146,13 @@ function ResultPanel({ r, onClose }: { r: MeditateRunInfo; onClose: () => void }
         {r.perDay.map((d) => (
           <div key={d.dayOffset} className="px-4 py-2 border-b border-gray-200 last:border-b-0 text-sm flex flex-col gap-1">
             <div className="flex justify-between">
-              <span className="text-gray-600">第 {d.day} 日</span>
+              <span className="text-gray-600">入定第 {d.dayOffset} 天</span>
               <div className="flex gap-2 flex-wrap justify-end">
                 {d.matured.map((m) => <span key={m.field} className="text-success-500">🌾 {m.herbName}成熟（{m.field} 号田）</span>)}
                 {d.dryHit && <span className="text-warning-500">⚠ {d.dryHit.herbName}缺水减产</span>}
+                {d.matured.length === 0 && !d.dryHit && d.events.length === 0 && (
+                  <span className="text-xs text-gray-400">平顺无事</span>
+                )}
               </div>
             </div>
             {d.events.map((e, i) => (

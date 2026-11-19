@@ -75,7 +75,7 @@ export function meditatePreview(g: GameState, days: number): MeditatePreviewInfo
     // 会累计缺水的日终数：受当日浇灌保护 -1，且成熟后不再累计
     const dryEnds = Math.min(days - protectedEnds, remain - 1)
     if (dryEnds >= 3 - f.dryStreak) {
-      dryRisks.push(`${f.field} 号田${f.herbName}：入定第 ${protectedEnds + (3 - f.dryStreak)} 天缺水累计 3 天，当茬减产`)
+      dryRisks.push(`${f.field} 号田${f.herbName}：入定第 ${protectedEnds + (3 - f.dryStreak)} 天缺水累计 3 天，当茬产量减半`)
     }
   }
   return { newMonthDay, stoppedAtMonthEnd: newMonthDay >= MONTH_DAYS, matured, dryRisks }

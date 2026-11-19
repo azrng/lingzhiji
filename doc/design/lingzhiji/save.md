@@ -30,7 +30,7 @@ relations:
 
 ### 3.1 读写封装（`src/game/save.ts`）
 
-- localStorage 唯一读写点（UI 与 store 禁止直用，对齐 frontend-AGENTS.md 无后端数据口径）；键名常量 `lingzhiji.save.v1`——**键名与结构版本解耦**，结构升级不改键（避免玩家丢档），当前结构版本 SAVE_VERSION = 5
+- localStorage 唯一读写点（UI 与 store 禁止直用，对齐 frontend-AGENTS.md 无后端数据口径）；键名常量 `lingzhiji.save.v1`——**键名与结构版本解耦**，结构升级不改键（避免玩家丢档），当前结构版本 SAVE_VERSION = 6
 - 接口：`persist(state)` / `load(): Result<GameState>` / `exportCode(): string` / `importCode(code): Result<GameState>`
 - 保存失败（隐私模式 / 容量满）：捕获后返回失败，UI toast「存档保存失败，进度暂存于本页」，游戏状态留在内存继续游玩
 
@@ -46,6 +46,7 @@ relations:
 - **v1 → v2（2026-11-15 现实日锚，已落地）**：补 `realDay`（today = 迁移时刻现实日 / gamesToday = 0）与 `streak` 全零值字段，旧进度无损、连胜从 0 起算；键名不变（§3.1）
 - **v3 → v4（2026-11-17 SRS + 多题型，已落地）**：错词池与已见词一次性转 FSRS 复习卡，`wrongQueue` 清空退役
 - **v4 → v5（2026-11-18 时间解耦，已落地）**：生长中田块进度按新旧生长期比例折算（`round(progress × 新days/旧days)`，恰达即置成熟）；删除 `realDay.gamesToday`；`quizDaily.done` 语义改为「本现实日已领奖励」（迁移时刻已完成则保持，当日不重复发奖）。旧生长期基准 15/20/30/35/50/60 在迁移代码内留档
+- **v5 → v6（2026-11-19 灵植堂委托，已落地）**：补 `commissions` 空委托状态（`{ offers: [], acceptedThisMonth: false, active: null }`）——本月选项留空、下月初由 `advanceDay` 生成，旧档当月不补发；导入校验覆盖选项数量 ≤2、灵草/数量/奖励四选一合法性（见 cultivation-commissions.md §3.3）
 - 后续结构变更继续在 `migrations: ((old) => new)[]` 顺序迁移链追加；迁移只在新版本代码中新增，旧档读入即升格后入库——该链是 M2+ 内容扩展的标准通道
 - 二期境界扩展等按 PRD §5.2 要求保留已有修为、种植、资源与学习记录，不得清空进度
 

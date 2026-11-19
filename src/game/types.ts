@@ -110,6 +110,27 @@ export interface MonthRecord {
   detail: string
 }
 
+// 灵植堂委托（cultivation-commissions.md §3.2/§3.3，随存档 v6）：月初刷新选项、
+// 每月最多接 1 份、活跃跨月保留；奖励只用既有资源与种子
+export type CommissionReward =
+  | { kind: 'stones'; amount: number }
+  | { kind: 'contribution'; amount: number }
+  | { kind: 'insight'; amount: number }
+  | { kind: 'seed'; herb: HerbId; amount: number }
+
+export interface CommissionOffer {
+  id: string
+  herb: HerbId
+  count: number // 要求交付数量（株）
+  reward: CommissionReward
+}
+
+export interface CommissionsState {
+  offers: CommissionOffer[] // 本月选项（月初刷新；首月与迁移档为空，下月初生成）
+  acceptedThisMonth: boolean // 本月接取资格已用（接取后含交付/放弃两种去向）
+  active: CommissionOffer | null // 活跃委托（跨月保留，不随选项刷新被覆盖）
+}
+
 export interface Resources {
   stones: number
   contribution: number
@@ -149,6 +170,7 @@ export interface GameState {
   fields: Field[]
   seeds: Record<HerbId, number>
   inventory: Record<HerbId, number>
+  commissions: CommissionsState // 灵植堂委托（v6）：选项/资格/活跃三类持久状态
   quizDaily: { done: boolean; session: QuizSession | null }
   learning: Learning
   realDay: RealDayState
@@ -218,3 +240,6 @@ export type GameAction =
   | { type: 'TUTORIAL_DONE' } // 新手引导完成/跳过
   | { type: 'DEBUG_CULTIVATE'; amount: number } // 调试：修为入账（走突破检查，仅 ?debug=1 使用）
   | { type: 'QUOTA_RESOLVE'; pay: boolean; plan: Partial<Record<HerbId, number>> }
+  | { type: 'COMMISSION_ACCEPT'; offerId: string } // 灵植堂委托：接取（0 AP，每月最多 1 份）
+  | { type: 'COMMISSION_DELIVER' } // 灵植堂委托：交付活跃委托（库存不足零副作用）
+  | { type: 'COMMISSION_ABANDON' } // 灵植堂委托：放弃活跃委托（无惩罚，当月资格不退还）

@@ -63,8 +63,8 @@ describe('存档 v1 → v2 迁移（real-day.md §3.6）', () => {
     })
   }
 
-  it('SAVE_VERSION 升至 5，SAVE_KEY 保持 v1 键名（键名与版本号解耦防丢档）', () => {
-    expect(SAVE_VERSION).toBe(5)
+  it('SAVE_VERSION 升至 6，SAVE_KEY 保持 v1 键名（键名与版本号解耦防丢档）', () => {
+    expect(SAVE_VERSION).toBe(6)
     expect(SAVE_KEY).toBe('lingzhiji.save.v1')
   })
 
@@ -105,7 +105,7 @@ describe('存档 v1 → v2 迁移（real-day.md §3.6）', () => {
 
   it('非正整数或超前版本拒绝（BAD_VERSION）', () => {
     const g = createInitialState(5)
-    expect(importCode(encode({ version: 6, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
+    expect(importCode(encode({ version: 7, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
     expect(importCode(encode({ version: 0, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
     expect(importCode(encode({ version: '2', savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
   })
@@ -191,5 +191,51 @@ describe('存档 v4 → v5 迁移（time-decouple.md §3.5）', () => {
     // 当前版本导码（version 5）导入不受迁移影响
     const fresh = exportCode(createInitialState(6))
     expect(importCode(fresh).ok).toBe(true)
+  })
+})
+
+describe('存档 v5 → v6 迁移（cultivation-commissions.md §3.3）', () => {
+  const encode3 = (data: unknown): string => {
+    const bytes = new TextEncoder().encode(JSON.stringify(data))
+    let bin = ''
+    for (const b of bytes) bin += String.fromCharCode(b)
+    return btoa(bin)
+  }
+
+  // v5 结构存档：无 commissions 字段（v5 时代引擎尚未引入委托）
+  function v5Save() {
+    const g = createInitialState(31)
+    const game: Partial<GameState> = { ...g }
+    delete game.commissions
+    return { version: 5, savedAt: 1_700_000_000_000, game: game as GameState }
+  }
+
+  it('补空委托状态（选项留空，下月初由 advanceDay 生成，旧档当月不补发）', () => {
+    const r = importCode(encode3(v5Save()))
+    expect(r.ok).toBe(true)
+    expect(r.state!.commissions).toEqual({ offers: [], acceptedThisMonth: false, active: null })
+  })
+
+  it('v6 导码直接通过不重复迁移', () => {
+    const fresh = exportCode(createInitialState(6))
+    expect(importCode(fresh).ok).toBe(true)
+  })
+
+  it('委托脏值被 validate 拦截：数量 0 / 非法灵草 / 奖励 kind 未知 / offers 超量 / active 非法', () => {
+    const dirty = (mutate: (g: GameState) => void) => {
+      const g = structuredClone(createInitialState(31))
+      g.commissions = {
+        offers: [{ id: 'm2-qingling', herb: 'qingling', count: 6, reward: { kind: 'stones', amount: 24 } }],
+        acceptedThisMonth: false,
+        active: null,
+      }
+      mutate(g)
+      return importCode(encode3({ version: 6, savedAt: 0, game: g })).reason
+    }
+    expect(dirty((g) => { g.commissions.offers[0].count = 0 })).toBe('BAD_SHAPE')
+    expect(dirty((g) => { (g.commissions.offers[0] as unknown as Record<string, unknown>).herb = 'moongrass' })).toBe('BAD_SHAPE')
+    expect(dirty((g) => { (g.commissions.offers[0].reward as unknown as Record<string, unknown>).kind = 'fame' })).toBe('BAD_SHAPE')
+    expect(dirty((g) => { g.commissions.offers[1] = { ...g.commissions.offers[0], id: 'm2-ninglu' } })).toBe('BAD_SHAPE')
+    expect(dirty((g) => { g.commissions.active = { id: '', herb: 'qingling', count: 1, reward: { kind: 'stones', amount: 1 } } })).toBe('BAD_SHAPE')
   })
 })

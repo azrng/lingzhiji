@@ -155,6 +155,13 @@ export const REDEEM_COST = 100
 export const QUOTA_FAIL_CONTRIBUTION = 20
 export const QUOTA_FAIL_STONES = 10
 
+// 灵植堂委托（cultivation-commissions.md §4，随存档 v6）：第 2 月起每月初 2 份、目标 ≈6 株当量（±1 株）；
+// 奖励 = L2 持平档（commission-sim 500 局结论：不破坏定额达成率与筑基节奏，T39.md 数值前置）——
+// 机会成本按交付草的坊市市值计：灵石/心得 1:1、贡献折半（贡献日收入约为灵石一半的稀缺度）、种子固定枚数
+export const COMMISSION_OFFERS = 2
+export const COMMISSION_QUOTA_EQUIV = 6
+export const COMMISSION_SEED_REWARD = 2
+
 // 现实日锚（real-day.md §3.7，PRD §12 同步）：晨露 / 道心连胜数值入口；
 // 地力透支常量已随 T49 时间解耦删除（事件率恒 0.3、收获修为不减半）
 export const DAY_CUT_HOUR = 4 // 日切凌晨 4 点（照顾夜猫子，4 点前算前一现实日）

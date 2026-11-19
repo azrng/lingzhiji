@@ -1,13 +1,13 @@
-// 委托奖励数值对照模拟（T39 前置，cultivation-commissions.md §5 平衡模拟）：
-// 在 daily1 现实日节奏下，对比「无委托基线」与三档奖励数值（保守/持平/激进）下
-// 筑基天数、欠缴率、资源曲线的漂移，回答需求 §8「委托收益不得取代现有定额与坊市决策」。
-// 委托引擎尚未实现（等原型确认），此处为 sim 层旁路建模：直接改 s.resources/s.inventory，
-// 不走 engine action；口径=每月 2 选项、最多接 1、活跃跨月、交付扣库存（同步降低月末可缴能力）。
+// 委托正式平衡模拟（T39 接引擎后复跑，cultivation-commissions.md §5）：
+// 委托已入引擎（存档 v6：月初生成 L2 定价选项 + COMMISSION_ACCEPT/DELIVER/ABANDON 动作），
+// 本脚本驱动真实引擎动作，对比「基线（从不接取）」与「稳健接取」两组——
+// 验证旁路建模结论（L1-L3 均安全，2026-11-18，见 artifacts/sim/report-commission-*.md）在正式实现下仍成立。
+// 口径=daily1 现实日节奏、每月 2 选项、最多接 1、活跃跨月、交付扣库存（同步降低月末可缴能力）。
 // 运行：npx tsx scripts/commission-sim.ts（默认 500 局/组）；--quick 50（快验）
 import { createInitialState, applyAction } from '../src/game/engine'
 import { syncRealDay } from '../src/game/clock'
-import { convertRate, dayInMonth, monthOf, seedPrice } from '../src/game/economy'
-import { FIELD_CAP, GONGFA_COST, HERBS, QUOTA_TARGET, REDEEM_COST } from '../src/game/constants'
+import { convertRate, dayInMonth, seedPrice } from '../src/game/economy'
+import { FIELD_CAP, GONGFA_COST, HERB_BY_ID, HERBS, QUOTA_TARGET, REDEEM_COST } from '../src/game/constants'
 import { createRng } from '../src/game/rng'
 import type { GameAction, GameState, HerbId } from '../src/game/types'
 
@@ -15,98 +15,40 @@ const DAY_LIMIT = 365
 const SIM_NOW_START = Date.UTC(2026, 0, 10, 12, 0, 0)
 const REAL_DAY_MS = 86_400_000
 
-// 奖励类型（cultivation-commissions.md：首版只用既有资源与种子）
-type RewardKind = 'stones' | 'contribution' | 'insight' | 'seed'
-
-interface Commission {
-  herb: HerbId
-  count: number
-  kind: RewardKind
-  amount: number
-}
-
-// 数值档：机会成本 = 交付草的坊市卖价合计（value）。三档按 value 比例放；
-// 灵石/心得按 value×ratio，贡献按 1:2 折灵石面再减半（贡献日收入约为灵石一半的稀缺度），种子按固定枚数。
-// 金额计算见 rewardAmount；奖励类型由生成时 rng 四选一（makeOffers）。
-interface Tier {
+// 对照组：基线=从不接取（引擎照常生成选项但不碰，行为等价无委托）；接取组=理性接取（引擎 L2 定价）
+interface Group {
   key: string
   label: string
+  accept: boolean
 }
 
-const TIERS: Tier[] = [
-  { key: 'none', label: '基线（无委托）' },
-  { key: 'l1', label: 'L1 保守（价值 75%）' },
-  { key: 'l2', label: 'L2 持平（价值 100%）' },
-  { key: 'l3', label: 'L3 激进（价值 150%）' },
+const GROUPS: Group[] = [
+  { key: 'none', label: '基线（不接委托）', accept: false },
+  { key: 'steady', label: '稳健接取（引擎 L2 定价）', accept: true },
 ]
 
-// 按档位与奖励类型定价
-function rewardAmount(tierKey: string, kind: RewardKind, value: number): number {
-  const ratio = tierKey === 'l1' ? 0.75 : tierKey === 'l2' ? 1 : 1.5
-  if (kind === 'stones') return Math.ceil(value * ratio)
-  if (kind === 'contribution') return Math.ceil((value * ratio) / 2)
-  if (kind === 'insight') return Math.ceil(value * ratio)
-  return tierKey === 'l1' ? 1 : tierKey === 'l2' ? 2 : 3
-}
-
-// 月初生成 2 个选项：目标=当前境界可播种池 rng 抽 2；数量≈6 当量（±1）；奖励类型四选一
-function makeOffers(s: GameState, rng: ReturnType<typeof createRng>, tierKey: string): Commission[] {
-  const pool = HERBS.filter((h) => s.realm >= h.realm)
-  const offers: Commission[] = []
-  for (let i = 0; i < 2 && pool.length > 0; i++) {
-    const herb = pool[Math.floor(rng.next() * pool.length)]
-    const count = Math.max(2, Math.ceil(6 / convertRate(herb)) + (rng.next() < 0.5 ? 0 : 1))
-    const kinds: RewardKind[] = ['stones', 'contribution', 'insight', 'seed']
-    const kind = kinds[Math.floor(rng.next() * kinds.length)]
-    offers.push({ herb: herb.id, count, kind, amount: rewardAmount(tierKey, kind, herb.sell * count) })
-  }
-  return offers
-}
-
-// 交付奖励入账（sim 旁路：引擎动作待原型确认后实现）
-function grantReward(s: GameState, c: Commission): void {
-  if (c.kind === 'stones') s.resources.stones += c.amount
-  else if (c.kind === 'contribution') s.resources.contribution += c.amount
-  else if (c.kind === 'insight') s.resources.insight += c.amount
-  else s.seeds[c.herb] += c.amount
-}
-
-// ---- 委托模拟状态（旁路，不入档）----
-interface CommissionState {
-  offers: Commission[]
-  offerMonth: number // 选项所属月（跨月未接即刷新）
-  active: Commission | null
-  acceptedMonth: number // 已接取的月（-1 = 本月未接）
+// ---- 委托统计（真实委托状态在 s.commissions，此处只记交付单数）----
+interface CommissionStats {
   delivered: number // 累计交付单数（统计用）
 }
 
-// 月初：刷新选项并尝试接取（理性简化：只接「自己会种的草」的委托，优先在田同款；基线组不接）
-function onMonthStart(s: GameState, cs: CommissionState, tier: Tier, rng: ReturnType<typeof createRng>): void {
-  if (tier.key === 'none') return
-  const month = monthOf(s.day)
-  if (cs.offerMonth !== month) {
-    cs.offers = makeOffers(s, rng, tier.key)
-    cs.offerMonth = month
-  }
-  if (cs.active || cs.acceptedMonth === month) return
+// 月初：理性接取（只接「自己会种的草」的委托，优先在田同款；基线组不接）。
+// 选项由引擎在 advanceDay 生成（s.commissions.offers），此处只做选择
+function onMonthStart(s: GameState, group: Group, act: (a: GameAction) => { ok: boolean }): void {
+  if (!group.accept) return
+  if (s.commissions.active || s.commissions.acceptedThisMonth) return
   const growing = new Set(s.fields.filter((f) => f.herb).map((f) => f.herb!))
-  const plantable = HERBS.filter((h) => s.realm >= h.realm).map((h) => h.id)
   const candidate =
-    cs.offers.find((o) => growing.has(o.herb)) ?? cs.offers.find((o) => plantable.includes(o.herb))
-  if (candidate) {
-    cs.active = candidate
-    cs.acceptedMonth = month
-  }
+    s.commissions.offers.find((o) => growing.has(o.herb)) ??
+    s.commissions.offers.find((o) => s.realm >= HERB_BY_ID[o.herb].realm)
+  if (candidate) act({ type: 'COMMISSION_ACCEPT', offerId: candidate.id })
 }
 
-// 交付检查：库存足额即交付（收获后调用，先于出售——奖励应不低于卖价才理性，档位由模拟评估）
-function tryDeliver(s: GameState, cs: CommissionState): void {
-  const c = cs.active
+// 交付检查：库存足额即交付（收获后调用，先于出售）——走引擎动作，扣草与奖励入账由引擎结算
+function tryDeliver(s: GameState, act: (a: GameAction) => { ok: boolean }, cs: CommissionStats): void {
+  const c = s.commissions.active
   if (!c || s.inventory[c.herb] < c.count) return
-  s.inventory[c.herb] -= c.count
-  grantReward(s, c)
-  cs.active = null
-  cs.delivered++
+  if (act({ type: 'COMMISSION_DELIVER' }).ok) cs.delivered++
 }
 
 // ---- 每日行动序列（骨架与 balance-sim steady/daily1 口径一致；仅稳策略）----
@@ -138,7 +80,7 @@ function emergencyBuy(s: GameState, act: (a: GameAction) => { ok: boolean }): bo
   return true
 }
 
-function simDay(s: GameState, rng: ReturnType<typeof createRng>, act: (a: GameAction) => { ok: boolean }, cs: CommissionState, tier: Tier): void {
+function simDay(s: GameState, rng: ReturnType<typeof createRng>, act: (a: GameAction) => { ok: boolean }, cs: CommissionStats, group: Group): void {
   // 赎回优先
   for (const f of s.fields.filter((x) => x.status === 'confiscated')) {
     if (s.resources.contribution >= REDEEM_COST) act({ type: 'RECLAIM', fieldId: f.id })
@@ -170,9 +112,9 @@ function simDay(s: GameState, rng: ReturnType<typeof createRng>, act: (a: GameAc
     if (!act({ type: 'GONGFA_UP' }).ok) break
   }
   // 月初委托：生成选项并接取
-  if (dayInMonth(s.day) === 1) onMonthStart(s, cs, tier, rng)
+  if (dayInMonth(s.day) === 1) onMonthStart(s, group, act)
   // 开局交付检查（先于出售：库存是上日遗留的足额部分）
-  tryDeliver(s, cs)
+  tryDeliver(s, act, cs)
   sellSurplus(s, act)
   // 经营循环：浇灌 > 收获 > 开荒 > 播种（含卖草/应急） > 灌注 > 吐纳；收获后立即检查交付
   let progressed = true
@@ -184,7 +126,7 @@ function simDay(s: GameState, rng: ReturnType<typeof createRng>, act: (a: GameAc
     for (const f of s.fields.filter((x) => x.status === 'mature')) {
       if (s.ap >= 1 && act({ type: 'HARVEST', fieldId: f.id }).ok) {
         progressed = true
-        tryDeliver(s, cs)
+        tryDeliver(s, act, cs)
       }
     }
     if (s.ap >= 2 && s.fields.length < FIELD_CAP[s.realm] && !s.fields.some((x) => x.status === 'confiscated')) {
@@ -233,11 +175,11 @@ interface RunResult {
   insight60: number
 }
 
-function runSim(tier: Tier, seed: number): RunResult {
+function runSim(group: Group, seed: number): RunResult {
   const rng = createRng(seed)
   let s = createInitialState((seed ^ 0x9e3779b9) >>> 0, SIM_NOW_START)
   const act = (a: GameAction) => applyAction(s, a)
-  const cs: CommissionState = { offers: [], offerMonth: 0, active: null, acceptedMonth: -1, delivered: 0 }
+  const cs: CommissionStats = { delivered: 0 }
   // 采样初始 NaN：筑基即停（realm>=9 退出循环），晚于筑基的采样点对已结束局不存在，避免伪 0
   const res: RunResult = { foundationDay: null, unpaidMonths: 0, delivered: 0, stones30: NaN, stones60: NaN, contribution60: NaN, insight60: NaN }
   let simNow = SIM_NOW_START
@@ -246,7 +188,7 @@ function runSim(tier: Tier, seed: number): RunResult {
   let sampled60 = false
   while (s.day <= DAY_LIMIT && s.realm < 9) {
     const playedDay = s.day
-    simDay(s, rng, act, cs, tier)
+    simDay(s, rng, act, cs, group)
     if (s.realm >= 9) res.foundationDay = playedDay
     gamesSinceSync++
     if (gamesSinceSync >= 1) {
@@ -261,7 +203,7 @@ function runSim(tier: Tier, seed: number): RunResult {
       res.insight60 = s.resources.insight
       sampled60 = true
     }
-    if (s.day === playedDay && s.realm < 9) throw new Error(`模拟未能推进：档位 ${tier.key}，种子 ${seed}，第 ${s.day} 天`)
+    if (s.day === playedDay && s.realm < 9) throw new Error(`模拟未能推进：组 ${group.key}，种子 ${seed}，第 ${s.day} 天`)
   }
   res.delivered = cs.delivered
   for (const entry of s.month.ledger) if (!entry.paid) res.unpaidMonths++
@@ -288,34 +230,34 @@ const lines: string[] = [
   '# 灵植记委托数值对照模拟（T39 前置）',
   '',
   `- 局数：${runs}/组；节奏：daily1（每现实日 1 游戏日，60-90 现实日目标档）；策略：稳健口径（只种青灵草）`,
-  '- 委托口径：每月 2 选项、最多接 1、活跃跨月；理性接取=只接自己会种的草（优先在田同款）；库存足额即交付（先于出售）',
-  '- 数值档（机会成本 value=交付草坊市卖价合计）：L1=灵石/心得 75%·贡献减半·种子 1；L2=100%·种子 2；L3=150%·种子 3',
-  '- 交付扣库存会同步降低月末可缴储备（定额此消彼长口径）；奖励类型按 rng 四选一（灵石/贡献/心得/种子）',
+  '- 委托口径：引擎 v6 正式实现——月初 2 选项（L2 定价 rng 四选一奖励）、最多接 1、活跃跨月；理性接取=只接自己会种的草（优先在田同款）；库存足额即交付（先于出售）',
+  '- 交付扣库存会同步降低月末可缴储备（定额此消彼长口径）；两组同种子序列，差异全部来自委托',
+  '- 对照旁路版前置结论（2026-11-18）：L1-L3 三档全部不破坏平衡，本复跑验证引擎实现未引入偏差',
   `- 生成时间：${new Date().toISOString()}`,
   '',
   '| 组 | 筑基游戏日中位 | 筑基达成率 | 月均欠缴 | 交付单数均值 | 灵石 D30 | 灵石 D60 | 贡献 D60 | 心得 D60 |',
   '|---|---|---|---|---|---|---|---|---|',
 ]
 
-console.error(`开始模拟：${runs} 局 × ${TIERS.length} 组 …`)
-for (const tier of TIERS) {
+console.error(`开始模拟：${runs} 局 × ${GROUPS.length} 组 …`)
+for (const group of GROUPS) {
   const results: RunResult[] = []
   for (let i = 0; i < runs; i++) {
-    results.push(runSim(tier, (i + 1) * 7919))
+    results.push(runSim(group, (i + 1) * 7919))
   }
   const done = results.filter((r) => r.foundationDay !== null)
   const gMed = median(done.map((r) => r.foundationDay!))
   const unpaidAvg = avg(results.map((r) => r.unpaidMonths))
   const deliveredAvg = avg(results.map((r) => r.delivered))
   lines.push(
-    `| ${tier.label} | ${Number.isFinite(gMed) ? gMed : '—'} | ${fmtPct(done.length, results.length)} | ${fmt(unpaidAvg)} | ${fmt(deliveredAvg)} | ${fmt(avg(results.map((r) => r.stones30)))} | ${fmt(avg(results.map((r) => r.stones60)))} | ${fmt(avg(results.map((r) => r.contribution60)))} | ${fmt(avg(results.map((r) => r.insight60)))} |`,
+    `| ${group.label} | ${Number.isFinite(gMed) ? gMed : '—'} | ${fmtPct(done.length, results.length)} | ${fmt(unpaidAvg)} | ${fmt(deliveredAvg)} | ${fmt(avg(results.map((r) => r.stones30)))} | ${fmt(avg(results.map((r) => r.stones60)))} | ${fmt(avg(results.map((r) => r.contribution60)))} | ${fmt(avg(results.map((r) => r.insight60)))} |`,
   )
-  console.error(`${tier.label} 完成`)
+  console.error(`${group.label} 完成`)
 }
 lines.push('')
 lines.push('## 判读口径', '')
-lines.push('- 委托「不取代既有决策」= L3 激进档的筑基中位不快于基线 10%、月均欠缴不降超过 0.2 月；超出则建议取低档。')
-lines.push('- 「轻量可感知」= L1 交付单数均值明显高于 0（玩家实际会做），且筑基漂移在噪声内。')
+lines.push('- 委托「不取代既有决策」= 接取组筑基中位不快于基线 10%、月均欠缴不降超过 0.2 月；超出则需下调 L2 定价。')
+lines.push('- 「轻量可感知」= 接取组交付单数均值明显高于 0（玩家实际会做），且筑基漂移在噪声内。')
 
 const out = lines.join('\n')
 console.log(out)

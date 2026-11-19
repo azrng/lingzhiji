@@ -7,7 +7,7 @@ import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 5
+export const SAVE_VERSION = 6
 
 export interface SaveData {
   version: number
@@ -102,6 +102,23 @@ function validCard(c: unknown): boolean {
 // 题型枚举（srs-audio.md §3.4）
 const QUESTION_KINDS = ['w2c', 'c2w', 'listen', 'spell']
 
+// 委托选项（cultivation-commissions.md §3.3，随存档 v6）：id 非空串、合法灵草、数量正整数、奖励四选一且数值合法
+function validOffer(o: unknown): boolean {
+  if (typeof o !== 'object' || o === null) return false
+  const x = o as Record<string, unknown>
+  const amountOk = nonNegInt(x.amount) && (x.amount as number) >= 1
+  const reward = x.reward
+  if (typeof reward !== 'object' || reward === null) return false
+  const r = reward as Record<string, unknown>
+  return (
+    isStr(x.id) && (x.id as string).length > 0 &&
+    isHerbId(x.herb) && nonNegInt(x.count) && (x.count as number) >= 1 &&
+    (r.kind === 'stones' || r.kind === 'contribution' || r.kind === 'insight'
+      ? amountOk
+      : r.kind === 'seed' && isHerbId(r.herb) && amountOk)
+  )
+}
+
 export function validate(game: unknown): ReasonCode | null {
   if (typeof game !== 'object' || game === null) return 'BAD_SHAPE'
   const g = game as GameState
@@ -129,6 +146,12 @@ export function validate(game: unknown): ReasonCode | null {
     typeof g.inventory === 'object' && g.inventory !== null &&
     HERBS.every((h) => nonNegInt(g.inventory[h.id])) &&
     Object.entries(g.inventory).every(([k, v]) => isHerbId(k) && nonNegInt(v)) &&
+    // 委托三类状态（v6）：选项 ≤2、每项合法；active 不要求在当月选项内（跨月保留与选项刷新天然错开）
+    typeof g.commissions === 'object' && g.commissions !== null &&
+    Array.isArray(g.commissions.offers) && g.commissions.offers.length <= 2 &&
+    g.commissions.offers.every(validOffer) &&
+    isBool(g.commissions.acceptedThisMonth) &&
+    (g.commissions.active === null || g.commissions.active === undefined || validOffer(g.commissions.active)) &&
     typeof g.quizDaily === 'object' && g.quizDaily !== null && isBool(g.quizDaily.done) &&
     typeof g.learning === 'object' && g.learning !== null &&
     (g.learning.currentLib === 'cet4' || g.learning.currentLib === 'cet6') &&
@@ -345,6 +368,16 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
           ? { realDay: { today: realDay.today } }
           : {}),
       },
+    }
+  },
+  // v5 → v6（cultivation-commissions.md §3.3，T39 委托接引擎）：补空委托状态——
+  // 本月选项留空（下月初由 advanceDay 生成，旧档当月不补发），资格与活跃零值
+  (data) => {
+    if (data.version !== 5) return data
+    return {
+      ...data,
+      version: 6,
+      game: { ...data.game, commissions: { offers: [], acceptedThisMonth: false, active: null } },
     }
   },
 ]

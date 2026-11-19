@@ -2,6 +2,7 @@
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
 import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EventDef } from './constants'
 import { realDayIndex } from './clock'
+import * as commissions from './commissions'
 import { convertRate, dayInMonth, monthOf } from './economy'
 import * as economy from './economy'
 import * as farming from './farming'
@@ -39,6 +40,7 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
     fields: Array.from({ length: INITIAL.fields }, (_, i) => ({ id: i + 1, status: 'empty' as const, fertility: 1 })),
     seeds: { ...INITIAL.seeds },
     inventory: { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 },
+    commissions: commissions.defaultCommissions(), // 灵植堂委托（v6）：首月不出，第 2 月初生成选项
     quizDaily: { done: false, session: null },
     learning: {
       currentLib: 'cet4',
@@ -163,8 +165,8 @@ function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: strin
     addLog(s, { kind: 'settle', icon: '🧾', title: '月末已至', text: '执事前来核对定额' })
     return null
   }
-  // 5. 推进到下一天
-  advanceDay(s)
+  // 5. 推进到下一天（月初顺带刷新委托选项）
+  advanceDay(s, rng)
   // 6. 明日预告（time-decouple.md §3.6）：日终一行氛围钩子，按 rngState 确定性抽取；
   //    kind 'action' 不弹 toast，只在日志流可见；月末过渡不出（定额结算接管）
   const hint = TOMORROW_HINTS[Math.floor(rng.next() * TOMORROW_HINTS.length)]
@@ -173,14 +175,17 @@ function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: strin
   return null
 }
 
-function advanceDay(s: GameState): void {
+function advanceDay(s: GameState, rng: Rng): void {
   s.day += 1
   s.phase = 'day'
   farming.resetDaily(s)
   // quizDaily 不随游戏日重置：奖励锚现实日，跨日重置在 clock.syncRealDay（time-decouple.md §3.4）；
   // 进行中的测验会话保留，跨游戏日可续答
-  // 跨入新月时提示本月灵潮（core-loop.md 步骤 6 / PRD §11.1）
-  if (dayInMonth(s.day) === 1) addTideLog(s)
+  if (dayInMonth(s.day) === 1) {
+    // 跨入新月：提示本月灵潮（core-loop.md 步骤 6 / PRD §11.1）+ 刷新委托选项（第 2 月起，v6）
+    addTideLog(s)
+    commissions.refreshOnMonthStart(s, rng)
+  }
 }
 
 // ---- 入定批量结算（time-decouple.md §3.1，T49 时间解耦）----
@@ -388,9 +393,19 @@ export function applyAction(state: GameState, action: GameAction): { ok: boolean
           break
         }
         err = economy.resolveQuota(state, action.pay, action.plan, rng)
-        if (err === null) advanceDay(state)
+        if (err === null) advanceDay(state, rng)
         break
       }
+      case 'COMMISSION_ACCEPT':
+        // 灵植堂委托（v6）：三动作均 0 AP；月末定额交互中被 phase 门控整体拒绝
+        err = commissions.accept(state, action.offerId)
+        break
+      case 'COMMISSION_DELIVER':
+        err = commissions.deliver(state)
+        break
+      case 'COMMISSION_ABANDON':
+        err = commissions.abandon(state)
+        break
     }
   }
 

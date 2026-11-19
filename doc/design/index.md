@@ -3,7 +3,7 @@ doc_id: DES-INDEX
 doc_type: design-index
 module: root
 status: approved
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 relations:
   - doc/index.md
   - doc/requirements/lingzhiji/v0.1-prd.md
@@ -30,6 +30,9 @@ relations:
 | lingzhiji | M2 学习强化（FSRS 调度 / 发音 / ECDICT 音标 / 题型注册表 / 存档 v4） | `lingzhiji/srs-audio.md` | approved | REQ §8.1 §8.5 §8.6 |
 | lingzhiji | 扩展路线与素材清单（M2–M5 方向 / 13 项素材规格 / 调研事实，自 T25 吸收） | `lingzhiji/roadmap-assets.md` | approved | REQ §19 §20 §21 |
 | lingzhiji | 时间解耦与节奏压缩（入定 / 生长期÷3 / 删地力透支 / 测验锚现实日 / 存档 v5） | `lingzhiji/time-decouple.md` | approved | REQ-LINGZHIJI-TIME-001 |
+| lingzhiji | 奇遇系统（三档机遇 / 预告绑定兑现 / 存档 v7） | `lingzhiji/encounters.md` | approved | REQ-LINGZHIJI-ENCOUNTER-001 |
+| lingzhiji | 灵植图鉴与稀有变异（草药 6→15 / 收获变异 / 图鉴弹层 / 存档 v7 共享窗口） | `lingzhiji/herb-codex.md` | approved | REQ-LINGZHIJI-CODEX-001 |
+| lingzhiji | 市场事件与行情周期（月度事件池 / 15 日预告下月 / 按草定向系数 / 存档 v7 共享窗口） | `lingzhiji/market-events.md` | approved | REQ-LINGZHIJI-MARKET-001 |
 
 契约：存档契约 CON-LINGZHIJI-SAVE-001 已落地为 `src/game/types.ts` + `src/game/save.ts`（代码为事实来源，历史草案 `doc/contracts/lingzhiji/save-data.md` 已标 superseded）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
 

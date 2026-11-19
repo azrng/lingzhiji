@@ -3,7 +3,7 @@ doc_id: DOC-INDEX
 doc_type: index
 module: root
 status: approved
-last_updated: 2026-11-16
+last_updated: 2026-11-19
 ---
 
 # 文档总索引
@@ -21,3 +21,9 @@ last_updated: 2026-11-16
 | lingzhiji | 界面动效包（飘字 / 摇摆 / toast / 粒子 / 降级） | 设计 | `design/lingzhiji/motion-pack.md` | approved | DES-LINGZHIJI-MOTION-PACK → PRD §21 |
 | lingzhiji | 种田深化第一批（特质 / 地力轮作 / 邻作 / 物候） | 设计 | `design/lingzhiji/farming-depth.md` | approved | DES-LINGZHIJI-FARMING-DEPTH → PRD §22 |
 | lingzhiji | 存档结构契约（已落地为代码）+ 词库契约索引 | 契约 | `contracts/lingzhiji/save-data.md`（superseded）、`contracts/lingzhiji.md` | approved | CON-LINGZHIJI-SAVE-001 → `src/game/types.ts` / CON-LINGZHIJI-WLIB-001 |
+| lingzhiji | 奇遇系统（三档机缘，T55） | 需求 | `requirements/lingzhiji/encounters.md` | approved | REQ-LINGZHIJI-ENCOUNTER-001 |
+| lingzhiji | 奇遇系统（三档机缘，T55） | 设计 | `design/lingzhiji/encounters.md` | approved | DES-LINGZHIJI-ENCOUNTER-001 → REQ-LINGZHIJI-ENCOUNTER-001 |
+| lingzhiji | 灵植图鉴与稀有变异（T56） | 需求 | `requirements/lingzhiji/herb-codex.md` | approved | REQ-LINGZHIJI-CODEX-001 |
+| lingzhiji | 灵植图鉴与稀有变异（T56） | 设计 | `design/lingzhiji/herb-codex.md` | approved | DES-LINGZHIJI-CODEX-001 → REQ-LINGZHIJI-CODEX-001 |
+| lingzhiji | 市场事件与行情周期（T57） | 需求 | `requirements/lingzhiji/market-events.md` | approved | REQ-LINGZHIJI-MARKET-001 |
+| lingzhiji | 市场事件与行情周期（T57） | 设计 | `design/lingzhiji/market-events.md` | approved | DES-LINGZHIJI-MARKET-001 → REQ-LINGZHIJI-MARKET-001 |

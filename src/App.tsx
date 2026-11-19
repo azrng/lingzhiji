@@ -11,6 +11,7 @@ import MilestoneScreen from './components/MilestoneScreen'
 import SettingsModal from './components/SettingsModal'
 import MeditateModal from './components/MeditateModal'
 import CommissionModal from './components/CommissionModal'
+import WarehouseModal from './components/WarehouseModal'
 import DebugPanel from './components/DebugPanel'
 import StartScreen from './screens/StartScreen'
 import Tutorial from './components/Tutorial'
@@ -39,6 +40,7 @@ function GameScreen() {
   const marketOpen = useUiStore((s) => s.marketOpen)
   const settingsOpen = useUiStore((s) => s.settingsOpen)
   const commissionOpen = useUiStore((s) => s.commissionOpen)
+  const warehouseOpen = useUiStore((s) => s.warehouseOpen)
   const tutorialStep = useUiStore((s) => s.tutorialStep)
   const meditateOpen = useUiStore((s) => s.meditateOpen)
 
@@ -92,6 +94,7 @@ function GameScreen() {
       {phase !== 'quota' && marketOpen && <MarketPanel />}
       {phase !== 'quota' && settingsOpen && <SettingsModal />}
       {phase !== 'quota' && commissionOpen && <CommissionModal />}
+      {phase !== 'quota' && warehouseOpen && <WarehouseModal />}
       {phase !== 'quota' && meditateOpen && <MeditateModal />}
       {milestonePending && <MilestoneScreen />}
       {tutorialStep > 0 && phase !== 'quota' && <Tutorial />}

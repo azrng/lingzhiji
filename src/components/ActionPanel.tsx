@@ -15,6 +15,7 @@ export default function ActionPanel() {
   const setMeditateOpen = useUiStore((s) => s.setMeditateOpen)
   const setMarketOpen = useUiStore((s) => s.setMarketOpen)
   const setCommissionOpen = useUiStore((s) => s.setCommissionOpen)
+  const setWarehouseOpen = useUiStore((s) => s.setWarehouseOpen)
   const [gongfaOpen, setGongfaOpen] = useState(false)
   const [failHint, setFailHint] = useState<string | null>(null)
 
@@ -65,6 +66,8 @@ export default function ActionPanel() {
           吐纳 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setMarketOpen(true)} title="买卖种子、灵草与残卷，不消耗行动力">坊市</Btn>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => setWarehouseOpen(true)}
+          title="查看成品灵草库存与定额储备折算；出售请去坊市">仓库</Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setMeditateOpen(true)}
           title="入定快进 N 天：灵田照常生长，但无法浇灌；月末自动出关">入定</Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => setCommissionOpen(true)}

@@ -150,6 +150,14 @@ export interface EncounterState {
   seenOnce: EncounterId[] // 传说档已触发记录（全存档限一次）
 }
 
+// 市场事件（market-events.md §3.2，随存档 v8）：月初生效、15 日预掷下月的月度行情
+export type MarketEventId = 'alchemyFair' | 'sectPurchase' | 'rainySeason' | 'secretRealm' | 'offSeason'
+
+export interface MarketState {
+  current: MarketEventId | null // 当月事件（null = 未生效：首月/旧档月中导入）
+  next: MarketEventId | null // 15 日预掷的下月事件（预告=必然的留痕；月初兑现后清空）
+}
+
 export interface Resources {
   stones: number
   contribution: number
@@ -181,7 +189,7 @@ export interface GameState {
   ap: number
   wateredToday: boolean
   tunaUsedToday: boolean
-  pendingTomorrow: { infusionDouble?: boolean; marketMult?: number }
+  pendingTomorrow: { infusionDouble?: boolean }
   resources: Resources
   cultivation: number // 累计修为，只增不减
   realm: number // 0-8 练气一至九层，9 筑基
@@ -191,6 +199,7 @@ export interface GameState {
   inventory: Record<HerbId, number>
   commissions: CommissionsState // 灵植堂委托（v6）：选项/资格/活跃三类持久状态
   encounter: EncounterState // 奇遇（v7）：预掷入队/冷却/传说限次三类持久状态
+  market: MarketState // 市场事件（v8）：当月生效 + 15 日预掷的下月事件
   quizDaily: { done: boolean; session: QuizSession | null }
   learning: Learning
   realDay: RealDayState

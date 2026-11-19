@@ -15,7 +15,7 @@ relations:
 
 # 市场事件与行情周期设计（T57）
 
-> 状态：approved（2026-11-19 用户「开始」指令确认，按推荐案定稿）。
+> 状态：approved（2026-11-19 用户「开始」指令确认，同日实施落地）。实施记录：存档 v7→v8（draft 预估 v7 共享窗口，T55 先行占用 v7）；与 draft 的差异：①`s.market` 去掉 `last` 字段——预掷排除当月 `current` 即可实现「不连续两月」，少存一个字段；②入定折叠保留「坊市行情/坊市风声」条目（经营决策信息不收拢）；③池五条文案与系数为初版值。
 
 ## 1. 需求追溯
 
@@ -25,7 +25,7 @@ relations:
 
 ## 2. 契约引用
 
-无新对外契约。GameState 新增 `s.market`，随存档 v7 迁移（与奇遇/图鉴共享窗口）；`sellHerb`（economy.ts:42）价格口径变更即改即生效。
+无新对外契约。GameState 新增 `s.market`，随存档 v8 迁移（v7 已被 T55 奇遇占用）；`sellHerb` 价格口径变更即改即生效。
 
 ## 3. 技术设计
 
@@ -48,11 +48,12 @@ interface MarketEventDef {
 
 ```text
 s.market = {
-  current: string | null        // 当月事件 id（null=未生效，首月）
-  next: string | null           // 15 日预掷的下月事件（预告=必然的留痕）
-  last: string | null           // 上月事件 id（去重：不连续两月）
+  current: MarketEventId | null // 当月事件 id（null=未生效：首月/旧档月中导入）
+  next: MarketEventId | null    // 15 日预掷的下月事件（预告=必然的留痕；月初兑现后清空）
 }
 ```
+
+（draft 曾含 `last` 字段用于「不连续两月」去重；实现改为预掷时排除当月 `current`，等价且少存一字段。）
 
 挂点全部在 `advanceDay`（engine.ts）已有的月初分支内/旁，与灵潮、委托刷新同点：
 
@@ -75,7 +76,7 @@ eventMult = s.market.current 命中该草（含 target 解析）? def.mult : 1
 ```
 
 - `seasonal` 解析：当前月适播草集合（seasonOf）；`topRealm` 解析：HERBS 中 realm ≤ s.realm 的最高档——**结算期动态解析**，存档只存事件 id 不存解析结果（跨境界/扩容安全）
-- 移除 `pendingTomorrow.marketMult`、`MARKET_UP/MARKET_DOWN`、`market` 事件条目与 EventEffect kind `marketMult`（v7 迁移删字段；EVENTS 权重表少 1 条，月度灵潮 weightMult 中 market 键随之失效清理）
+- 移除 `pendingTomorrow.marketMult`、`MARKET_UP/MARKET_DOWN`、`market` 事件条目与 EventEffect kind `marketMult`（v8 迁移删字段；EVENTS 权重表少 1 条，月度灵潮 weightMult 中 market 键随之失效清理）
 - TOMORROW_HINTS 删两条行情氛围文案（防真假混流），行情预告统一走 15 日通道
 
 ### 3.4 隔离口径（防连锁失衡，需求 §4.3）

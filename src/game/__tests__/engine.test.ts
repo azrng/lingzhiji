@@ -66,7 +66,6 @@ describe('日结算管线（core-loop.md 五步）', () => {
       let s = started(seed)
       s.day = day
       s.quizDaily.done = true
-      s.pendingTomorrow.marketMult = 1.5
       s = dispatch(s, { type: 'END_DAY' }).state
       expect(s.pendingTomorrow).toEqual({ infusionDouble: true })
       if (day === 30) s = dispatch(s, { type: 'QUOTA_RESOLVE', pay: false, plan: {} }).state

@@ -20,19 +20,26 @@ describe('取整方向（economy.md）', () => {
     expect(seedPrice(cheap, 'qingling')).toBe(Math.ceil(5 * 0.9)) // 5
   })
 
-  it('行情系数向下取整且最低 1', () => {
+  it('行情系数向下取整且最低 1（T57 月度市场事件）', () => {
+    // 低行情：坊市淡季全部草 ×0.85
     const s = createInitialState(1)
     s.inventory.qingling = 10
-    s.pendingTomorrow.marketMult = 0.7
-    let r = dispatch(s, { type: 'SELL_HERB', herb: 'qingling', count: 1 })
+    s.market.current = 'offSeason'
+    const r = dispatch(s, { type: 'SELL_HERB', herb: 'qingling', count: 1 })
     expect(r.ok).toBe(true)
-    expect(r.state!.resources.stones).toBe(50 + Math.max(1, Math.floor(4 * 0.7))) // 2
-    // 高行情
+    expect(r.state!.resources.stones).toBe(50 + Math.max(1, Math.floor(4 * 0.85))) // 3
+    // 高行情：炼丹大会凝露花 ×1.8
     const s2 = createInitialState(1)
-    s2.inventory.qingling = 1
-    s2.pendingTomorrow.marketMult = 1.5
-    const r2 = dispatch(s2, { type: 'SELL_HERB', herb: 'qingling', count: 1 })
-    expect(r2.state!.resources.stones).toBe(50 + Math.floor(4 * 1.5)) // 6
+    s2.inventory.ninglu = 1
+    s2.market.current = 'alchemyFair'
+    const r2 = dispatch(s2, { type: 'SELL_HERB', herb: 'ninglu', count: 1 })
+    expect(r2.state!.resources.stones).toBe(50 + Math.floor(9 * 1.8)) // 16
+    // 未命中草不受事件影响
+    const s3 = createInitialState(1)
+    s3.inventory.qingling = 1
+    s3.market.current = 'alchemyFair'
+    const r3 = dispatch(s3, { type: 'SELL_HERB', herb: 'qingling', count: 1 })
+    expect(r3.state!.resources.stones).toBe(50 + 4) // 表价
   })
 
   it('出售数量不足返回 NO_HERB 且资源不变', () => {

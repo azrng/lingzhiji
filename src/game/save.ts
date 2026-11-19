@@ -1,17 +1,19 @@
 // 存档（save.md）：localStorage 唯一读写点；版本校验、Base64 导码、损坏恢复。
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
 import { realDayIndex } from './clock'
-import { DAILY_AP, ENCOUNTERS, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_DOWN, MARKET_UP, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
+import { DAILY_AP, ENCOUNTERS, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_EVENTS, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
 import { grade } from './srs'
 import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 7
+export const SAVE_VERSION = 8
 
 // 奇遇 id 白名单（encounters.md §3.5，v7 校验用）；限次记录只收传说档
 const ENCOUNTER_IDS = ENCOUNTERS.map((e) => e.id)
 const LEGENDARY_IDS = ENCOUNTERS.filter((e) => e.tier === 'legendary').map((e) => e.id)
+// 市场事件 id 白名单（market-events.md §3.2，v8 校验用）
+const MARKET_IDS = MARKET_EVENTS.map((e) => e.id)
 
 export interface SaveData {
   version: number
@@ -134,7 +136,6 @@ export function validate(game: unknown): ReasonCode | null {
     nonNegInt(g.ap) && g.ap <= DAILY_AP &&
     isBool(g.wateredToday) && isBool(g.tunaUsedToday) &&
     typeof g.pendingTomorrow === 'object' && g.pendingTomorrow !== null &&
-    (g.pendingTomorrow.marketMult === undefined || g.pendingTomorrow.marketMult === MARKET_UP || g.pendingTomorrow.marketMult === MARKET_DOWN) &&
     (g.pendingTomorrow.infusionDouble === undefined || isBool(g.pendingTomorrow.infusionDouble)) &&
     typeof g.resources === 'object' && g.resources !== null &&
     nonNegInt(g.resources.stones) && nonNegInt(g.resources.contribution) &&
@@ -164,6 +165,10 @@ export function validate(game: unknown): ReasonCode | null {
     Array.isArray(g.encounter.seenOnce) &&
     g.encounter.seenOnce.every((id) => (LEGENDARY_IDS as string[]).includes(id)) &&
     new Set(g.encounter.seenOnce).size === g.encounter.seenOnce.length &&
+    // 市场事件状态（v8，market-events.md §3.2）：current/next 为 null 或事件 id 白名单
+    typeof g.market === 'object' && g.market !== null &&
+    (g.market.current === null || (isStr(g.market.current) && (MARKET_IDS as string[]).includes(g.market.current))) &&
+    (g.market.next === null || (isStr(g.market.next) && (MARKET_IDS as string[]).includes(g.market.next))) &&
     typeof g.quizDaily === 'object' && g.quizDaily !== null && isBool(g.quizDaily.done) &&
     typeof g.learning === 'object' && g.learning !== null &&
     (g.learning.currentLib === 'cet4' || g.learning.currentLib === 'cet6') &&
@@ -400,6 +405,21 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
       ...data,
       version: 7,
       game: { ...data.game, encounter: { queued: null, cooldowns: {}, seenOnce: [] } },
+    }
+  },
+  // v7 → v8（market-events.md §3.2，T57 市场事件）：补空市场状态（当月无事件，下个 15 日正常预掷）；
+  // pendingTomorrow.marketMult 全局行情随旧「坊市行情」事件移除，重建仅含 infusionDouble
+  (data) => {
+    if (data.version !== 7) return data
+    const pt = data.game?.pendingTomorrow
+    return {
+      ...data,
+      version: 8,
+      game: {
+        ...data.game,
+        market: { current: null, next: null },
+        ...(pt && typeof pt === 'object' ? { pendingTomorrow: { infusionDouble: pt.infusionDouble } } : {}),
+      },
     }
   },
 ]

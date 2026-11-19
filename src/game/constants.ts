@@ -1,5 +1,5 @@
 // 全部数值常量（PRD §12 参数总表为需求事实来源；调参改这里并跑平衡模拟器验证）
-import type { EncounterId, Herb, HerbId, Season } from './types'
+import type { EncounterId, Herb, HerbId, MarketEventId, Season } from './types'
 
 export const HERBS: Herb[] = [
   // 特质与适播季（farming-depth.md §3.1/§3.4）；生长期 ÷3 取整（time-decouple.md §3.2，T49 节奏压缩）
@@ -29,6 +29,9 @@ export const seasonOf = (month: number): Season => SEASONS[(month - 1) % 6 >> 1]
 export const seasonDefOf = (month: number): SeasonDef => SEASONS[(month - 1) % 6 >> 1]
 
 export const HERB_BY_ID = Object.fromEntries(HERBS.map((h) => [h.id, h])) as Record<HerbId, Herb>
+
+// 境界内最高档灵草（同境界取表中靠后者 = 更进阶）：赠种奇遇与秘境开启行情共用
+export const topRealmHerb = (realm: number): Herb => HERBS.filter((h) => h.realm <= realm).reduce((a, b) => (b.realm >= a.realm ? b : a))
 
 export const REALM_NAMES = [
   '练气一层', '练气二层', '练气三层', '练气四层', '练气五层',
@@ -69,7 +72,7 @@ export function reviewQuota(realm: number): number {
 // 新增事件只加数据条目，engine.applyEvent 通用执行；新事件无素材位，用 icon emoji 兜底（TASK.md T24）
 export type EventId =
   | 'rain' | 'butterfly' | 'senior' | 'stones' | 'spring'
-  | 'elder' | 'pest' | 'bird' | 'formation' | 'market'
+  | 'elder' | 'pest' | 'bird' | 'formation'
   | 'beast' | 'dream' | 'surge' | 'theft'
 
 // 事件效果描述（core-loop.md §3.4）：即时类立即结算，持续类写入 pendingTomorrow。
@@ -81,7 +84,6 @@ export type EventEffect =
   | { kind: 'cultivation'; amount: number } // 修为入账（gainCultivation 统一入口）
   | { kind: 'inventory'; delta: number } // 仓库随机灵草增减
   | { kind: 'infusionDouble' } // 持续：明日灌注翻倍
-  | { kind: 'marketMult' } // 持续：明日行情 50/50 ±%
   | { kind: 'seed'; herb: HerbId | 'topRealm'; amount: number } // 种子入账；topRealm = 境界内最高档（结算期解析）
   | { kind: 'mutation'; randomField: boolean } // 随机生长中田置保底变异（下茬收获必出变异株，换茬清除）
   | { kind: 'bundle'; effects: EventEffect[] } // 组合效果：顺序结算，无目标的子段中止后续（整体无事）
@@ -112,7 +114,6 @@ export const EVENTS: EventDef[] = [
   { id: 'pest', name: '虫害', weight: 13, negative: true, pos: [1, 1], desc: '随机生长中田产量 −1', effect: { kind: 'yield', delta: -1, randomField: true } },
   { id: 'bird', name: '灵雀偷食', weight: 13, negative: true, pos: [2, 1], desc: '仓库随机灵草 −1', effect: { kind: 'inventory', delta: -1 } },
   { id: 'formation', name: '阵法波动', weight: 13, negative: true, pos: [3, 1], desc: '生长中作物进度 −1 天', effect: { kind: 'growth', delta: -1 } },
-  { id: 'market', name: '坊市行情', weight: 1, pos: [4, 1], desc: '明日售价 +50% 或 −30%', effect: { kind: 'marketMult' } },
 ]
 
 // 月度灵潮（PRD §11.1）：6 月一循环，按月乘事件权重；只调出现频率，不改效果与 30% 触发概率
@@ -134,8 +135,6 @@ export const MONTH_TIDES: TideDef[] = [
 export const tideOf = (month: number) => MONTH_TIDES[(month - 1) % MONTH_TIDES.length]
 
 export const EVENT_CHANCE = 0.3
-export const MARKET_UP = 1.5
-export const MARKET_DOWN = 0.7
 
 // ---- 奇遇系统（encounters.md §3.2/§3.3，随存档 v7）：三档机缘，与日常随机事件相互独立、
 // 不受月度灵潮调制；普通 10% / 特殊 4% / 传说 1% 顺序判定，特殊档同 id 7 日冷却，传说档全存档限一次 ----
@@ -167,11 +166,31 @@ export const ENCOUNTERS: EncounterDef[] = [
 
 export const ENCOUNTER_BY_ID = Object.fromEntries(ENCOUNTERS.map((e) => [e.id, e])) as Record<EncounterId, EncounterDef>
 
+// ---- 市场事件（market-events.md §3.1，随存档 v8）：月初抽 1 个持续整月、15 日预掷下月（预告=必然）。
+// 行情只动卖出价；种子买入、委托奖励（生成时按表价快照）、定额折算（表价 ÷4）均不受影响。
+// 系数为初版建议值，sim 500 局验证后定稿 ----
+export interface MarketEventDef {
+  id: MarketEventId
+  name: string
+  desc: string // 月初公告正文
+  rumor: string // 15 日预告文案（坊市风声，真话）
+  target: HerbId[] | 'seasonal' | 'topRealm' | '*' // 定向草：点名 / 当季适播 / 境界内最高档 / 全部（结算期解析）
+  mult: number // 卖价系数
+}
+
+export const MARKET_EVENTS: MarketEventDef[] = [
+  { id: 'alchemyFair', name: '炼丹大会', desc: '各家丹坊抢购主药', rumor: '坊市风声：下月丹坊云集，凝露花行情看涨', target: ['ninglu'], mult: 1.8 },
+  { id: 'sectPurchase', name: '宗门采购', desc: '宗门例行收购灵草', rumor: '坊市风声：下月宗门采购将至，青灵草走俏', target: ['qingling'], mult: 1.6 },
+  { id: 'rainySeason', name: '灵雨季节', desc: '野外灵草丰收，供应增加', rumor: '坊市风声：下月灵雨频仍，当季灵草恐供过于求', target: 'seasonal', mult: 0.75 },
+  { id: 'secretRealm', name: '秘境开启', desc: '探秘者采购护身灵植', rumor: '坊市风声：下月秘境将启，高阶灵植需求大增', target: 'topRealm', mult: 1.8 },
+  { id: 'offSeason', name: '坊市淡季', desc: '行情冷清，买家观望', rumor: '坊市风声：下月行情恐冷清，宜早做打算', target: '*', mult: 0.85 },
+]
+
+export const MARKET_EVENT_BY_ID = Object.fromEntries(MARKET_EVENTS.map((e) => [e.id, e])) as Record<MarketEventId, MarketEventDef>
+
 // 明日预告池（time-decouple.md §3.6）：行情 / 灵潮 / 天象 / 后山四类氛围钩子；
 // 首版纯文案不绑定真实事件触发（预告 ≠ 必然发生），由 drawTomorrowHint 按 rngState 确定性抽取
 export const TOMORROW_HINTS: string[] = [
-  '坊市风声：凝露花行情似有上扬之意',
-  '坊市风声：灵草价或有小幅回落，宜早出货',
   '灵潮低语：今夜灵气涨落未定，明日方知',
   '天象：月朗星稀，夜里或有灵露凝结',
   '天象：云聚风起，明日或有一场灵雨',

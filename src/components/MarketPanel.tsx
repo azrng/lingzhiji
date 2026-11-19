@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { convertRate, seedPrice } from '../game/economy'
-import { HERBS, QUOTA_TARGET, REALM_NAMES } from '../game/constants'
+import { convertRate, eventMultOf, monthOf, seedPrice } from '../game/economy'
+import { HERB_BY_ID, HERBS, MARKET_EVENT_BY_ID, QUOTA_TARGET, REALM_NAMES, seasonOf, topRealmHerb } from '../game/constants'
 import type { HerbId } from '../game/types'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -18,8 +18,15 @@ export default function MarketPanel() {
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [confirmLocked, setConfirmLocked] = useState<HerbId | null>(null)
   const [confirmSellAll, setConfirmSellAll] = useState<HerbId | null>(null)
-  const mult = g.pendingTomorrow.marketMult
   const inventoryValue = HERBS.reduce((sum, herb) => sum + convertRate(herb) * g.inventory[herb.id], 0)
+  // 本月行情条（market-events.md §3.5，T57）：定向草动态解析出具体名称
+  const marketEv = g.market.current ? MARKET_EVENT_BY_ID[g.market.current] : null
+  const marketTargets = marketEv
+    ? marketEv.target === '*' ? '全部灵草'
+      : marketEv.target === 'topRealm' ? topRealmHerb(g.realm).name
+        : marketEv.target === 'seasonal' ? HERBS.filter((h) => h.allSeason || h.seasons.includes(seasonOf(monthOf(g.day)))).map((h) => h.name).join('、')
+          : marketEv.target.map((h) => HERB_BY_ID[h].name).join('、')
+    : ''
 
   return (
     <Modal title="坊市" onClose={() => setMarketOpen(false)} wide>
@@ -27,9 +34,9 @@ export default function MarketPanel() {
         <div><p className="font-serif text-lg tracking-wider text-primary-900">灵物往来</p><p className="mt-1 text-sm text-gray-600">种子与灵草，在这里各得其所。</p></div>
         <div className="text-sm text-primary-800">持有灵石 <b className="text-lg">{g.resources.stones}</b></div>
       </div>
-      {mult && (
-        <div className={`text-xs rounded-lg px-3 py-2 mb-4 border ${mult > 1 ? 'bg-success-50 border-success-200 text-success-500' : 'bg-warning-50 border-warning-200 text-warning-500'}`}>
-          今日行情：灵草售价 {mult > 1 ? '+50%' : '−30%'}（明日起恢复）
+      {marketEv && (
+        <div className="text-xs rounded-lg px-3 py-2 mb-4 border bg-primary-50 border-primary-100 text-primary-800">
+          📣 本月行情：{marketEv.name}——{marketEv.desc}，{marketTargets}卖价 ×{marketEv.mult}（15 日预告下月行情）
         </div>
       )}
       <div className="flex gap-2 mb-4" role="group" aria-label="坊市交易类型">
@@ -93,13 +100,14 @@ export default function MarketPanel() {
             <div className="text-sm text-gray-400 text-center py-8">暂无灵草可出售 · 去灵田收获吧</div>
           )}
           {HERBS.filter((h) => g.inventory[h.id] > 0).map((h) => {
-            const unit = Math.max(1, Math.floor(h.sell * (mult ?? 1)))
+            const m = eventMultOf(g, h.id)
+            const unit = Math.max(1, Math.floor(h.sell * m))
             return (
               <div key={h.id} className="flex flex-wrap items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
                 <Sprite sheet="market-goods-sheet.webp" cols={4} rows={2} col={3} row={1} size={38} />
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-800">{h.name} ×{g.inventory[h.id]}</div>
-                  <div className="text-xs text-gray-500">单价 {unit} 灵石{mult ? '（行情价）' : ''} · 折算定额 {convertRate(h)}</div>
+                  <div className="text-xs text-gray-500">单价 {unit} 灵石{m !== 1 ? `（行情 ×${m}）` : ''} · 折算定额 {convertRate(h)}</div>
                 </div>
                 <Btn variant="secondary" className="!py-1.5" onClick={() => act({ type: 'SELL_HERB', herb: h.id, count: 1 })}>卖 1</Btn>
                 <Btn variant="secondary" className="!py-1.5" onClick={() => {

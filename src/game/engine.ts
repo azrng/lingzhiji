@@ -1,6 +1,6 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { ENCOUNTERS, ENCOUNTER_BY_ID, ENCOUNTER_COOLDOWN, ENCOUNTER_P, EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, HERBS, INITIAL, MARKET_UP, MARKET_DOWN, MEDITATE_QI_EVERY, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EncounterDef, type EncounterTier, type EventDef, type EventEffect } from './constants'
+import { ENCOUNTERS, ENCOUNTER_BY_ID, ENCOUNTER_COOLDOWN, ENCOUNTER_P, EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, HERBS, INITIAL, MARKET_EVENTS, MARKET_EVENT_BY_ID, MEDITATE_QI_EVERY, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, seasonOf, tideOf, topRealmHerb, type EncounterDef, type EncounterTier, type EventDef, type EventEffect, type MarketEventDef } from './constants'
 import { realDayIndex } from './clock'
 import * as commissions from './commissions'
 import { convertRate, dayInMonth, monthOf } from './economy'
@@ -42,6 +42,7 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
     inventory: { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 },
     commissions: commissions.defaultCommissions(), // 灵植堂委托（v6）：首月不出，第 2 月初生成选项
     encounter: { queued: null, cooldowns: {}, seenOnce: [] }, // 奇遇（v7）：开局无入队/冷却/限次记录
+    market: { current: null, next: null }, // 市场事件（v8）：首月无事件，第 1 月 15 日预掷第 2 月事件
     quizDaily: { done: false, session: null },
     learning: {
       currentLib: 'cet4',
@@ -116,14 +117,9 @@ function applyEffect(s: GameState, eff: EventEffect, rng: Rng): string {
     case 'infusionDouble':
       s.pendingTomorrow.infusionDouble = true
       return ''
-    case 'marketMult':
-      s.pendingTomorrow.marketMult = rng.next() < 0.5 ? MARKET_UP : MARKET_DOWN
-      return ''
     case 'seed': {
       // topRealm 在结算期解析：境界内最高档（同境界取表中靠后者=更进阶），跨境界/扩容存档安全
-      const herb = eff.herb === 'topRealm'
-        ? HERBS.filter((h) => h.realm <= s.realm).reduce((a, b) => (b.realm >= a.realm ? b : a))
-        : HERB_BY_ID[eff.herb]
+      const herb = eff.herb === 'topRealm' ? topRealmHerb(s.realm) : HERB_BY_ID[eff.herb]
       s.seeds[herb.id] += eff.amount
       return ''
     }
@@ -245,6 +241,17 @@ function endDay(s: GameState, rng: Rng, trace?: EndDayTrace, dryExempt = false):
   return null
 }
 
+// 市场事件的定向草文案（月初公告用）：点名/全部直接给，动态 target 结算期解析出具体草名
+function marketTargetsText(s: GameState, ev: MarketEventDef): string {
+  if (ev.target === '*') return '全部灵草'
+  if (ev.target === 'topRealm') return topRealmHerb(s.realm).name
+  if (ev.target === 'seasonal') {
+    const season = seasonOf(monthOf(s.day))
+    return HERBS.filter((h) => h.allSeason || h.seasons.includes(season)).map((h) => h.name).join('、')
+  }
+  return ev.target.map((h) => HERB_BY_ID[h].name).join('、')
+}
+
 function advanceDay(s: GameState, rng: Rng): void {
   s.day += 1
   s.phase = 'day'
@@ -252,9 +259,23 @@ function advanceDay(s: GameState, rng: Rng): void {
   // quizDaily 不随游戏日重置：奖励锚现实日，跨日重置在 clock.syncRealDay（time-decouple.md §3.4）；
   // 进行中的测验会话保留，跨游戏日可续答
   if (dayInMonth(s.day) === 1) {
-    // 跨入新月：提示本月灵潮（core-loop.md 步骤 6 / PRD §11.1）+ 刷新委托选项（第 2 月起，v6）
+    // 跨入新月：提示本月灵潮（core-loop.md 步骤 6 / PRD §11.1）+ 市场事件生效公告（T57，首月无事件不出）
+    // + 刷新委托选项（第 2 月起，v6；奖励按表价快照定价，不受当月行情影响）
     addTideLog(s)
+    const incoming = s.market.next
+    if (incoming) {
+      s.market.current = incoming
+      s.market.next = null
+      const ev = MARKET_EVENT_BY_ID[incoming]
+      addLog(s, { kind: 'settle', icon: '📣', title: `坊市行情 · ${ev.name}`, text: `${ev.desc}，${marketTargetsText(s, ev)}卖价 ×${ev.mult}（本月有效）` })
+    }
     commissions.refreshOnMonthStart(s, rng)
+  } else if (dayInMonth(s.day) === 15) {
+    // 月中预掷下月市场事件并公告（market-events.md §3.2，T57）：存档留痕，预告=必然；
+    // 排除当月事件防连续两月；长生长期草可据此提前种植
+    const ev = pick(rng, MARKET_EVENTS.filter((e) => e.id !== s.market.current))
+    s.market.next = ev.id
+    addLog(s, { kind: 'action', icon: '🧧', title: '坊市风声', text: ev.rumor })
   }
 }
 
@@ -324,7 +345,8 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
   }
   const added = after.slice(0, after.length - overlap)
   const survivors = after.slice(after.length - overlap)
-  const kept = added.filter((l) => l.kind === 'breakthrough' || l.title === '月末已至')
+  // 折叠保留：突破、月末、市场事件公告与风声（经营决策信息，T57）不收拢
+  const kept = added.filter((l) => l.kind === 'breakthrough' || l.title === '月末已至' || l.title === '坊市风声' || l.title.startsWith('坊市行情'))
   const events = perDay.reduce((a, d) => a + d.events.length, 0)
   const maturedTotal = perDay.reduce((a, d) => a + d.matured.length, 0)
   const breaks = added.filter((l) => l.kind === 'breakthrough').length

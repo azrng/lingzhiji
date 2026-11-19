@@ -63,8 +63,8 @@ describe('存档 v1 → v2 迁移（real-day.md §3.6）', () => {
     })
   }
 
-  it('SAVE_VERSION 升至 7，SAVE_KEY 保持 v1 键名（键名与版本号解耦防丢档）', () => {
-    expect(SAVE_VERSION).toBe(7)
+  it('SAVE_VERSION 升至 8，SAVE_KEY 保持 v1 键名（键名与版本号解耦防丢档）', () => {
+    expect(SAVE_VERSION).toBe(8)
     expect(SAVE_KEY).toBe('lingzhiji.save.v1')
   })
 
@@ -105,7 +105,7 @@ describe('存档 v1 → v2 迁移（real-day.md §3.6）', () => {
 
   it('非正整数或超前版本拒绝（BAD_VERSION）', () => {
     const g = createInitialState(5)
-    expect(importCode(encode({ version: 8, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
+    expect(importCode(encode({ version: 9, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
     expect(importCode(encode({ version: 0, savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
     expect(importCode(encode({ version: '2', savedAt: 0, game: g })).reason).toBe('BAD_VERSION')
   })

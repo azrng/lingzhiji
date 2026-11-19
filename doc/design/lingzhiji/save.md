@@ -48,6 +48,7 @@ relations:
 - **v4 → v5（2026-11-18 时间解耦，已落地）**：生长中田块进度按新旧生长期比例折算（`round(progress × 新days/旧days)`，恰达即置成熟）；删除 `realDay.gamesToday`；`quizDaily.done` 语义改为「本现实日已领奖励」（迁移时刻已完成则保持，当日不重复发奖）。旧生长期基准 15/20/30/35/50/60 在迁移代码内留档
 - **v5 → v6（2026-11-19 灵植堂委托，已落地）**：补 `commissions` 空委托状态（`{ offers: [], acceptedThisMonth: false, active: null }`）——本月选项留空、下月初由 `advanceDay` 生成，旧档当月不补发；导入校验覆盖选项数量 ≤2、灵草/数量/奖励四选一合法性（见 cultivation-commissions.md §3.3）
 - **v6 → v7（2026-11-19 奇遇系统，已落地）**：补 `encounter` 空状态（`{ queued: null, cooldowns: {}, seenOnce: [] }`）——旧档无奇遇历史从零起掷；导入校验覆盖入队/冷却键 id 白名单、传说限次记录只收传说档且无重复（见 encounters.md §3.5）
+- **v7 → v8（2026-11-19 市场事件，已落地）**：补 `market` 空状态（`{ current: null, next: null }`——当月无事件，下个 15 日正常预掷）；清理 `pendingTomorrow.marketMult` 残留（全局行情随旧「坊市行情」事件移除）；导入校验覆盖 current/next 事件 id 白名单（见 market-events.md §3.2）
 - 后续结构变更继续在 `migrations: ((old) => new)[]` 顺序迁移链追加；迁移只在新版本代码中新增，旧档读入即升格后入库——该链是 M2+ 内容扩展的标准通道
 - 二期境界扩展等按 PRD §5.2 要求保留已有修为、种植、资源与学习记录，不得清空进度
 

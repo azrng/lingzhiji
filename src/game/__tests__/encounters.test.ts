@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { ENCOUNTERS, ENCOUNTER_BY_ID, ENCOUNTER_COOLDOWN, ENCOUNTER_P } from '../constants'
 import { applyAction, applyEncounter, createInitialState, rollEncounter } from '../engine'
-import { SAVE_VERSION, applyMigrations, validate } from '../save'
+import { applyMigrations, validate } from '../save'
 import type { SaveData } from '../save'
 import type { Rng } from '../rng'
 import type { GameState } from '../types'
@@ -178,11 +178,10 @@ describe('管线集成（encounters.md §3.1/§4.1）', () => {
 })
 
 describe('存档 v7（encounters.md §3.5）', () => {
-  it('SAVE_VERSION 升至 7；v6 档迁移补空奇遇状态且校验通过', () => {
-    expect(SAVE_VERSION).toBe(7)
+  it('v6 档迁移补空奇遇状态且校验通过（当前版本 v8）', () => {
     const v6 = { version: 6, savedAt: 1, game: createInitialState(1) } as SaveData
     const migrated = applyMigrations(v6)
-    expect(migrated.version).toBe(7)
+    expect(migrated.version).toBe(8)
     expect(migrated.game.encounter).toEqual({ queued: null, cooldowns: {}, seenOnce: [] })
     expect(validate(migrated.game)).toBeNull()
   })

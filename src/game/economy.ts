@@ -1,8 +1,8 @@
 // 经济（economy.md）：坊市买卖、应急领种、月末定额与欠缴；在 engine 克隆的 draft 上就地修改
 import {
-  HERB_BY_ID, HERBS, MONTH_DAYS, QUOTA_FAIL_CONTRIBUTION,
+  HERB_BY_ID, HERBS, MARKET_EVENT_BY_ID, MONTH_DAYS, QUOTA_FAIL_CONTRIBUTION,
   QUOTA_FAIL_STONES, QUOTA_TARGET, REDEEM_COST, SCROLL_INSIGHT, SCROLL_PRICE,
-  SEED_DISCOUNT_REALM,
+  SEED_DISCOUNT_REALM, seasonOf, topRealmHerb,
 } from './constants'
 import { addLog } from './log'
 import { clampResources } from './progression'
@@ -38,11 +38,24 @@ export function buyScroll(s: GameState): ReasonCode | null {
   return null
 }
 
-// 出售：单价 = 表价 × 行情系数，向下取整且最低 1（economy.md §3.2）
+// 行情系数（market-events.md §3.3，T57）：当月市场事件命中该草返回其系数，否则 1。
+// target 动态解析（seasonal/topRealm 结算期算），存档只存事件 id——跨境界/扩容存档安全
+export function eventMultOf(s: GameState, herb: HerbId): number {
+  const ev = s.market.current ? MARKET_EVENT_BY_ID[s.market.current] : null
+  if (!ev) return 1
+  if (ev.target === '*') return ev.mult
+  if (Array.isArray(ev.target)) return ev.target.includes(herb) ? ev.mult : 1
+  if (ev.target === 'seasonal') {
+    const def = HERB_BY_ID[herb]
+    return def.allSeason || def.seasons.includes(seasonOf(monthOf(s.day))) ? ev.mult : 1
+  }
+  return herb === topRealmHerb(s.realm).id ? ev.mult : 1
+}
+
+// 出售：单价 = 表价 × 当月行情系数，向下取整且最低 1（economy.md §3.2）
 export function sellHerb(s: GameState, herb: HerbId, count: number): ReasonCode | null {
   if (!Number.isInteger(count) || count < 1 || s.inventory[herb] < count) return 'NO_HERB'
-  const mult = s.pendingTomorrow.marketMult ?? 1
-  const unit = Math.max(1, Math.floor(HERB_BY_ID[herb].sell * mult))
+  const unit = Math.max(1, Math.floor(HERB_BY_ID[herb].sell * eventMultOf(s, herb)))
   s.inventory[herb] -= count
   s.resources.stones += unit * count
   addLog(s, { kind: 'action', icon: '💰', title: `出售 ${HERB_BY_ID[herb].name} ×${count}`, text: `+${unit * count} 灵石（单价 ${unit}）` })

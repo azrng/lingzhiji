@@ -1,6 +1,6 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, MEDITATE_QI_EVERY, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EventDef } from './constants'
+import { ENCOUNTERS, ENCOUNTER_BY_ID, ENCOUNTER_COOLDOWN, ENCOUNTER_P, EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, HERBS, INITIAL, MARKET_UP, MARKET_DOWN, MEDITATE_QI_EVERY, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EncounterDef, type EncounterTier, type EventDef, type EventEffect } from './constants'
 import { realDayIndex } from './clock'
 import * as commissions from './commissions'
 import { convertRate, dayInMonth, monthOf } from './economy'
@@ -41,6 +41,7 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
     seeds: { ...INITIAL.seeds },
     inventory: { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 },
     commissions: commissions.defaultCommissions(), // 灵植堂委托（v6）：首月不出，第 2 月初生成选项
+    encounter: { queued: null, cooldowns: {}, seenOnce: [] }, // 奇遇（v7）：开局无入队/冷却/限次记录
     quizDaily: { done: false, session: null },
     learning: {
       currentLib: 'cet4',
@@ -62,32 +63,26 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
   return s
 }
 
-// 随机事件结算（core-loop.md §3.4）：按 EventDef.effect 通用执行（数据驱动，新增事件只加表项）。
+// 效果通用执行（core-loop.md §3.4 / encounters.md §3.4）：事件与奇遇共用同一解释器（数据驱动）。
 // 即时类立即生效，持续类写入 pendingTomorrow 次日生效；无有效目标时「无事发生」，不顺延不替换。
-export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
-  const eff = ev.effect
-  let note = '' // 结算附注（如驱虫护邻），拼进事件日志 text
+// 返回结算附注（驱虫护邻、仓库空等空转说明），由调用方拼进日志 text
+function applyEffect(s: GameState, eff: EventEffect, rng: Rng): string {
   switch (eff.kind) {
     case 'yield': {
       // 目标选取走 PRNG；无生长中田则无事发生（日志附注说明，避免「产量 −1」与实际效果不符）
       const growing = s.fields.filter((f) => f.status === 'growing')
       const t = eff.randomField && growing.length ? pick(rng, growing) : null
-      if (!t) note = '田里没有生长中的灵草'
-      if (t) {
-        // 驱虫护邻（farming-depth.md §3.3）：负向产量事件的目标田相邻有赤髓参 → 产量无损，日志附注
-        if (eff.delta < 0 && farming.wardedByNeighbor(s.fields, t.id)) {
-          note = '赤髓参灵气所护，产量无损'
-        } else {
-          t.curYield = Math.max(0, t.curYield! + eff.delta)
-        }
-      }
-      break
+      if (!t) return '田里没有生长中的灵草'
+      // 驱虫护邻（farming-depth.md §3.3）：负向产量事件的目标田相邻有赤髓参 → 产量无损，日志附注
+      if (eff.delta < 0 && farming.wardedByNeighbor(s.fields, t.id)) return '赤髓参灵气所护，产量无损'
+      t.curYield = Math.max(0, t.curYield! + eff.delta)
+      return ''
     }
-    case 'growth':
+    case 'growth': {
       // 全部生长中田进度增减（灵雨 +1 与日终管线 +1 合计 +2；阵法波动 −1）；
       // 生长中田 progress 恒小于生长期，成熟停驻检查只对 +delta 生效，对 −delta 是空操作；
       // 无生长中田时进度不变，日志附注说明（同 yield，避免「全田 +2」空转失真）
-      if (!s.fields.some((f) => f.status === 'growing')) note = '田里没有生长中的灵草'
+      if (!s.fields.some((f) => f.status === 'growing')) return '田里没有生长中的灵草'
       for (const f of s.fields) {
         if (f.status !== 'growing') continue
         f.progress = Math.max(0, f.progress! + eff.delta)
@@ -96,7 +91,8 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
           f.status = 'mature'
         }
       }
-      break
+      return ''
+    }
     case 'resource':
       // 灵气走 gainQi 统一上限截断；其余资源受 applyAction 出口钳制（下限 0）
       if (eff.resource === 'qi') {
@@ -104,27 +100,79 @@ export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
       } else {
         s.resources[eff.resource] += eff.amount
       }
-      break
+      return ''
     case 'cultivation':
       gainCultivation(s, eff.amount)
-      break
+      return ''
     case 'inventory': {
       // 仓库随机灵草增减：减只在有库存时选目标（无事发生）；增从全部灵草随机
       const owned = Object.entries(s.inventory).filter(([, n]) => n > 0)
       const pool: [string, number][] = eff.delta < 0 ? owned : Object.entries(s.inventory)
       const t = pool.length ? pick(rng, pool) : null
-      if (!t) note = '仓库空空如也'
-      if (t) s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
-      break
+      if (!t) return '仓库空空如也'
+      s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
+      return ''
     }
     case 'infusionDouble':
       s.pendingTomorrow.infusionDouble = true
-      break
+      return ''
     case 'marketMult':
       s.pendingTomorrow.marketMult = rng.next() < 0.5 ? MARKET_UP : MARKET_DOWN
-      break
+      return ''
+    case 'seed': {
+      // topRealm 在结算期解析：境界内最高档（同境界取表中靠后者=更进阶），跨境界/扩容存档安全
+      const herb = eff.herb === 'topRealm'
+        ? HERBS.filter((h) => h.realm <= s.realm).reduce((a, b) => (b.realm >= a.realm ? b : a))
+        : HERB_BY_ID[eff.herb]
+      s.seeds[herb.id] += eff.amount
+      return ''
+    }
+    case 'mutation': {
+      // 灵田异变保底（encounters.md §4.2）：随机生长中田置标记，下茬收获必出变异株；换茬清除
+      const growing = s.fields.filter((f) => f.status === 'growing')
+      const t = eff.randomField && growing.length ? pick(rng, growing) : null
+      if (!t) return '田里没有生长中的灵草'
+      t.mutationGuaranteed = true
+      return ''
+    }
+    case 'bundle': {
+      // 组合效果顺序结算；子段无目标即中止后续（encounters.md §5：仓库空则散修易货整体不成）
+      for (const sub of eff.effects) {
+        const note = applyEffect(s, sub, rng)
+        if (note) return note
+      }
+      return ''
+    }
   }
+}
+
+// 随机事件结算（core-loop.md §3.4）：按 EventDef.effect 通用执行（数据驱动，新增事件只加表项）
+export function applyEvent(s: GameState, ev: EventDef, rng: Rng): void {
+  const note = applyEffect(s, ev.effect, rng)
   addLog(s, { kind: 'event', evPos: ev.pos, evSheet: ev.sheet, icon: ev.icon, title: `事件 · ${ev.name}`, text: note ? `${ev.desc}（${note}）` : ev.desc, neg: ev.negative })
+}
+
+// ---- 奇遇（encounters.md §3.1/§3.2，随存档 v7）：预掷入队 + 次日兑现，预告=必然 ----
+
+const ENCOUNTER_ICON: Record<EncounterTier, string> = { common: '✨', special: '🌟', legendary: '☄️' }
+
+// 奇遇兑现：效果走与事件共用的解释器；特殊/传说档兑现时置冷却（game 日），传说档留痕全存档限一次
+export function applyEncounter(s: GameState, def: EncounterDef, rng: Rng): void {
+  const note = applyEffect(s, def.effect, rng)
+  if (def.tier !== 'common') s.encounter.cooldowns[def.id] = s.day + ENCOUNTER_COOLDOWN
+  if (def.tier === 'legendary' && !s.encounter.seenOnce.includes(def.id)) s.encounter.seenOnce.push(def.id)
+  addLog(s, { kind: 'event', icon: ENCOUNTER_ICON[def.tier], title: `奇遇 · ${def.name}`, text: note ? `${def.desc}（${note}）` : def.desc })
+}
+
+// 掷明日奇遇：档位阈值顺序判定（<0.10 普通 / <0.14 特殊 / <0.15 传说）；档内排除已用传说与冷却中条目，
+// 池空无事发生（不降级不顺延）。奇遇不受月度灵潮调制（灵潮管日常物候，机缘超脱其外）
+export function rollEncounter(s: GameState, rng: Rng): EncounterDef | null {
+  const roll = rng.next()
+  const { common, special, legendary } = ENCOUNTER_P
+  const tier = roll < common ? 'common' : roll < common + special ? 'special' : roll < common + special + legendary ? 'legendary' : null
+  if (!tier) return null
+  const pool = ENCOUNTERS.filter((e) => e.tier === tier && !s.encounter.seenOnce.includes(e.id) && (s.encounter.cooldowns[e.id] ?? 0) <= s.day)
+  return pool.length ? pick(rng, pool) : null
 }
 
 // 月初灵潮日志（PRD §11.1）：第 1/31/61… 天开始时提示本月灵潮，附当季农谚（farming-depth.md §3.4）
@@ -143,11 +191,18 @@ export function drawEvent(rng: Rng, month: number): EventDef {
   return (weighted.find((x) => (roll -= x.w) <= 0) ?? weighted[weighted.length - 1]).e
 }
 
-// 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定。
+// 日结算轨迹（入定批量结算收集逐日事件/奇遇与预告；手动 END_DAY 不传 trace，零开销）
+interface EndDayTrace {
+  event?: EventDef // 当日随机事件（1 步）
+  encounter?: EncounterDef // 当日兑现的奇遇（1b 步）
+  queuedEncounter?: EncounterDef // 日终掷定的明日奇遇（6 步；特殊/传说伏笔随 hint 展示）
+  hint?: string // 明日预告文案
+}
+
+// 日结算（core-loop.md §3.3）：事件 → 奇遇兑现 → 生长 → 缺水 → 月末 → 推进 → 预告，顺序固定。
 // 不再要求当日任务堂完成（T49 时间解耦：经营节奏与背词解绑，测验奖励锚现实日）。
-// trace 仅供入定批量结算收集逐日事件与预告；手动 END_DAY 不传，零开销。
 // dryExempt：入定管线传 true——闭关灵泉阵护田，缺水步整体跳过（T54，见 farming.applyDrought）
-function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: string }, dryExempt = false): ReasonCode | null {
+function endDay(s: GameState, rng: Rng, trace?: EndDayTrace, dryExempt = false): ReasonCode | null {
   // 当日效果到此结束；本次事件产生的效果需要保留到下一日。
   s.pendingTomorrow = {}
   // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）
@@ -155,6 +210,14 @@ function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: strin
     const ev = drawEvent(rng, monthOf(s.day))
     applyEvent(s, ev, rng)
     if (trace) trace.event = ev
+  }
+  // 1b. 兑现昨日入队的奇遇（encounters.md §3.1）：与日常事件相互独立、可同日并存；
+  //     已入队者在月末（第 4 步提前返回）前照常兑现，冷却与限次在兑现时置位
+  if (s.encounter.queued) {
+    const def = ENCOUNTER_BY_ID[s.encounter.queued]
+    s.encounter.queued = null
+    applyEncounter(s, def, rng)
+    if (trace) trace.encounter = def
   }
   // 2. 全田自然生长 +1（灵雨已在事件步 +1，合计 +2）
   farming.applyGrowth(s)
@@ -168,11 +231,17 @@ function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: strin
   }
   // 5. 推进到下一天（月初顺带刷新委托选项）
   advanceDay(s, rng)
-  // 6. 明日预告（time-decouple.md §3.6）：日终一行氛围钩子，按 rngState 确定性抽取；
-  //    kind 'action' 不弹 toast，只在日志流可见；月末过渡不出（定额结算接管）
-  const hint = TOMORROW_HINTS[Math.floor(rng.next() * TOMORROW_HINTS.length)]
+  // 6. 明日预告（time-decouple.md §3.6）：先掷明日奇遇入队（encounters.md §3.2）——预掷是
+  //    「预告必兑现」的唯一自然解；特殊/传说出固定伏笔文案，普通/无走氛围池。kind 'action'
+  //    不弹 toast，只在日志流可见；月末过渡不出（定额结算接管）
+  const enc = rollEncounter(s, rng)
+  if (enc) s.encounter.queued = enc.id
+  const hint = enc?.hint ?? TOMORROW_HINTS[Math.floor(rng.next() * TOMORROW_HINTS.length)]
   addLog(s, { kind: 'action', icon: '🔮', title: '明日预告', text: hint })
-  if (trace) trace.hint = hint
+  if (trace) {
+    trace.hint = hint
+    trace.queuedEncounter = enc ?? undefined
+  }
   return null
 }
 
@@ -222,11 +291,13 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
   for (let i = 1; i <= days; i++) {
     // 当日田块快照：成熟按状态差分检测，不依赖日志文本
     const before = state.fields.map((f) => ({ id: f.id, status: f.status }))
-    const trace: { event?: EventDef; hint?: string } = {}
+    const trace: EndDayTrace = {}
     // dryExempt=true：闭关灵泉阵护田，缺水步整体跳过（T54——原口径推荐流程必减产）
     endDay(state, rng, trace, true)
     const entry: MeditateDayTrace = { day: state.day, dayOffset: i, events: [], matured: [] }
     if (trace.event) entry.events.push({ name: trace.event.name, desc: trace.event.desc, neg: trace.event.negative })
+    // 奇遇兑现随逐日轨迹进出关摘要（encounters.md §3.1；「昨夜伏笔→今日兑现」叙事连贯）
+    if (trace.encounter) entry.events.push({ name: `奇遇·${trace.encounter.name}`, desc: trace.encounter.desc })
     for (const b of before) {
       const f = state.fields.find((x) => x.id === b.id)!
       if (b.status === 'growing' && f.status === 'mature' && f.herb) {

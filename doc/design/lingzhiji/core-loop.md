@@ -59,12 +59,15 @@ relations:
 ```text
 endDay(state):
   1. 随机事件（§3.4）：触发 1 个——概率恒 0.3（T49 删地力透支递减）；按当月灵潮调制后的权重抽取；即时类立即结算，持续类写入 pendingTomorrow
+  1b. 奇遇兑现（T55，encounters.md §3.1）：昨日预掷入队的奇遇在此结算（与日常事件相互独立，可同日并存）；
+      特殊/传说档兑现时置冷却，传说档留痕限次；月末（步骤 4 提前返回）前照常兑现
   2. 全田自然生长 +1 天；功法 Lv2 生长期 -1 已在常量表生效；推进后逐田检查成熟（成熟停驻，farming.md）
-  3. 缺水结算：!wateredToday 且仍生长中的田 dryStreak +1；达 3 触发当茬减产（farming.md）
+  3. 缺水结算：!wateredToday 且仍生长中的田 dryStreak +1；达 3 触发当茬减产（farming.md）；入定闭关豁免（T54 dryExempt）
   4. 月末判定：monthDay == 30 → phase = 'quota'，进入定额结算交互（economy.md）；
      玩家在弹窗完成缴纳/放弃后 monthSettle() 收尾
   5. 推进：day + 1，重置 ap / wateredToday / tunaUsedToday，清空消费 pendingTomorrow；任务堂状态不重置（T49：奖励锚现实日）；跨入新月（dayInMonth == 1）时记录本月灵潮日志（§3.4）
-  6. 明日预告（T49，time-decouple.md §3.6）：从 TOMORROW_HINTS 池按 rngState 确定性抽取一行，kind 'action' 追加日志（不弹 toast）；月末过渡不出
+  6. 明日预告（T49，time-decouple.md §3.6）：先掷明日奇遇入队（T55，encounters.md §3.2——预掷是「预告必兑现」的留痕），
+     特殊/传说档出该 id 固定伏笔文案，普通/无走 TOMORROW_HINTS 氛围池；kind 'action' 追加日志（不弹 toast）；月末过渡不出
   7. 自动存档（含中间态：步骤 4 玩家未完成交互时，phase='quota' 直接入档，恢复后继续）
 ```
 

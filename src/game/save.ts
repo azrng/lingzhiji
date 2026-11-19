@@ -1,13 +1,17 @@
 // 存档（save.md）：localStorage 唯一读写点；版本校验、Base64 导码、损坏恢复。
 // UI 与 store 禁止直用 localStorage。storage 参数默认注入，测试传内存实现。
 import { realDayIndex } from './clock'
-import { DAILY_AP, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_DOWN, MARKET_UP, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
+import { DAILY_AP, ENCOUNTERS, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_DOWN, MARKET_UP, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
 import { grade } from './srs'
 import type { GameState, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 6
+export const SAVE_VERSION = 7
+
+// 奇遇 id 白名单（encounters.md §3.5，v7 校验用）；限次记录只收传说档
+const ENCOUNTER_IDS = ENCOUNTERS.map((e) => e.id)
+const LEGENDARY_IDS = ENCOUNTERS.filter((e) => e.tier === 'legendary').map((e) => e.id)
 
 export interface SaveData {
   version: number
@@ -152,6 +156,14 @@ export function validate(game: unknown): ReasonCode | null {
     g.commissions.offers.every(validOffer) &&
     isBool(g.commissions.acceptedThisMonth) &&
     (g.commissions.active === null || g.commissions.active === undefined || validOffer(g.commissions.active)) &&
+    // 奇遇三类状态（v7，encounters.md §3.5）：入队 id 白名单、冷却键值合法、传说限次记录无重复
+    typeof g.encounter === 'object' && g.encounter !== null &&
+    (g.encounter.queued === null || (isStr(g.encounter.queued) && (ENCOUNTER_IDS as string[]).includes(g.encounter.queued))) &&
+    typeof g.encounter.cooldowns === 'object' && g.encounter.cooldowns !== null &&
+    Object.entries(g.encounter.cooldowns).every(([k, v]) => (ENCOUNTER_IDS as string[]).includes(k) && nonNegInt(v)) &&
+    Array.isArray(g.encounter.seenOnce) &&
+    g.encounter.seenOnce.every((id) => (LEGENDARY_IDS as string[]).includes(id)) &&
+    new Set(g.encounter.seenOnce).size === g.encounter.seenOnce.length &&
     typeof g.quizDaily === 'object' && g.quizDaily !== null && isBool(g.quizDaily.done) &&
     typeof g.learning === 'object' && g.learning !== null &&
     (g.learning.currentLib === 'cet4' || g.learning.currentLib === 'cet6') &&
@@ -378,6 +390,16 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
       ...data,
       version: 6,
       game: { ...data.game, commissions: { offers: [], acceptedThisMonth: false, active: null } },
+    }
+  },
+  // v6 → v7（encounters.md §3.5，T55 奇遇）：补空奇遇状态——无入队、无冷却、传说零记录；
+  // 旧档无奇遇历史，从零开始掷
+  (data) => {
+    if (data.version !== 6) return data
+    return {
+      ...data,
+      version: 7,
+      game: { ...data.game, encounter: { queued: null, cooldowns: {}, seenOnce: [] } },
     }
   },
 ]

@@ -16,7 +16,7 @@ relations:
 
 # 奇遇系统设计（三档机缘，T55）
 
-> 状态：approved（2026-11-19 用户确认定稿；T54 已由本会话收尾落地）。
+> 状态：approved（2026-11-19 用户确认定稿，同日实施落地）。实施记录：`applyEffect` 自 `applyEvent` 抽取为事件/奇遇共用解释器（新增 seed/mutation/bundle 三 kind）；endDay 管线插入 1b 兑现步与第 6 步预掷；`applyEncounter`/`rollEncounter` 导出供测试与 sim；存档 v6→v7；与 draft 的差异：①冷却/限次在兑现时置位（draft 未明确时点）；②validate 收紧 seenOnce 只收传说档 id。
 
 ## 1. 需求追溯
 

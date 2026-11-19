@@ -1,5 +1,5 @@
 // 全部数值常量（PRD §12 参数总表为需求事实来源；调参改这里并跑平衡模拟器验证）
-import type { Herb, HerbId, Season } from './types'
+import type { EncounterId, Herb, HerbId, Season } from './types'
 
 export const HERBS: Herb[] = [
   // 特质与适播季（farming-depth.md §3.1/§3.4）；生长期 ÷3 取整（time-decouple.md §3.2，T49 节奏压缩）
@@ -72,7 +72,8 @@ export type EventId =
   | 'elder' | 'pest' | 'bird' | 'formation' | 'market'
   | 'beast' | 'dream' | 'surge' | 'theft'
 
-// 事件效果描述（core-loop.md §3.4）：即时类立即结算，持续类写入 pendingTomorrow
+// 事件效果描述（core-loop.md §3.4）：即时类立即结算，持续类写入 pendingTomorrow。
+// seed / mutation / bundle 三类为奇遇新增（encounters.md §3.4），日常事件暂不使用
 export type EventEffect =
   | { kind: 'yield'; delta: number; randomField: boolean } // 当茬产量增减；randomField = 随机一块生长中田
   | { kind: 'growth'; delta: number } // 全部生长中田进度增减，钳制 ≥0，达成熟立即停驻
@@ -81,6 +82,9 @@ export type EventEffect =
   | { kind: 'inventory'; delta: number } // 仓库随机灵草增减
   | { kind: 'infusionDouble' } // 持续：明日灌注翻倍
   | { kind: 'marketMult' } // 持续：明日行情 50/50 ±%
+  | { kind: 'seed'; herb: HerbId | 'topRealm'; amount: number } // 种子入账；topRealm = 境界内最高档（结算期解析）
+  | { kind: 'mutation'; randomField: boolean } // 随机生长中田置保底变异（下茬收获必出变异株，换茬清除）
+  | { kind: 'bundle'; effects: EventEffect[] } // 组合效果：顺序结算，无目标的子段中止后续（整体无事）
 
 export interface EventDef {
   id: EventId
@@ -132,6 +136,36 @@ export const tideOf = (month: number) => MONTH_TIDES[(month - 1) % MONTH_TIDES.l
 export const EVENT_CHANCE = 0.3
 export const MARKET_UP = 1.5
 export const MARKET_DOWN = 0.7
+
+// ---- 奇遇系统（encounters.md §3.2/§3.3，随存档 v7）：三档机缘，与日常随机事件相互独立、
+// 不受月度灵潮调制；普通 10% / 特殊 4% / 传说 1% 顺序判定，特殊档同 id 7 日冷却，传说档全存档限一次 ----
+export type EncounterTier = 'common' | 'special' | 'legendary'
+
+export const ENCOUNTER_P = { common: 0.1, special: 0.04, legendary: 0.01 } as const
+export const ENCOUNTER_COOLDOWN = 7 // 特殊/传说档同 id 冷却（游戏日，兑现时起算）
+
+export interface EncounterDef {
+  id: EncounterId
+  name: string
+  tier: EncounterTier
+  desc: string // 兑现日志正文（效果口径，与事件 desc 同风格）
+  hint?: string // 伏笔文案（仅特殊/传说档）：前一日「明日预告」位展示，预告=必然
+  effect: EventEffect
+}
+
+export const ENCOUNTERS: EncounterDef[] = [
+  { id: 'sparrowGuide', name: '灵雀引路', tier: 'common', desc: '仓库随机灵草 +2 株', effect: { kind: 'inventory', delta: 2 } },
+  { id: 'stoneVein', name: '灵石矿脉', tier: 'common', desc: '灵石 +15', effect: { kind: 'resource', resource: 'stones', amount: 15 } },
+  { id: 'wandererTrade', name: '散修易货', tier: 'common', desc: '以随机灵草一株易得另一株', effect: { kind: 'bundle', effects: [{ kind: 'inventory', delta: -1 }, { kind: 'inventory', delta: 1 }] } },
+  { id: 'hermitSeeds', name: '神秘修士赠种', tier: 'special', desc: '赠当前境界可种最高档种子 ×2', hint: '山道尽头似有人影伫立，袖间隐有种子清香', effect: { kind: 'seed', herb: 'topRealm', amount: 2 } },
+  { id: 'fieldMutation', name: '灵田异变', tier: 'special', desc: '随机生长中田下茬收获保底出变异株', hint: '夜里田垄灵光隐隐，似有异变将生', effect: { kind: 'mutation', randomField: true } },
+  { id: 'youngBeast', name: '救助幼兽', tier: 'special', desc: '修为 +5、心得 +5', hint: '后山传来微弱哀鸣，似有生灵受伤', effect: { kind: 'bundle', effects: [{ kind: 'cultivation', amount: 5 }, { kind: 'resource', resource: 'insight', amount: 5 }] } },
+  { id: 'buriedCache', name: '掘得遗藏', tier: 'special', desc: '灵石 +30', hint: '整理田埯时挖到一角残破图卷', effect: { kind: 'resource', resource: 'stones', amount: 30 } },
+  { id: 'masterCave', name: '祖师遗府', tier: 'legendary', desc: '修为 +25、心得 +15', hint: '梦中似有钟声自云雾深处传来', effect: { kind: 'bundle', effects: [{ kind: 'cultivation', amount: 25 }, { kind: 'resource', resource: 'insight', amount: 15 }] } },
+  { id: 'ancientSpring', name: '上古灵泉', tier: 'legendary', desc: '全田生长 +3 天', hint: '井底灵光大涨，泉眼隐隐轰鸣', effect: { kind: 'growth', delta: 3 } },
+]
+
+export const ENCOUNTER_BY_ID = Object.fromEntries(ENCOUNTERS.map((e) => [e.id, e])) as Record<EncounterId, EncounterDef>
 
 // 明日预告池（time-decouple.md §3.6）：行情 / 灵潮 / 天象 / 后山四类氛围钩子；
 // 首版纯文案不绑定真实事件触发（预告 ≠ 必然发生），由 drawTomorrowHint 按 rngState 确定性抽取

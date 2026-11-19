@@ -40,6 +40,7 @@ export interface Field {
   curYield?: number // 当茬当前产量
   dry?: number // 连续缺水天数
   halved?: boolean // 本茬是否已因缺水减产
+  mutationGuaranteed?: boolean // 灵田异变奇遇保底：下茬收获必出变异株（encounters.md，换茬清除）
   refundSeed?: HerbId // 被收回时退还的种子
 }
 
@@ -131,6 +132,24 @@ export interface CommissionsState {
   active: CommissionOffer | null // 活跃委托（跨月保留，不随选项刷新被覆盖）
 }
 
+// 奇遇（encounters.md §3.5，随存档 v7）：三档机缘的持久状态——预掷入队、冷却、传说限次
+export type EncounterId =
+  | 'sparrowGuide' // 灵雀引路（普通）
+  | 'stoneVein' // 灵石矿脉（普通）
+  | 'wandererTrade' // 散修易货（普通）
+  | 'hermitSeeds' // 神秘修士赠种（特殊）
+  | 'fieldMutation' // 灵田异变（特殊）
+  | 'youngBeast' // 救助幼兽（特殊）
+  | 'buriedCache' // 掘得遗藏（特殊）
+  | 'masterCave' // 祖师遗府（传说）
+  | 'ancientSpring' // 上古灵泉（传说）
+
+export interface EncounterState {
+  queued: EncounterId | null // 明日待兑现（预掷入队是「预告必兑现」的留痕；含普通档）
+  cooldowns: Partial<Record<EncounterId, number>> // 特殊/传说档可再次触发日（兑现时置 day+冷却）
+  seenOnce: EncounterId[] // 传说档已触发记录（全存档限一次）
+}
+
 export interface Resources {
   stones: number
   contribution: number
@@ -171,6 +190,7 @@ export interface GameState {
   seeds: Record<HerbId, number>
   inventory: Record<HerbId, number>
   commissions: CommissionsState // 灵植堂委托（v6）：选项/资格/活跃三类持久状态
+  encounter: EncounterState // 奇遇（v7）：预掷入队/冷却/传说限次三类持久状态
   quizDaily: { done: boolean; session: QuizSession | null }
   learning: Learning
   realDay: RealDayState

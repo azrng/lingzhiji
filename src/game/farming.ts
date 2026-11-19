@@ -60,6 +60,7 @@ export function plant(s: GameState, fieldId: number, herb: HerbId): ReasonCode |
   field.curYield = Math.max(1, def.yield + fertilityAdj(field.fertility) + sAdj + aAdj)
   field.dry = 0
   field.halved = false
+  delete field.mutationGuaranteed // 异变保底不跨茬继承（encounters.md §5：换茬即灵气散去）
   delete field.refundSeed
   // 修正来源附注（教学口径：让玩家看见为什么多一株/少一株）
   const notes: string[] = []
@@ -99,7 +100,10 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
   const bonus = s.gongfa >= 3 ? 1.15 : 1
   const base = Math.ceil(field.curYield! * bonus)
   const prime = rng.next() < HARVEST_PRIME_CHANCE ? HARVEST_PRIME_BONUS : 0
-  const got = base + prime
+  // 灵田异变保底（encounters.md §4.2）：置标记的本茬收获必出变异株（+1 株即时兑现；
+  // T56 扩随机变异后共用此入账点）。田对象收获时整体重建，标记随之清除
+  const mutant = field.mutationGuaranteed ? 1 : 0
+  const got = base + prime + mutant
   const expGain = Math.ceil(def.exp * got)
   s.inventory[field.herb!] += got
   // 地力与茬口结算（farming-depth.md §3.2）：固氮仅在真轮作进茬时 +1（防单作锁死肥沃档，sim 校准）；
@@ -111,7 +115,7 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
     kind: 'action',
     icon: '🌾',
     title: `收获 · ${def.name}`,
-    text: `+${got} 株，修为 +${expGain}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
+    text: `+${got} 株，修为 +${expGain}${mutant ? '，✨ 异变灵株 +1' : ''}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
   })
   gainCultivation(s, expGain)
   // 清茬但保留田属性（fertility / lastCrop 是田的属性，§5）；lastCrop 更新为本茬

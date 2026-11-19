@@ -53,8 +53,8 @@ export default function ActionPanel() {
             </span>
           )}
         </Btn>
-        <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday}
-          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : '消耗 1 行动力，全田今日免缺水；缺水累计第 3 天会减产'}>
+        <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'WATER' }))} disabled={g.ap < 1 || g.wateredToday || noGrowing}
+          title={g.wateredToday ? '今日已浇灌' : g.ap < 1 ? REASON_TEXT.NO_AP : noGrowing ? REASON_TEXT.NO_CROP : '消耗 1 行动力，全田今日免缺水；缺水累计第 3 天会减产'}>
           浇灌 <span className="text-xs opacity-70">1 行动力</span>
         </Btn>
         <Btn className="!min-h-11" variant="secondary" onClick={() => tryAct(() => act({ type: 'IRRIGATE' }))} disabled={g.resources.qi < 1 || noGrowing}

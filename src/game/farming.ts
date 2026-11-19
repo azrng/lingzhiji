@@ -184,9 +184,11 @@ export function applyGrowth(s: GameState): void {
 }
 
 // 日终缺水结算（core-loop.md 步骤 4）：连续 3 天减半一次，0 不恢复；成熟后不累计；
-// 喜湿特质（凝露花）免疫缺水累计与减产（farming-depth.md §3.1）
-export function applyDrought(s: GameState): void {
-  if (s.wateredToday) return
+// 喜湿特质（凝露花）免疫缺水累计与减产（farming-depth.md §3.1）。
+// dryExempt：入定闭关期灵泉阵护田，不累计也不减产（T54 实玩修复——原口径下「入定至下次成熟」
+// 必然 ≥3 天无法浇灌，推荐流程自带减产惩罚）
+export function applyDrought(s: GameState, dryExempt = false): void {
+  if (dryExempt || s.wateredToday) return
   let thirsty = 0
   for (const f of s.fields) {
     if (f.status !== 'growing' || HERB_BY_ID[f.herb!].wet) continue

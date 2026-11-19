@@ -60,6 +60,9 @@ export default function CommissionModal() {
               <div className="text-xs text-right text-gray-500">
                 当前仓库 {snap.inventory[active.herb] ?? 0} 株
                 {activeShort > 0 && <div className="text-error-400">还缺 {activeShort} 株</div>}
+                {activeShort > 0 && (
+                  <div className="text-gray-400">播种约 {Math.ceil(activeShort / HERB_BY_ID[active.herb].yield)} 块{HERB_BY_ID[active.herb].name}田可补足（基础 {HERB_BY_ID[active.herb].yield} 株/田）</div>
+                )}
               </div>
             </div>
 

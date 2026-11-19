@@ -4,7 +4,7 @@ import { HERBS, QUOTA_TARGET, REALM_NAMES } from '../game/constants'
 import type { HerbId } from '../game/types'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
-import { Btn, Modal, Sprite } from './ui'
+import { Btn, ConfirmOverlay, Modal, Sprite } from './ui'
 
 // 坊市：买（种子/残卷）/ 卖（灵草），0 AP 随时可去（economy.md §3.2）
 const GOODS_POS: Record<HerbId, [number, number]> = {
@@ -17,6 +17,7 @@ export default function MarketPanel() {
   const setMarketOpen = useUiStore((s) => s.setMarketOpen)
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [confirmLocked, setConfirmLocked] = useState<HerbId | null>(null)
+  const [confirmSellAll, setConfirmSellAll] = useState<HerbId | null>(null)
   const mult = g.pendingTomorrow.marketMult
   const inventoryValue = HERBS.reduce((sum, herb) => sum + convertRate(herb) * g.inventory[herb.id], 0)
 
@@ -101,7 +102,12 @@ export default function MarketPanel() {
                   <div className="text-xs text-gray-500">单价 {unit} 灵石{mult ? '（行情价）' : ''} · 折算定额 {convertRate(h)}</div>
                 </div>
                 <Btn variant="secondary" className="!py-1.5" onClick={() => act({ type: 'SELL_HERB', herb: h.id, count: 1 })}>卖 1</Btn>
-                <Btn variant="secondary" className="!py-1.5" onClick={() => act({ type: 'SELL_HERB', herb: h.id, count: g.inventory[h.id] })}>卖全部</Btn>
+                <Btn variant="secondary" className="!py-1.5" onClick={() => {
+                  // 卖全部保定额（T54 实玩陷阱 #4）：清仓会导致月末无草可缴时先确认；不足 3 天成熟的当月补不回来
+                  const after = inventoryValue - convertRate(h) * g.inventory[h.id]
+                  if (after < QUOTA_TARGET) setConfirmSellAll(h.id)
+                  else act({ type: 'SELL_HERB', herb: h.id, count: g.inventory[h.id] })
+                }}>卖全部</Btn>
               </div>
             )
           })}
@@ -120,6 +126,21 @@ export default function MarketPanel() {
             </div>
         </Modal>
       )}
+
+      {confirmSellAll && (() => {
+        const h = HERBS.find((x) => x.id === confirmSellAll)!
+        const after = inventoryValue - convertRate(h) * g.inventory[h.id]
+        return (
+          <ConfirmOverlay
+            title="出售确认"
+            body={`全部出售 ${h.name} ×${g.inventory[h.id]} 后，定额储备折算 ${inventoryValue} → ${after}，不足以缴纳月末定额 ${QUOTA_TARGET} 株当量（还差 ${QUOTA_TARGET - after}）。确定仍要出售？`}
+            confirmText="仍要出售"
+            tone="danger"
+            onConfirm={() => { act({ type: 'SELL_HERB', herb: h.id, count: g.inventory[h.id] }); setConfirmSellAll(null) }}
+            onCancel={() => setConfirmSellAll(null)}
+          />
+        )
+      })()}
     </Modal>
   )
 }

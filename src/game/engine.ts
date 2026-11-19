@@ -1,6 +1,6 @@
 // 引擎（core-loop.md）：初始状态、动作分发与日结算五步管线。
 // dispatch 克隆状态后交各模块就地修改，永不抛异常，失败返回 reason（architecture.md §5）。
-import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EventDef } from './constants'
+import { EVENTS, EVENT_CHANCE, DAILY_AP, GONGFA_COST, HERB_BY_ID, INITIAL, MARKET_UP, MARKET_DOWN, MEDITATE_QI_EVERY, MONTH_DAYS, TOMORROW_HINTS, seasonDefOf, tideOf, type EventDef } from './constants'
 import { realDayIndex } from './clock'
 import * as commissions from './commissions'
 import { convertRate, dayInMonth, monthOf } from './economy'
@@ -146,7 +146,8 @@ export function drawEvent(rng: Rng, month: number): EventDef {
 // 日结算（core-loop.md §3.3）：事件 → 生长 → 缺水 → 月末 → 推进，顺序固定。
 // 不再要求当日任务堂完成（T49 时间解耦：经营节奏与背词解绑，测验奖励锚现实日）。
 // trace 仅供入定批量结算收集逐日事件与预告；手动 END_DAY 不传，零开销。
-function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: string }): ReasonCode | null {
+// dryExempt：入定管线传 true——闭关灵泉阵护田，缺水步整体跳过（T54，见 farming.applyDrought）
+function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: string }, dryExempt = false): ReasonCode | null {
   // 当日效果到此结束；本次事件产生的效果需要保留到下一日。
   s.pendingTomorrow = {}
   // 1. 随机事件：30% 触发 1 个，按当月灵潮调制后的权重抽取（core-loop.md §3.4）
@@ -157,8 +158,8 @@ function endDay(s: GameState, rng: Rng, trace?: { event?: EventDef; hint?: strin
   }
   // 2. 全田自然生长 +1（灵雨已在事件步 +1，合计 +2）
   farming.applyGrowth(s)
-  // 3. 缺水结算
-  farming.applyDrought(s)
+  // 3. 缺水结算（入定闭关豁免）
+  farming.applyDrought(s, dryExempt)
   // 4. 月末判定：第 30 天进入定额结算交互，玩家完成缴纳/放弃后推进
   if (economy.dayInMonth(s.day) === 30) {
     s.phase = 'quota'
@@ -196,7 +197,6 @@ export interface MeditateDayTrace {
   dayOffset: number // 入定第几天（1 起）
   events: { name: string; desc: string; neg?: boolean }[]
   matured: { field: number; herbName: string }[]
-  dryHit?: { field: number; herbName: string } // 当日触发缺水减产（每田一茬最多一次）
 }
 
 export interface MeditateRunInfo {
@@ -204,6 +204,7 @@ export interface MeditateRunInfo {
   stoppedAtMonthEnd: boolean // 落在月末（含定额未结算的提前出关）
   newMonthDay: number // 出关后月内日
   perDay: MeditateDayTrace[]
+  qiGain: number // 闭关纳灵实际入账灵气（每满 MEDITATE_QI_EVERY 天 +1，上限截断后）
   tomorrowHint: string // 末日预告；月末出关为空（定额结算接管过渡）
 }
 
@@ -219,10 +220,11 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
   const perDay: MeditateDayTrace[] = []
   let lastHint = ''
   for (let i = 1; i <= days; i++) {
-    // 当日田块快照：成熟/减产按状态差分检测，不依赖日志文本
-    const before = state.fields.map((f) => ({ id: f.id, herb: f.herb, status: f.status, halved: !!f.halved }))
+    // 当日田块快照：成熟按状态差分检测，不依赖日志文本
+    const before = state.fields.map((f) => ({ id: f.id, status: f.status }))
     const trace: { event?: EventDef; hint?: string } = {}
-    endDay(state, rng, trace)
+    // dryExempt=true：闭关灵泉阵护田，缺水步整体跳过（T54——原口径推荐流程必减产）
+    endDay(state, rng, trace, true)
     const entry: MeditateDayTrace = { day: state.day, dayOffset: i, events: [], matured: [] }
     if (trace.event) entry.events.push({ name: trace.event.name, desc: trace.event.desc, neg: trace.event.negative })
     for (const b of before) {
@@ -230,8 +232,6 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
       if (b.status === 'growing' && f.status === 'mature' && f.herb) {
         entry.matured.push({ field: f.id, herbName: HERB_BY_ID[f.herb].name })
       }
-      // halved 只在缺水减产时置位，false→true 即当日触发
-      if (!b.halved && f.halved && f.herb) entry.dryHit = { field: f.id, herbName: HERB_BY_ID[f.herb].name }
     }
     perDay.push(entry)
     if (trace.hint) lastHint = trace.hint
@@ -256,14 +256,17 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
   const kept = added.filter((l) => l.kind === 'breakthrough' || l.title === '月末已至')
   const events = perDay.reduce((a, d) => a + d.events.length, 0)
   const maturedTotal = perDay.reduce((a, d) => a + d.matured.length, 0)
-  const dryTotal = perDay.filter((d) => d.dryHit).length
   const breaks = added.filter((l) => l.kind === 'breakthrough').length
+  // 闭关纳灵（T54）：每满 MEDITATE_QI_EVERY 天聚 1 点灵气，走 gainQi 统一上限截断；
+  // 实际入账 = 应得 − 溢出，供摘要与出关面板展示
+  const qiDue = Math.floor(perDay.length / MEDITATE_QI_EVERY)
+  const qiGain = qiDue - farming.gainQi(state, qiDue)
   const summary: LogEntry = {
     day: state.day,
     kind: 'settle',
     icon: '🧘',
     title: `入定 ${perDay.length} 天`,
-    text: `事件 ${events} 起、成熟 ${maturedTotal} 田次、缺水减产 ${dryTotal} 次${breaks ? `、突破 ${breaks} 次` : ''}`,
+    text: `事件 ${events} 起、成熟 ${maturedTotal} 田次${qiGain ? `、聚灵 +${qiGain}` : ''}${breaks ? `、突破 ${breaks} 次` : ''}`,
   }
   const hintEntry: LogEntry[] = lastHint
     ? [{ day: state.day, kind: 'action', icon: '🔮', title: '明日预告', text: lastHint }]
@@ -274,6 +277,7 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
     stoppedAtMonthEnd: stopped,
     newMonthDay: economy.dayInMonth(state.day),
     perDay,
+    qiGain,
     tomorrowHint: lastHint,
   }
 }

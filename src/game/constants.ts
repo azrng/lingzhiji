@@ -162,6 +162,10 @@ export const COMMISSION_OFFERS = 2
 export const COMMISSION_QUOTA_EQUIV = 6
 export const COMMISSION_SEED_REWARD = 2
 
+// 闭关纳灵（T54 实玩修复，time-decouple.md §3.7）：入定每满 3 天出关聚 1 点灵气（上限截断）。
+// 动机：灵气来源锚现实日（任务堂），连玩玩家入定快进后无灵气补种 → session 死局（T43 实玩发现 #2）
+export const MEDITATE_QI_EVERY = 3
+
 // 现实日锚（real-day.md §3.7，PRD §12 同步）：晨露 / 道心连胜数值入口；
 // 地力透支常量已随 T49 时间解耦删除（事件率恒 0.3、收获修为不减半）
 export const DAY_CUT_HOUR = 4 // 日切凌晨 4 点（照顾夜猫子，4 点前算前一现实日）

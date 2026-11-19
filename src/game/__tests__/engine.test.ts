@@ -342,8 +342,8 @@ describe('缺水减产（farming.md）', () => {
   })
 })
 
-describe('入定批量结算（time-decouple.md §3.1，MEDITATE ≡ END_DAY×N）', () => {
-  // 两块青灵草固定开局：1 号田近熟（入定第 2 天成熟）、2 号田远熟（覆盖缺水取舍）
+describe('入定批量结算（time-decouple.md §3.1 + T54 闭关收益）', () => {
+  // 两块青灵草固定开局：1 号田近熟（入定第 2 天成熟）、2 号田远熟（覆盖缺水豁免）
   function planted(seed: number): GameState {
     let s = createInitialState(seed)
     s.resources.qi = 5
@@ -353,14 +353,27 @@ describe('入定批量结算（time-decouple.md §3.1，MEDITATE ≡ END_DAY×N�
     return s
   }
 
-  it('MEDITATE 与手动 END_DAY×N 全状态等价（固定种子；日志除外——入定折叠）', () => {
+  it('MEDITATE 与手动 END_DAY×N 等价（T54 后仅两处刻意差异：免缺水 + 聚灵，其余全字段一致）', () => {
     const batch = dispatch(planted(1234), { type: 'MEDITATE', days: 5 })
     let manual = planted(1234)
     for (let i = 0; i < 5; i++) manual = dispatch(manual, { type: 'END_DAY' }).state
     expect(batch.ok).toBe(true)
-    const { log: _bl, ...batchRest } = batch.state!
-    const { log: _ml, ...manualRest } = manual
-    expect(batchRest).toEqual(manualRest) // 含 day/fields/resources/rngState/quizDaily/streak 等全部字段
+    const b = batch.state!
+    // 差异①闭关纳灵：floor(5/3) = 1 点灵气（手动线无；种田消耗后 qi<5，1 点足额入账）
+    expect(b.resources.qi).toBe(manual.resources.qi + 1)
+    // 差异②灵泉阵护田：入定线生长中田无缺水累计、无减产
+    for (const f of b.fields) if (f.status === 'growing') { expect(f.halved).toBe(false); expect(f.dry).toBe(0) }
+    // 其余一致：归一化两处差异（qi 清零、生长中田干旱痕迹清零）后全等——含 day/rngState/quizDaily/streak 等
+    const strip = (s: GameState) => {
+      const c = structuredClone(s)
+      c.resources.qi = 0
+      for (const f of c.fields) {
+        // 干旱痕迹在生长/成熟两态都可能残留（减半后成熟停驻），归一化口径统一清零
+        if (f.herb) { f.dry = 0; f.halved = false; f.curYield = 0 }
+      }
+      return { ...c, log: undefined }
+    }
+    expect(strip(b)).toEqual(strip(manual))
   })
 
   it('多日结算折叠为汇总条目：新增日志 ≤ 2 条（汇总 + 预告），不再逐日刷穿', () => {
@@ -374,13 +387,15 @@ describe('入定批量结算（time-decouple.md §3.1，MEDITATE ≡ END_DAY×N�
     expect(r.state!.log.some((l) => l.title === '明日预告')).toBe(true)
   })
 
-  it('入定期间成熟与缺水照常结算（复用 endDay 管线，干旱是入定的核心取舍）', () => {
+  it('入定期间成熟照常、缺水豁免（T54 灵泉阵：干旱不再是入定的取舍）', () => {
     const r = dispatch(planted(9), { type: 'MEDITATE', days: 5 })
     expect(r.ok).toBe(true)
     expect(r.state!.fields[0].status).toBe('mature') // 3/5 → 第 2 天成熟停驻
-    // 未浇灌：2 号田第 3 天缺水减产（当令 6 → 3）后清零重计
-    expect(r.state!.fields[1].halved).toBe(true)
-    expect(r.state!.fields[1].curYield).toBe(3)
+    expect(r.state!.fields[1].status).toBe('mature') // 0/5 → 第 5 天恰好成熟
+    // 灵泉阵护田：无缺水累计、无减产（当令 6 完整保留；虫害事件命中才会 −1）
+    expect(r.state!.fields[1].halved).toBe(false)
+    expect(r.state!.fields[1].curYield).toBeGreaterThan(3)
+    expect(r.state!.log.some((l) => l.title === '缺水减产' || l.title === '今日未浇灌')).toBe(false)
   })
 
   it('推进到月末自动出关进入定额结算（月末是唯一中断点）', () => {

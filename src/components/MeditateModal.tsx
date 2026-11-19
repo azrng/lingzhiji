@@ -57,7 +57,7 @@ export default function MeditateModal() {
       ) : (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-gray-600 leading-relaxed">
-            入定期间灵田照常生长、事件照常发生，但<b>无法浇灌</b>——缺水累计 3 天将当茬产量减半。月末自动出关，定额结算不受影响。
+            入定期间灵田照常生长、事件照常发生；闭关前布下<b>灵泉阵</b>，灵田不会缺水。每满 3 天<b>闭关纳灵</b>，出关时灵气 +1。月末自动出关，定额结算不受影响。
           </p>
 
           <div className="rounded-xl border border-gray-200 bg-gray-100 p-4 flex flex-col gap-3">
@@ -119,7 +119,7 @@ export default function MeditateModal() {
                 {preview.matured.length > 0
                   ? <span>· 成熟 {preview.matured.map((m) => `${m.field} 号田${m.herbName}`).join('、')}</span>
                   : <span>· 暂无成熟</span>}
-                {preview.dryRisks.map((r) => <span key={r} className="text-warning-500">⚠ {r}</span>)}
+                <span>· 闭关纳灵：灵气 +{preview.qiGain}{preview.qiGain === 0 && '（不足 3 天或灵气已满）'}</span>
               </div>
             </div>
           )}
@@ -140,21 +140,21 @@ function ResultPanel({ r, onClose }: { r: MeditateRunInfo; onClose: () => void }
     <div className="flex flex-col gap-4">
       <p className="text-sm text-gray-700 leading-relaxed">
         一晃 <b className="font-serif text-lg">{r.advancedDays}</b> 天过去——灵草疯长，几只灵蝶惊起。
+        {r.qiGain > 0 && <span className="text-success-500"> 闭关纳灵：灵气 +{r.qiGain}。</span>}
         {r.stoppedAtMonthEnd && <span className="text-warning-500"> 已至月末，出关后需完成定额结算。</span>}
       </p>
       <div className="rounded-xl border border-gray-200 bg-gray-100 max-h-56 overflow-y-auto">
         {r.perDay.map((d) => (
           <div key={d.dayOffset} className="px-4 py-2 border-b border-gray-200 last:border-b-0 text-sm flex flex-col gap-1">
-            <div className="flex justify-between">
-              <span className="text-gray-600">入定第 {d.dayOffset} 天</span>
-              <div className="flex gap-2 flex-wrap justify-end">
-                {d.matured.map((m) => <span key={m.field} className="text-success-500">🌾 {m.herbName}成熟（{m.field} 号田）</span>)}
-                {d.dryHit && <span className="text-warning-500">⚠ {d.dryHit.herbName}缺水减产</span>}
-                {d.matured.length === 0 && !d.dryHit && d.events.length === 0 && (
-                  <span className="text-xs text-gray-400">平顺无事</span>
-                )}
+              <div className="flex justify-between">
+                <span className="text-gray-600">入定第 {d.dayOffset} 天</span>
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {d.matured.map((m) => <span key={m.field} className="text-success-500">🌾 {m.herbName}成熟（{m.field} 号田）</span>)}
+                  {d.matured.length === 0 && d.events.length === 0 && (
+                    <span className="text-xs text-gray-400">平顺无事</span>
+                  )}
+                </div>
               </div>
-            </div>
             {d.events.map((e, i) => (
               <div key={`${e.name}-${i}`} className={`text-xs ${e.neg ? 'text-error-400' : 'text-info-600'}`}>
                 {e.neg ? '!' : '+'} {e.name}：{e.desc}

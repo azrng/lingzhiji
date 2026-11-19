@@ -82,7 +82,7 @@ describe('效果边界（encounters.md §3.4/§5）', () => {
     const s = createInitialState(1)
     s.realm = 3
     applyEncounter(s, ENCOUNTER_BY_ID.hermitSeeds, stubRng(0.5))
-    expect(s.seeds.chisui).toBe(2) // realm ≤3 内最高档 = 赤髓参
+    expect(s.seeds.jinling).toBe(2) // realm ≤3 内最高档 = 金铃藤（同境界取表中靠后者）
     expect(s.seeds.jiuye).toBe(0) // 越界灵草不入手
     const s0 = createInitialState(1)
     const qlBefore = s0.seeds.qingling
@@ -178,10 +178,10 @@ describe('管线集成（encounters.md §3.1/§4.1）', () => {
 })
 
 describe('存档 v7（encounters.md §3.5）', () => {
-  it('v6 档迁移补空奇遇状态且校验通过（当前版本 v8）', () => {
+  it('v6 档迁移补空奇遇状态且校验通过（经完整链升到当前版本 v9）', () => {
     const v6 = { version: 6, savedAt: 1, game: createInitialState(1) } as SaveData
     const migrated = applyMigrations(v6)
-    expect(migrated.version).toBe(8)
+    expect(migrated.version).toBe(9)
     expect(migrated.game.encounter).toEqual({ queued: null, cooldowns: {}, seenOnce: [] })
     expect(validate(migrated.game)).toBeNull()
   })

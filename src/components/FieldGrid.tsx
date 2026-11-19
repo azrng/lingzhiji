@@ -6,7 +6,7 @@ import { monthOf } from '../game/economy'
 import { effDays, seasonAdj, shadeAdj } from '../game/farming'
 import { REASON_TEXT } from './reasonText'
 import { useGameStore } from '../stores/useGameStore'
-import { Btn, Modal, Sprite } from './ui'
+import { Btn, HerbSprite, Modal, Sprite } from './ui'
 
 // M3 氛围层萤火（roadmap-assets.md #3）：固定相位数据（百分比定位 + 秒级延时），静态常量避免重渲染跳动
 const FIREFLIES = [
@@ -82,7 +82,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   const herbIdx = f.herb ? HERBS.findIndex((h) => h.id === f.herb) : 0
   const herbPortrait = herb && (
     <span className="absolute right-3 top-3 overflow-hidden rounded-full border-2 border-gray-50 shadow-md" aria-label={herb.name} role="img">
-      <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={52} />
+      <HerbSprite herb={herb} size={52} />
     </span>
   )
 
@@ -98,7 +98,12 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         className={`absolute bottom-2 left-1/2 -translate-x-1/2${swayDelay === undefined ? '' : ' fx-sway'}`}
         style={swayDelay === undefined ? undefined : { animationDelay: `${swayDelay}s` }}
       >
-        <Sprite sheet="spirit-herbs-growth-sheet.webp" cols={4} rows={6} col={stage} row={herbIdx} size={104} />
+        {/* 生长图集 4×6 仅前 6 草有行位（T40）；T56 扩容新草按阶段放大的 emoji 兜底，素材登记 roadmap-assets.md */}
+        {herbIdx < 6 && f.herb ? (
+          <Sprite sheet="spirit-herbs-growth-sheet.webp" cols={4} rows={6} col={stage} row={herbIdx} size={104} />
+        ) : (
+          <span className="leading-none select-none" style={{ fontSize: 26 + stage * 20 }} aria-hidden>{herb?.emoji ?? '🌿'}</span>
+        )}
       </span>
     </span>
   )
@@ -120,7 +125,7 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
         {herbPortrait}
         {growthCrop(stage)}
         <div className="flex items-center gap-1.5">
-          <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={herbIdx % 3} row={Math.floor(herbIdx / 3)} size={18} />
+          <HerbSprite herb={herb!} size={18} />
           <span className="text-sm font-medium text-gray-800">{herb!.name}</span>
         </div>
         <div className="w-4/5 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -219,7 +224,7 @@ function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
           return (
             <div key={h.id}>
               <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
-                <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={i % 3} row={Math.floor(i / 3)} size={40} />
+                <HerbSprite herb={h} size={40} />
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-sm font-medium text-gray-800">{h.name}</span>

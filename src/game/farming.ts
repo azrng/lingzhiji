@@ -1,5 +1,5 @@
 // 灵田种植（farming.md + farming-depth.md）：全部函数在 engine 已克隆的 draft 上就地修改，返回失败原因或 null
-import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID, seasonOf } from './constants'
+import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID, MUTATION_RATE, seasonOf } from './constants'
 import { monthOf } from './economy'
 import { addLog } from './log'
 import { gainCultivation, qiCap } from './progression'
@@ -39,6 +39,12 @@ export function shadeAdj(fields: Field[], fieldId: number, herb: HerbId): number
 // 驱虫护邻：目标田相邻有生长中/成熟的赤髓参（§3.3，事件结算时判定）
 export function wardedByNeighbor(fields: Field[], fieldId: number): boolean {
   return neighborFields(fields, fieldId).some((n) => n.herb === 'chisui' && (n.status === 'growing' || n.status === 'mature'))
+}
+
+// 灵草入账收口（herb-codex.md §3.3，T56）：任何库存增加统一走此入口并置图鉴解锁（口径「获得过」）
+export function gainHerb(s: GameState, herb: HerbId, n: number): void {
+  s.inventory[herb] += n
+  s.codex[herb].unlocked = true
 }
 
 // 播种：校验顺序固定（空田→境界→灵气→种子），任一失败零消耗（PRD §16.6）
@@ -100,12 +106,17 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
   const bonus = s.gongfa >= 3 ? 1.15 : 1
   const base = Math.ceil(field.curYield! * bonus)
   const prime = rng.next() < HARVEST_PRIME_CHANCE ? HARVEST_PRIME_BONUS : 0
-  // 灵田异变保底（encounters.md §4.2）：置标记的本茬收获必出变异株（+1 株即时兑现；
-  // T56 扩随机变异后共用此入账点）。田对象收获时整体重建，标记随之清除
-  const mutant = field.mutationGuaranteed ? 1 : 0
-  const got = base + prime + mutant
+  // 稀有变异（herb-codex.md §3.2，T56）：逐株独立判定 3% 出变异株（每株收获量 +1 即时兑现，
+  // 存档 rngState 确定性）；灵田异变奇遇保底至少 1。田对象收获时整体重建，保底标记随之清除
+  const units = base + prime
+  let mutants = 0
+  for (let i = 0; i < units; i++) if (rng.next() < MUTATION_RATE) mutants++
+  if (field.mutationGuaranteed) mutants = Math.max(mutants, 1)
+  const got = units + mutants
   const expGain = Math.ceil(def.exp * got)
-  s.inventory[field.herb!] += got
+  gainHerb(s, field.herb!, got) // 图鉴解锁（口径「获得过」）
+  s.codex[field.herb!].harvested += got // 收获计数只计收获入账（事件/易货不算）
+  s.codex[field.herb!].mutants += mutants
   // 地力与茬口结算（farming-depth.md §3.2）：固氮仅在真轮作进茬时 +1（防单作锁死肥沃档，sim 校准）；
   // 连作 −1 对非固氮草生效（深根减半为 0）——青灵草单作中性、轮作才有增益；地力 clamp 0-2
   let fertDelta = def.nitrogen && field.lastCrop !== undefined && field.lastCrop !== field.herb ? 1 : 0
@@ -115,7 +126,7 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
     kind: 'action',
     icon: '🌾',
     title: `收获 · ${def.name}`,
-    text: `+${got} 株，修为 +${expGain}${mutant ? '，✨ 异变灵株 +1' : ''}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
+    text: `+${got} 株，修为 +${expGain}${mutants ? `，✨ 异变灵株 +${mutants}` : ''}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
   })
   gainCultivation(s, expGain)
   // 清茬但保留田属性（fertility / lastCrop 是田的属性，§5）；lastCrop 更新为本茬

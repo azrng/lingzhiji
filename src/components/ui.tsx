@@ -1,5 +1,7 @@
 import { CSSProperties, MouseEvent, ReactNode, RefObject, useEffect, useRef } from 'react'
 import { assetUrl } from '../assetUrl'
+import { HERBS } from '../game/constants'
+import type { Herb } from '../game/types'
 
 // 原型通用小组件：按钮、弹层壳、素材雪碧图、AP 点阵。
 // 视觉取值全部来自 theme.css 的 token，禁止硬编码色值。
@@ -147,6 +149,24 @@ export function Sprite({
     backgroundPosition: `${cols > 1 ? (col / (cols - 1)) * 100 : 0}% ${rows > 1 ? (row / (rows - 1)) * 100 : 0}%`,
   }
   return <span className={className} style={style} />
+}
+
+// 灵草视觉（T56）：前 6 种走 3×2 素材图集（spirit-herbs-sheet，按 HERBS 顺序定位）；
+// 扩容新草素材未到位前走 emoji 兜底框（T23 事件 emoji 先例，素材登记 roadmap-assets.md）
+export function HerbSprite({ herb, size }: { herb: Herb; size: number }) {
+  const idx = HERBS.findIndex((h) => h.id === herb.id)
+  if (idx >= 0 && idx < 6) {
+    return <Sprite sheet="spirit-herbs-sheet.webp" cols={3} rows={2} col={idx % 3} row={Math.floor(idx / 3)} size={size} />
+  }
+  return (
+    <span
+      className="rounded-lg bg-primary-50 border border-primary-100 inline-flex items-center justify-center shrink-0 select-none"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.55) }}
+      aria-hidden
+    >
+      {herb.emoji ?? '🌿'}
+    </span>
+  )
 }
 
 // 日志/徽标 emoji → 图标素材映射（roadmap-assets.md #11–#13）：

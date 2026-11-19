@@ -2,13 +2,24 @@
 import type { EncounterId, Herb, HerbId, MarketEventId, Season } from './types'
 
 export const HERBS: Herb[] = [
-  // 特质与适播季（farming-depth.md §3.1/§3.4）；生长期 ÷3 取整（time-decouple.md §3.2，T49 节奏压缩）
+  // 特质与适播季（farming-depth.md §3.1/§3.4）；生长期 ÷3 取整（time-decouple.md §3.2，T49 节奏压缩）。
+  // 前 6 种走 3×2 素材图集（spirit-herbs-sheet / growth-sheet 6 行）；T56 扩容 9 种素材未到位，emoji 兜底
   { id: 'qingling', name: '青灵草', price: 5, realm: 0, qi: 1, days: 5, yield: 5, sell: 4, exp: 1, seasons: ['sprout'], nitrogen: true },
   { id: 'ninglu', name: '凝露花', price: 12, realm: 0, qi: 1, days: 7, yield: 4, sell: 9, exp: 1, seasons: ['grow'], wet: true },
   { id: 'ziyun', name: '紫云芝', price: 40, realm: 2, qi: 2, days: 10, yield: 3, sell: 35, exp: 3, seasons: ['grow', 'store'], shade: true },
   { id: 'chisui', name: '赤髓参', price: 60, realm: 3, qi: 2, days: 12, yield: 3, sell: 50, exp: 3, seasons: ['store'], insectWard: true },
   { id: 'longxue', name: '龙血藤', price: 180, realm: 6, qi: 3, days: 17, yield: 2, sell: 210, exp: 10, seasons: ['store', 'sprout'], deepRoot: true },
   { id: 'jiuye', name: '九叶莲', price: 260, realm: 8, qi: 3, days: 20, yield: 2, sell: 290, exp: 10, seasons: [], allSeason: true },
+  // 扩容第一批（herb-codex.md §3.1，T56）：特质全复用现有 5 种，数值 sim 验证后定稿
+  { id: 'yuejian', name: '月见蔓', price: 8, realm: 1, qi: 1, days: 6, yield: 5, sell: 6, exp: 1, seasons: ['sprout'], nitrogen: true, emoji: '🌿' },
+  { id: 'xuexin', name: '雪芯兰', price: 30, realm: 2, qi: 2, days: 9, yield: 4, sell: 24, exp: 2, seasons: ['grow'], wet: true, emoji: '🌷' },
+  { id: 'jinling', name: '金铃藤', price: 50, realm: 3, qi: 2, days: 11, yield: 3, sell: 42, exp: 3, seasons: ['store'], insectWard: true, emoji: '🌼' },
+  { id: 'xuanshen', name: '玄参', price: 90, realm: 4, qi: 2, days: 13, yield: 3, sell: 75, exp: 4, seasons: ['store'], shade: true, emoji: '🍄' },
+  { id: 'zhuguo', name: '朱果', price: 110, realm: 4, qi: 3, days: 14, yield: 2, sell: 95, exp: 5, seasons: ['sprout'], emoji: '🍒' },
+  { id: 'bisui', name: '碧髓竹', price: 130, realm: 5, qi: 3, days: 16, yield: 2, sell: 115, exp: 6, seasons: ['grow'], deepRoot: true, emoji: '🎋' },
+  { id: 'youming', name: '幽冥花', price: 200, realm: 6, qi: 3, days: 17, yield: 2, sell: 180, exp: 8, seasons: ['store'], shade: true, emoji: '🥀' },
+  { id: 'tianxin', name: '天心莲', price: 230, realm: 7, qi: 3, days: 18, yield: 2, sell: 210, exp: 9, seasons: ['grow'], wet: true, emoji: '🌸' },
+  { id: 'zijinhu', name: '紫金葫芦', price: 300, realm: 8, qi: 3, days: 21, yield: 2, sell: 280, exp: 12, seasons: ['store'], emoji: '🍐' },
 ]
 
 // 物候三季（farming-depth.md §3.4）：6 月一循环、每季 2 月，与月度灵潮并行
@@ -166,6 +177,9 @@ export const ENCOUNTERS: EncounterDef[] = [
 
 export const ENCOUNTER_BY_ID = Object.fromEntries(ENCOUNTERS.map((e) => [e.id, e])) as Record<EncounterId, EncounterDef>
 
+// 稀有变异（herb-codex.md §3.2，T56）：收获时逐株独立判定概率；灵田异变奇遇保底至少 1 株
+export const MUTATION_RATE = 0.03
+
 // ---- 市场事件（market-events.md §3.1，随存档 v8）：月初抽 1 个持续整月、15 日预掷下月（预告=必然）。
 // 行情只动卖出价；种子买入、委托奖励（生成时按表价快照）、定额折算（表价 ÷4）均不受影响。
 // 系数为初版建议值，sim 500 局验证后定稿 ----
@@ -234,5 +248,8 @@ export const STREAK_HISTORY_MAX = 370 // 打卡历史环形保留条数（日历
 export const INITIAL = {
   stones: 50,
   fields: 3,
-  seeds: { qingling: 3, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 } as Record<HerbId, number>,
+  seeds: {
+    qingling: 3, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0,
+    yuejian: 0, xuexin: 0, jinling: 0, xuanshen: 0, zhuguo: 0, bisui: 0, youming: 0, tianxin: 0, zijinhu: 0,
+  } as Record<HerbId, number>,
 }

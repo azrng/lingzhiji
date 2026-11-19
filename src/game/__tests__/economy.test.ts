@@ -203,7 +203,7 @@ describe('应急领种（economy.md §3.2）', () => {
 
   it('全空田 + 无库存 + 无可种种子 + 买不起最便宜可种种子 → 可领 1 枚青灵草种', () => {
     let s = createInitialState(1)
-    s.seeds = { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 }
+    s.seeds = { ...s.seeds, qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 }
     s.resources.stones = 4
     const r = dispatch(s, { type: 'EMERGENCY_SEED' })
     expect(r.ok).toBe(true)
@@ -212,7 +212,7 @@ describe('应急领种（economy.md §3.2）', () => {
 
   it('只持有高境界种子时仍可领（可种判断只看境界不看灵气）', () => {
     let s = createInitialState(1)
-    s.seeds = { qingling: 0, ninglu: 0, ziyun: 1, chisui: 0, longxue: 0, jiuye: 0 }
+    s.seeds = { ...s.seeds, qingling: 0, ninglu: 0, ziyun: 1, chisui: 0, longxue: 0, jiuye: 0 }
     s.resources.stones = 100 // 买得起青灵草（5 灵石）→ 不满足谓词
     let r = dispatch(s, { type: 'EMERGENCY_SEED' })
     expect(r.ok).toBe(false)

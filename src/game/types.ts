@@ -3,7 +3,10 @@
 export type LibId = 'cet4' | 'cet6'
 export type CharacterId = 'junior-sister' | 'senior-brother' | 'senior-sister' | 'sweeping-monk' | 'junior-brother' | 'eldest-brother' | 'bookworm' | 'old-herbalist'
 
-export type HerbId = 'qingling' | 'ninglu' | 'ziyun' | 'chisui' | 'longxue' | 'jiuye'
+export type HerbId =
+  | 'qingling' | 'ninglu' | 'ziyun' | 'chisui' | 'longxue' | 'jiuye'
+  | 'yuejian' | 'xuexin' | 'jinling' | 'xuanshen' | 'zhuguo'
+  | 'bisui' | 'youming' | 'tianxin' | 'zijinhu'
 
 // 物候三季（farming-depth.md §3.4）：6 月一循环，每季 2 月
 export type Season = 'sprout' | 'grow' | 'store'
@@ -26,6 +29,7 @@ export interface Herb {
   insectWard?: boolean // 驱虫：相邻田免疫虫害事件减产
   deepRoot?: boolean // 深根：连作地力消耗减半（−1 → 0）
   allSeason?: boolean // 灵韵：不适季惩罚也不吃适季加成
+  emoji?: string // 扩容新草素材未到位时的兜底徽记（T56，前 6 种走 3×2 素材图集）
 }
 
 export type FieldStatus = 'empty' | 'growing' | 'mature' | 'confiscated'
@@ -158,6 +162,14 @@ export interface MarketState {
   next: MarketEventId | null // 15 日预掷的下月事件（预告=必然的留痕；月初兑现后清空）
 }
 
+// 灵植图鉴（herb-codex.md §3.3，随存档 v9）：收集凭证——解锁口径「获得过」（任何库存入账），
+// harvested 只计收获入账，mutants 为累计变异株数
+export interface CodexEntry {
+  unlocked: boolean
+  harvested: number
+  mutants: number
+}
+
 export interface Resources {
   stones: number
   contribution: number
@@ -200,6 +212,7 @@ export interface GameState {
   commissions: CommissionsState // 灵植堂委托（v6）：选项/资格/活跃三类持久状态
   encounter: EncounterState // 奇遇（v7）：预掷入队/冷却/传说限次三类持久状态
   market: MarketState // 市场事件（v8）：当月生效 + 15 日预掷的下月事件
+  codex: Record<HerbId, CodexEntry> // 灵植图鉴（v9）：解锁/收获计数/变异计数
   quizDaily: { done: boolean; session: QuizSession | null }
   learning: Learning
   realDay: RealDayState

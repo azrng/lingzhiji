@@ -98,8 +98,8 @@ describe('行情系数（market-events.md §3.3）', () => {
     expect(eventMultOf(s, 'ninglu')).toBe(1.8) // realm 0：青灵草/凝露花同档取靠后
     expect(eventMultOf(s, 'qingling')).toBe(1)
     s.realm = 3
-    expect(eventMultOf(s, 'chisui')).toBe(1.8) // realm ≤3 最高档 = 赤髓参
-    expect(eventMultOf(s, 'ziyun')).toBe(1)
+    expect(eventMultOf(s, 'jinling')).toBe(1.8) // realm ≤3 最高档 = 金铃藤（同境界取表中靠后者）
+    expect(eventMultOf(s, 'chisui')).toBe(1)
   })
 
   it("'*'：全部草乘系数（坊市淡季）", () => {
@@ -153,11 +153,11 @@ describe('旧机制归置（market-events.md §2）', () => {
 })
 
 describe('存档 v8（market-events.md §3.2）', () => {
-  it('v7 档迁移补空市场状态并清理 pendingTomorrow.marketMult 残留', () => {
+  it('v7 档迁移补空市场状态并清理 pendingTomorrow.marketMult 残留（经完整链升到当前版本）', () => {
     const v7 = createInitialState(1)
     ;(v7.pendingTomorrow as Record<string, unknown>).marketMult = 1.5 // 旧档残留
     const migrated = applyMigrations({ version: 7, savedAt: 1, game: v7 } as SaveData)
-    expect(migrated.version).toBe(8)
+    expect(migrated.version).toBe(SAVE_VERSION)
     expect(migrated.game.market).toEqual({ current: null, next: null })
     expect(migrated.game.pendingTomorrow).toEqual({ infusionDouble: undefined })
     expect(validate(migrated.game)).toBeNull()
@@ -175,7 +175,7 @@ describe('存档 v8（market-events.md §3.2）', () => {
     expect(dirty((g) => { (g as { market?: unknown }).market = undefined })).toBe('BAD_SHAPE')
   })
 
-  it('SAVE_VERSION 升至 8', () => {
-    expect(SAVE_VERSION).toBe(8)
+  it('SAVE_VERSION 升至 9', () => {
+    expect(SAVE_VERSION).toBe(9)
   })
 })

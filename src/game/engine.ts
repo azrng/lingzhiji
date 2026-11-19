@@ -10,7 +10,7 @@ import { addLog } from './log'
 import { clampResources, gainCultivation } from './progression'
 import * as quiz from './quiz'
 import { createRng, pick, type Rng } from './rng'
-import type { GameAction, GameState, LogEntry, ReasonCode } from './types'
+import type { GameAction, GameState, HerbId, LogEntry, ReasonCode } from './types'
 
 // 两库学习统计的零值起点（仅引擎内 createInitialState / QUIZ 相关动作使用）
 function quizStartStat() {
@@ -39,10 +39,11 @@ export function createInitialState(seed: number, nowMs: number = Date.now()): Ga
     gongfa: 1,
     fields: Array.from({ length: INITIAL.fields }, (_, i) => ({ id: i + 1, status: 'empty' as const, fertility: 1 })),
     seeds: { ...INITIAL.seeds },
-    inventory: { qingling: 0, ninglu: 0, ziyun: 0, chisui: 0, longxue: 0, jiuye: 0 },
+    inventory: Object.fromEntries(HERBS.map((h) => [h.id, 0])) as GameState['inventory'],
     commissions: commissions.defaultCommissions(), // 灵植堂委托（v6）：首月不出，第 2 月初生成选项
     encounter: { queued: null, cooldowns: {}, seenOnce: [] }, // 奇遇（v7）：开局无入队/冷却/限次记录
     market: { current: null, next: null }, // 市场事件（v8）：首月无事件，第 1 月 15 日预掷第 2 月事件
+    codex: Object.fromEntries(HERBS.map((h) => [h.id, { unlocked: false, harvested: 0, mutants: 0 }])) as GameState['codex'], // 图鉴（v9）：开局全未解锁
     quizDaily: { done: false, session: null },
     learning: {
       currentLib: 'cet4',
@@ -106,12 +107,13 @@ function applyEffect(s: GameState, eff: EventEffect, rng: Rng): string {
       gainCultivation(s, eff.amount)
       return ''
     case 'inventory': {
-      // 仓库随机灵草增减：减只在有库存时选目标（无事发生）；增从全部灵草随机
+      // 仓库随机灵草增减：减只在有库存时选目标（无事发生）；增从全部灵草随机（走入账收口置图鉴解锁）
       const owned = Object.entries(s.inventory).filter(([, n]) => n > 0)
       const pool: [string, number][] = eff.delta < 0 ? owned : Object.entries(s.inventory)
       const t = pool.length ? pick(rng, pool) : null
       if (!t) return '仓库空空如也'
-      s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
+      if (eff.delta > 0) farming.gainHerb(s, t[0] as HerbId, eff.delta)
+      else s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
       return ''
     }
     case 'infusionDouble':

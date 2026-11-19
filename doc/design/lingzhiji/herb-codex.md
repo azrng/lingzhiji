@@ -16,7 +16,7 @@ relations:
 
 # 灵植图鉴与稀有变异设计（T56）
 
-> 状态：approved（2026-11-19 用户「开始」指令确认，按推荐案定稿）。
+> 状态：approved（2026-11-19 用户「开始」指令确认，同日实施落地）。实施记录：存档 v8→v9（draft 预估 v7 共享窗口，T55/T57 先行占用）；与 draft 的差异：①CodexEntry 增加 `harvested` 计数（需求 §4.3「已收获计数」的字段落点，只计收获入账）；②灵草入账收口 `farming.gainHerb`（事件 inventory+ 与收获共用，置解锁）；③素材未到位——9 新草 emoji 兜底（HerbSprite 前六图集/后九 emoji，规格登记 roadmap-assets.md #14–#17）；④v9 迁移对残缺记录（缺旧 6 草键）保持原样交 validate，不静默重建。
 
 ## 1. 需求追溯
 
@@ -27,7 +27,7 @@ relations:
 
 ## 2. 契约引用
 
-无新对外契约。`HERBS` / `HerbId` 事实来源为 `src/game/constants.ts`（扩容即改此表）；图鉴状态入 GameState 随存档迁移（与奇遇共享版本窗口，初稿按 v7）。
+无新对外契约。`HERBS` / `HerbId` 事实来源为 `src/game/constants.ts`（扩容即改此表）；图鉴状态入 GameState 随存档 v9 迁移（v7=T55 奇遇、v8=T57 市场事件先后占用）。
 
 ## 3. 技术设计
 

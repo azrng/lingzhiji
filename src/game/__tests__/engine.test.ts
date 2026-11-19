@@ -1,6 +1,6 @@
 // 引擎与种植单测：日结算五步顺序、门控、事件权重与灵潮、效果解释器、缺水减产、收获上品、播种零消耗（对齐 PRD §14/§16）
 import { describe, expect, it } from 'vitest'
-import { DAILY_AP, EVENTS, EVENT_CHANCE, HARVEST_PRIME_CHANCE, tideOf } from '../constants'
+import { DAILY_AP, EVENTS, EVENT_CHANCE, HARVEST_PRIME_CHANCE, MUTATION_RATE, tideOf } from '../constants'
 import { applyAction, applyEvent, dispatch, createInitialState, drawEvent } from '../engine'
 import { createRng } from '../rng'
 import type { GameState } from '../types'
@@ -272,8 +272,12 @@ describe('收获上品（farming.md §3.5 / PRD §6）', () => {
   }
 
   it('命中上品：产量 +1 且日志注明灵性涌现', () => {
-    // 找首个使 rng.next() < 0.2 的种子（首个随机位即上品判定）
-    const primeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() < HARVEST_PRIME_CHANCE)!
+    // 首个随机位即上品判定（T56 后其后还有 6 个变异掷位——找「上品命中且无变异」的种子防计数漂移）
+    const primeSeed = Array.from({ length: 300 }, (_, i) => i).find((i) => {
+      const rng = createRng(i)
+      if (rng.next() >= HARVEST_PRIME_CHANCE) return false
+      return ![0, 1, 2, 3, 4, 5].some(() => rng.next() < MUTATION_RATE)
+    })!
     const r = dispatch(matured(primeSeed), { type: 'HARVEST', fieldId: 1 })
     expect(r.ok).toBe(true)
     expect(r.state!.inventory.qingling).toBe(7) // 当令 6 + 1 上品
@@ -282,11 +286,17 @@ describe('收获上品（farming.md §3.5 / PRD §6）', () => {
   })
 
   it('未命中上品：产量为功法加成取整基础值', () => {
-    const noPrimeSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= HARVEST_PRIME_CHANCE)!
+    // 上品未命中且 6 个变异掷位全未命中（T56 逐株 3% 变异）
+    const noPrimeSeed = Array.from({ length: 300 }, (_, i) => i).find((i) => {
+      const rng = createRng(i)
+      if (rng.next() < HARVEST_PRIME_CHANCE) return false
+      return ![0, 1, 2, 3, 4, 5].some(() => rng.next() < MUTATION_RATE)
+    })!
     const r = dispatch(matured(noPrimeSeed), { type: 'HARVEST', fieldId: 1 })
     expect(r.ok).toBe(true)
     expect(r.state!.inventory.qingling).toBe(6) // 生发季当令基础 6（farming-depth.md §3.4）
     expect(r.state!.log[0].text).not.toContain('上品')
+    expect(r.state!.log[0].text).not.toContain('异变')
   })
 })
 

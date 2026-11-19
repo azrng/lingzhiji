@@ -3,11 +3,11 @@
 import { realDayIndex } from './clock'
 import { DAILY_AP, ENCOUNTERS, FREEZE_CAP, HERB_BY_ID, HERBS, LOG_MAX, MARKET_EVENTS, STREAK_HISTORY_MAX, STREAK_MILESTONES } from './constants'
 import { grade } from './srs'
-import type { GameState, ReasonCode } from './types'
+import type { GameState, HerbId, ReasonCode } from './types'
 
 // 键名与版本号解耦：保持 v1 键名避免玩家丢档，版本演进只走 SAVE_VERSION + migrations
 export const SAVE_KEY = 'lingzhiji.save.v1'
-export const SAVE_VERSION = 8
+export const SAVE_VERSION = 9
 
 // 奇遇 id 白名单（encounters.md §3.5，v7 校验用）；限次记录只收传说档
 const ENCOUNTER_IDS = ENCOUNTERS.map((e) => e.id)
@@ -169,6 +169,16 @@ export function validate(game: unknown): ReasonCode | null {
     typeof g.market === 'object' && g.market !== null &&
     (g.market.current === null || (isStr(g.market.current) && (MARKET_IDS as string[]).includes(g.market.current))) &&
     (g.market.next === null || (isStr(g.market.next) && (MARKET_IDS as string[]).includes(g.market.next))) &&
+    // 灵植图鉴（v9，herb-codex.md §3.3）：全草键齐备、布尔与非负计数
+    typeof g.codex === 'object' && g.codex !== null &&
+    HERBS.every((h) => {
+      const c = g.codex[h.id]
+      return typeof c === 'object' && c !== null && isBool(c.unlocked) && nonNegInt(c.harvested) && nonNegInt(c.mutants)
+    }) &&
+    Object.entries(g.codex).every(([k, v]) => {
+      const c = v as unknown as Record<string, unknown>
+      return isHerbId(k) && typeof c === 'object' && c !== null && isBool(c.unlocked) && nonNegInt(c.harvested) && nonNegInt(c.mutants)
+    }) &&
     typeof g.quizDaily === 'object' && g.quizDaily !== null && isBool(g.quizDaily.done) &&
     typeof g.learning === 'object' && g.learning !== null &&
     (g.learning.currentLib === 'cet4' || g.learning.currentLib === 'cet6') &&
@@ -419,6 +429,37 @@ export const migrations: ((data: SaveData) => SaveData)[] = [
         ...data.game,
         market: { current: null, next: null },
         ...(pt && typeof pt === 'object' ? { pendingTomorrow: { infusionDouble: pt.infusionDouble } } : {}),
+      },
+    }
+  },
+  // v8 → v9（herb-codex.md §3.3，T56 图鉴与变异）：草药 6→15——seeds/inventory 补 9 个新键（默认 0）；
+  // codex 由库存反推初始解锁（有库存即「获得过」，旧档不丢基础收集感），收获与变异计数从零起。
+  // 残缺记录（缺旧 6 草键的脏档）保持原样交 validate 拦截，不静默重建（迁移容错不掩盖坏数据）
+  (data) => {
+    if (data.version !== 8) return data
+    const g = data.game
+    const OLD_KEYS: HerbId[] = ['qingling', 'ninglu', 'ziyun', 'chisui', 'longxue', 'jiuye']
+    const wellFormed = (r: unknown): r is Record<string, number> =>
+      typeof r === 'object' && r !== null && OLD_KEYS.every((k) => typeof (r as Record<string, unknown>)[k] === 'number')
+    const seeds = wellFormed(g?.seeds)
+      ? (Object.fromEntries(HERBS.map((h) => [h.id, (g.seeds as Record<string, number>)[h.id] ?? 0])) as GameState['seeds'])
+      : undefined
+    const inventory = wellFormed(g?.inventory)
+      ? (Object.fromEntries(HERBS.map((h) => [h.id, (g.inventory as Record<string, number>)[h.id] ?? 0])) as GameState['inventory'])
+      : undefined
+    const codex = inventory
+      ? (Object.fromEntries(
+          HERBS.map((h) => [h.id, { unlocked: inventory[h.id] > 0, harvested: 0, mutants: 0 }]),
+        ) as GameState['codex'])
+      : undefined
+    return {
+      ...data,
+      version: 9,
+      game: {
+        ...g,
+        ...(seeds ? { seeds } : {}),
+        ...(inventory ? { inventory } : {}),
+        ...(codex ? { codex } : {}),
       },
     }
   },

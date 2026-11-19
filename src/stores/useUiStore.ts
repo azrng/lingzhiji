@@ -21,6 +21,7 @@ interface UiStore {
   commissionOpen: boolean
   meditateOpen: boolean
   warehouseOpen: boolean
+  codexOpen: boolean
   tutorialStep: number // 0 不显示；1-3 引导步骤
   toasts: Toast[]
   setQuizOpen: (v: boolean) => void
@@ -28,6 +29,7 @@ interface UiStore {
   setSettingsOpen: (v: boolean) => void
   setCommissionOpen: (v: boolean) => void
   setWarehouseOpen: (v: boolean) => void
+  setCodexOpen: (v: boolean) => void
   setMeditateOpen: (v: boolean) => void
   setTutorialStep: (v: number) => void
   pushToasts: (entries: LogEntry[]) => void
@@ -43,6 +45,7 @@ export const useUiStore = create<UiStore>((set) => ({
   commissionOpen: false,
   meditateOpen: false,
   warehouseOpen: false,
+  codexOpen: false,
   tutorialStep: 0,
   toasts: [],
   setQuizOpen: (v) => set({ quizOpen: v }),
@@ -50,6 +53,7 @@ export const useUiStore = create<UiStore>((set) => ({
   setSettingsOpen: (v) => set({ settingsOpen: v }),
   setCommissionOpen: (v) => set({ commissionOpen: v }),
   setWarehouseOpen: (v) => set({ warehouseOpen: v }),
+  setCodexOpen: (v) => set({ codexOpen: v }),
   setMeditateOpen: (v) => set({ meditateOpen: v }),
   setTutorialStep: (v) => set({ tutorialStep: v }),
   // 新日志条目转 toast：事件/结算/突破需要即时反馈，普通行动不弹（core-loop.md）

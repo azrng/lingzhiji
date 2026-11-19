@@ -5,11 +5,25 @@ import type { HerbId } from '../game/types'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
 import { Btn, ConfirmOverlay, Modal, Sprite } from './ui'
+// Sprite 仍用于残卷行；herbVisual 为坊市商品视觉（前 6 草图集位 + 新草 emoji 兜底）
 
 // 坊市：买（种子/残卷）/ 卖（灵草），0 AP 随时可去（economy.md §3.2）
-const GOODS_POS: Record<HerbId, [number, number]> = {
+// 商品图集 4×2 仅前 6 草有位（T56 扩容新草 emoji 兜底，素材登记 roadmap-assets.md）
+const GOODS_POS: Partial<Record<HerbId, [number, number]>> = {
   qingling: [0, 0], ninglu: [1, 0], ziyun: [2, 0], chisui: [3, 0], longxue: [0, 1], jiuye: [1, 1],
 }
+const herbVisual = (h: (typeof HERBS)[number], size: number) =>
+  GOODS_POS[h.id] ? (
+    <Sprite sheet="market-goods-sheet.webp" cols={4} rows={2} col={GOODS_POS[h.id]![0]} row={GOODS_POS[h.id]![1]} size={size} />
+  ) : (
+    <span
+      className="rounded-lg bg-primary-50 border border-primary-100 inline-flex items-center justify-center shrink-0 select-none"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.55) }}
+      aria-hidden
+    >
+      {h.emoji ?? '🌿'}
+    </span>
+  )
 
 export default function MarketPanel() {
   const g = useGameStore((s) => s.game)
@@ -61,7 +75,7 @@ export default function MarketPanel() {
             return (
               <div key={h.id}>
                 <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
-                  <Sprite sheet="market-goods-sheet.webp" cols={4} rows={2} col={GOODS_POS[h.id][0]} row={GOODS_POS[h.id][1]} size={48} />
+                  {herbVisual(h, 48)}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-800">
                       {h.name}种

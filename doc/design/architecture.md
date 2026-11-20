@@ -124,6 +124,13 @@ UI dispatch(action) → store 调 engine 纯函数 → { ok, state?, logs?, reas
 - 存档损坏 / 版本不识别：按 `lingzhiji/save.md` 恢复策略处理，不覆盖原档
 - 保存失败（隐私模式 / 容量满）：toast 明确提示，游戏状态保留在内存中继续游玩
 
-## 10. 验证方式
+## 10. Service Worker（T60，2026-11-20）
+
+- `public/sw.js` 随 dist 部署；`main.tsx` 仅生产注册（dev 的 HMR 与 SW 缓存互斥），注册失败静默——SW 是增强不是依赖
+- 策略：导航请求 network-first（发版后首次重访即生效，离线回退缓存 → 断网可玩）；同源 GET 资源 stale-while-revalidate（重复访问秒开，非哈希文件名的素材发版后第二次载入自动换新，无需手工版本纪律）；跨域与非 GET 不接管
+- 缓存名 `lingzhiji-v{N}` 内嵌版本，activate 清旧缓存；改 SW 逻辑需升版本号
+- 已验收：preview 实测注册/激活、刷新后 shell+哈希资源入缓存（`lingzhiji-v1`）；e2e/dev 不受影响（PROD-only 注册）
+
+## 11. 验证方式
 
 本文档自身以评审通过为验证；各决策的落地正确性由阶段 1 的单测、模拟器与 smoke test 承担（§8）。

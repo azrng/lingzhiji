@@ -5,7 +5,8 @@ import { buildOptions, cleanMeaning, LIBS, type WordEntry } from '../wordbank'
 describe('题目选项', () => {
   it('清理完全重复的词性释义，保留不同词性与不同释义', () => {
     expect(cleanMeaning('n. 图解， 图表， 简图；n. 图解，图表，简图')).toBe('n. 图解， 图表， 简图')
-    expect(cleanMeaning('n. 滥用；v. 滥用；n. 虐待')).toBe('n. 滥用；v. 滥用；n. 虐待')
+    // v3：两个 n. 段合并去重（滥用首现保留），v. 段词性不同不并
+    expect(cleanMeaning('n. 滥用；v. 滥用；n. 虐待')).toBe('n. 滥用，虐待；v. 滥用')
   })
 
   it('v2：复合词性整体切段，不产生垃圾段', () => {
@@ -35,6 +36,23 @@ describe('题目选项', () => {
       .toBe('n & v. 尝试，试图；n. 企图；vt. 尝试， 试图， 努力')
     // n. 与 v. 词性族互不覆盖 → 同义项也保留
     expect(cleanMeaning('n. 上诉；v. 上诉')).toBe('n. 上诉；v. 上诉')
+  })
+
+  it('v3：同词性多段部分重叠合并为一段，义项首现去重（信息无损）', () => {
+    // ability 原始形态：两个 n. 段义项交叉重复——段级覆盖只能丢整段的残留
+    expect(cleanMeaning('n. 能力， 本领； 才能， 才智；n. 能力；能耐，本领'))
+      .toBe('n. 能力，本领，才能，才智，能耐')
+    // 不同词性不合并（跨段同义项是有效信息）
+    expect(cleanMeaning('n. 滥用；v. 滥用')).toBe('n. 滥用；v. 滥用')
+    // 无词性段不参与合并，各自独立
+    expect(cleanMeaning('甲；乙')).toBe('甲；乙')
+  })
+
+  it('v3：纯拉丁义项是数据源词性残迹（urban 的「adj. a.」），过滤；全残迹脏档回退原文防空释义', () => {
+    // 「adj. a.」垃圾段整段消失；存留段未被改写 → 保留原文格式（改动面最小）
+    expect(cleanMeaning('adj.  城市的， 都市的； 住在都市的；adj. a.；adj. 都市的,住在都市的'))
+      .toBe('adj. 城市的， 都市的； 住在都市的')
+    expect(cleanMeaning('n. a.')).toBe('n. a.')
   })
 
   it('v2：剥离尾部孤立词性残迹，丢弃无释义段', () => {

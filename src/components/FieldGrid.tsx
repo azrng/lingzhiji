@@ -199,56 +199,67 @@ function FieldCard({ fid, onPlant }: { fid: number; onPlant: () => void }) {
   )
 }
 
-// 播种弹层：全部灵植与可种状态，条件不足保留名称并说明原因（farming.md §4）
+// 播种弹层：当前境界可种的灵植照常展示；更高境界的折叠预览（T59 O3——15 草平铺滚动过长）
 function PlantModal({ fid, onClose }: { fid: number; onClose: () => void }) {
   const g = useGameStore((s) => s.game)
   const act = useGameStore((s) => s.act)
+  const unlocked = HERBS.filter((h) => g.realm >= h.realm)
+  const locked = HERBS.filter((h) => g.realm < h.realm)
+  const renderRow = (h: (typeof HERBS)[number]) => {
+    const reason =
+      g.realm < h.realm
+        ? `需${REALM_NAMES[h.realm]}`
+        : g.resources.qi < h.qi
+          ? `灵气不足（${g.resources.qi}/${h.qi}），完成任务堂可获得灵气`
+          : g.seeds[h.id] < 1
+            ? '种子库存不足 · 可去坊市购买'
+            : null
+    // 特质与物候（farming-depth.md §3.1/§3.4）：特质名 + 当季播种种窗提示
+    const traits = [
+      h.nitrogen && '固氮', h.wet && '喜湿', h.shade && '喜阴', h.insectWard && '驱虫', h.deepRoot && '深根', h.allSeason && '灵韵',
+    ].filter(Boolean).join(' · ')
+    const sAdj = seasonAdj(h.id, monthOf(g.day))
+    const seasonTag = h.allSeason ? '全季' : sAdj > 0 ? '当令 +1' : '反季 −1'
+    return (
+      <div key={h.id}>
+        <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
+          <HerbSprite herb={h} size={40} />
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-sm font-medium text-gray-800">{h.name}</span>
+              <span
+                className={`text-[11px] px-1 rounded ${h.allSeason ? 'text-gold-ink border border-gold' : sAdj > 0 ? 'text-success-500 bg-success-50' : 'text-error-500 bg-error-50'}`}
+                title={h.allSeason ? '任何季节播种产量不变' : sAdj > 0 ? '当季播种：预计产量 +1 株' : '反季播种：预计产量 −1 株'}
+              >{seasonTag}</span>
+              <span className="text-xs text-gray-600">库存 {g.seeds[h.id]}</span>
+            </div>
+            {traits && (
+              <div className="mt-0.5 text-[11px] text-primary-600" title="固氮：轮作换种可 +1 地力 · 喜湿：免疫缺水减产 · 喜阴：邻高秆草产量 +1 · 驱虫：护邻田免产量灾 · 深根：连作不耗地力 · 灵韵：全季适播">
+                特质：{traits}
+              </div>
+            )}
+            <div className="mt-1 text-xs leading-5 text-gray-600">灵气 {h.qi} · 生长 {effDays(h.id, g.gongfa)} 天<br />收获 {h.yield} 株 · 售价 {h.sell} 灵石</div>
+          </div>
+          <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!min-h-11 !px-3">
+            播种
+          </Btn>
+        </div>
+        {reason && <div className="text-xs text-warning-500 mt-1 ml-2">{reason}</div>}
+      </div>
+    )
+  }
   return (
     <Modal title={`${fid} 号田 · 播种`} onClose={onClose}>
       <div className="flex flex-col gap-3">
-        {HERBS.map((h, i) => {
-          const reason =
-            g.realm < h.realm
-              ? `需${REALM_NAMES[h.realm]}`
-              : g.resources.qi < h.qi
-                ? `灵气不足（${g.resources.qi}/${h.qi}），完成任务堂可获得灵气`
-                : g.seeds[h.id] < 1
-                  ? '种子库存不足 · 可去坊市购买'
-                  : null
-          // 特质与物候（farming-depth.md §3.1/§3.4）：特质名 + 当季播种种窗提示
-          const traits = [
-            h.nitrogen && '固氮', h.wet && '喜湿', h.shade && '喜阴', h.insectWard && '驱虫', h.deepRoot && '深根', h.allSeason && '灵韵',
-          ].filter(Boolean).join(' · ')
-          const sAdj = seasonAdj(h.id, monthOf(g.day))
-          const seasonTag = h.allSeason ? '全季' : sAdj > 0 ? '当令 +1' : '反季 −1'
-          return (
-            <div key={h.id}>
-              <div className="flex items-start gap-3 bg-gray-100 rounded-xl px-3 py-3 sm:items-center">
-                <HerbSprite herb={h} size={40} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-sm font-medium text-gray-800">{h.name}</span>
-                    <span
-                      className={`text-[11px] px-1 rounded ${h.allSeason ? 'text-gold-ink border border-gold' : sAdj > 0 ? 'text-success-500 bg-success-50' : 'text-error-500 bg-error-50'}`}
-                      title={h.allSeason ? '任何季节播种产量不变' : sAdj > 0 ? '当季播种：预计产量 +1 株' : '反季播种：预计产量 −1 株'}
-                    >{seasonTag}</span>
-                    <span className="text-xs text-gray-600">库存 {g.seeds[h.id]}</span>
-                  </div>
-                  {traits && (
-                    <div className="mt-0.5 text-[11px] text-primary-600" title="固氮：轮作换种可 +1 地力 · 喜湿：免疫缺水减产 · 喜阴：邻高秆草产量 +1 · 驱虫：护邻田免产量灾 · 深根：连作不耗地力 · 灵韵：全季适播">
-                      特质：{traits}
-                    </div>
-                  )}
-                  <div className="mt-1 text-xs leading-5 text-gray-600">灵气 {h.qi} · 生长 {effDays(h.id, g.gongfa)} 天<br />收获 {h.yield} 株 · 售价 {h.sell} 灵石</div>
-                </div>
-                <Btn onClick={() => { act({ type: 'PLANT', fieldId: fid, herb: h.id }); onClose() }} disabled={!!reason} className="!min-h-11 !px-3">
-                  播种
-                </Btn>
-              </div>
-              {reason && <div className="text-xs text-warning-500 mt-1 ml-2">{reason}</div>}
-            </div>
-          )
-        })}
+        {unlocked.map(renderRow)}
+        {locked.length > 0 && (
+          <details className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
+            <summary className="cursor-pointer select-none text-sm text-gray-600">
+              更高境界灵植 {locked.length} 种 · 最低需{REALM_NAMES[locked[0].realm]}（点开预览）
+            </summary>
+            <div className="flex flex-col gap-3 mt-3">{locked.map(renderRow)}</div>
+          </details>
+        )}
         <p className="text-xs text-gray-500 mt-1">播种不消耗行动力；条件不足时不会消耗种子与灵气。</p>
       </div>
     </Modal>

@@ -36,6 +36,8 @@ const subsetOf = (a: Set<string>, b: Set<string>): boolean => [...a].every((x) =
 // 规则：按词性标签切段 → 剥尾部残迹/丢空段 → 同键重复留首现；义项被另一段完全覆盖
 // （义项 ⊆ 且词性族 ⊆，如 vt.{攻击,进攻} ⊆ vt&vi&n.{攻击,进攻}）时丢弃，信息无损合并；
 // 词性族互不覆盖的段（如 n. 滥用 与 v. 滥用）保留——不同词性的释义对学习者是有效信息。
+// v3（T59）：同词性多段且义项部分重叠（v2 段级覆盖只能丢整段的残留，探针 1503/8459 条）→
+// 同 pos 段合并为一段，义项按首现顺序去重——只去重复字符串，不动近义词（离弃/遗弃是合法信息）。
 export function cleanMeaning(meaning: string): string {
   const stash: string[] = []
   const stashed = meaning.replace(COMPOSITE_POS, (m) => {
@@ -78,9 +80,37 @@ export function cleanMeaning(meaning: string): string {
       if (covered(j, i)) drop[j] = true
     }
   }
-  return segs
-    .filter((_, k) => !drop[k])
-    .map((s) => (s.pos ? `${s.pos}. ${s.def}` : s.def).trim())
+  // v3 同词性段合并：段级去重后仍可能同 pos 多段（义项部分重叠），合并为一段做义项级去重。
+  // 只重建真合并/真过滤的组——单段无过滤的组保留原文（含原有「；」子义分组与空格），改动面最小。
+  // 纯拉丁义项（如 urban 的垃圾段「adj. a.」）是数据源词性残迹，中文词典不会出现合法纯拉丁义项，过滤
+  const LATIN_DEBRIS = /^[a-z&.\s]+$/i
+  const groups: { pos: string; items: string[]; segCount: number; filtered: boolean; raw?: string }[] = []
+  const posIndex = new Map<string, number>()
+  for (const s of segs.filter((_, k) => !drop[k])) {
+    const filtered = [...s.items].some((it) => LATIN_DEBRIS.test(it))
+    const items = [...s.items].filter((it) => !LATIN_DEBRIS.test(it))
+    if (!items.length) continue
+    const key = normKey(s.pos)
+    if (!key) {
+      groups.push({ pos: '', items, segCount: 1, filtered, raw: s.def })
+      continue
+    }
+    const idx = posIndex.get(key)
+    if (idx === undefined) {
+      posIndex.set(key, groups.length)
+      groups.push({ pos: s.pos, items, segCount: 1, filtered, raw: s.def })
+    } else {
+      groups[idx].segCount += 1
+      groups[idx].filtered = groups[idx].filtered || filtered
+      for (const it of items) if (!groups[idx].items.includes(it)) groups[idx].items.push(it)
+    }
+  }
+  if (!groups.length) return meaning // 全段皆为残迹的极端脏档：回退原文，好过空释义
+  return groups
+    .map((g) => {
+      if (g.segCount === 1 && !g.filtered) return (g.pos ? `${g.pos}. ${g.raw!}` : g.raw!).trim()
+      return (g.pos ? `${g.pos}. ${g.items.join('，')}` : g.items.join('，')).trim()
+    })
     .join('；')
 }
 

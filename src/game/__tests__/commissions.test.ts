@@ -47,6 +47,31 @@ describe('灵植堂委托 · 月初生成', () => {
       }
     }
   })
+
+  it('T58 防哑弹：灵气不足时奖励排除种子档；灵气足够时种子档照常可出', () => {
+    // qi 0（连 1 株青灵草都种不下）：50 个种子滚动第 3 月初刷新，任何 offer 都不得是 seed
+    for (const seed of Array.from({ length: 50 }, (_, i) => i + 1)) {
+      const s = month2Start(seed)
+      s.resources.qi = 0
+      s.day = 60
+      s.phase = 'quota'
+      applyAction(s, { type: 'QUOTA_RESOLVE', pay: false, plan: {} })
+      for (const o of s.commissions.offers) {
+        expect(o.reward.kind).not.toBe('seed')
+      }
+    }
+    // 灵气充足时 seed 档可出（50 种子里至少一个）
+    let seedSeen = false
+    for (const seed of Array.from({ length: 50 }, (_, i) => i + 1)) {
+      const s = month2Start(seed)
+      s.resources.qi = 9
+      s.day = 60
+      s.phase = 'quota'
+      applyAction(s, { type: 'QUOTA_RESOLVE', pay: false, plan: {} })
+      if (s.commissions.offers.some((o) => o.reward.kind === 'seed')) seedSeen = true
+    }
+    expect(seedSeen).toBe(true)
+  })
 })
 
 describe('灵植堂委托 · 接取', () => {

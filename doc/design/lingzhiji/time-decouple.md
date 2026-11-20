@@ -39,7 +39,7 @@ applyAction MEDITATE { days: number }:
   2. 循环 days 次：调用现有 endDay(s, rng)（五步管线原样复用）
      - endDay 内 phase 置 'quota'（月末）时立即 break，入定提前出关
      - 筑基 milestoneShown 中间态：批量先完成、落盘后再由 UI 弹 MilestoneScreen
-  3. 汇总：本次入定的事件/成熟/减产/突破折叠为 ≤3 条日志（kind='settle'）
+  3. 汇总：本次入定的事件/成熟/减产/突破折叠为 ≤3 条日志（kind='settle'）；突破/月末/坊市风声与行情公告（T57）/奇遇兑现（T58）条目保留不折叠
   4. 返回差量摘要（MeditatePreview 形状对齐原型接口），store 转 toast/结果面板
 ```
 

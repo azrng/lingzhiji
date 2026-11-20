@@ -15,10 +15,14 @@ export function defaultCommissions(): CommissionsState {
 }
 
 // 奖励定价（L2 持平档，commission-sim.ts rewardAmount 同款）：value = 交付草的坊市市值；
-// 灵石/心得按 1:1、贡献折半（贡献日收入约为灵石一半的稀缺度）、种子固定枚数；类型由生成时 rng 四选一
-function rewardOf(herb: HerbId, count: number, rng: Rng): CommissionReward {
+// 灵石/心得按 1:1、贡献折半（贡献日收入约为灵石一半的稀缺度）、种子固定枚数；类型由生成时 rng 抽取。
+// T58 防哑弹：当前灵气连 1 株该草都种不下时排除 seed 档（种子对无灵气玩家即时价值为零，换即时资源）；
+// 月中灵气恢复后生成的委托不受影响
+function rewardOf(s: GameState, herb: HerbId, count: number, rng: Rng): CommissionReward {
   const value = HERB_BY_ID[herb].sell * count
-  const kinds = ['stones', 'contribution', 'insight', 'seed'] as const
+  const kinds = (['stones', 'contribution', 'insight', 'seed'] as const).filter(
+    (k) => k !== 'seed' || s.resources.qi >= HERB_BY_ID[herb].qi,
+  )
   const kind = kinds[Math.floor(rng.next() * kinds.length)]
   switch (kind) {
     case 'stones':
@@ -40,7 +44,7 @@ export function rollOffers(s: GameState, month: number, rng: Rng): CommissionOff
   for (let i = 0; i < COMMISSION_OFFERS && pool.length > 0; i++) {
     const herb = pool.splice(Math.floor(rng.next() * pool.length), 1)[0]
     const count = Math.max(2, Math.ceil(COMMISSION_QUOTA_EQUIV / convertRate(herb)) + (rng.next() < 0.5 ? 0 : 1))
-    offers.push({ id: `m${month}-${herb.id}`, herb: herb.id, count, reward: rewardOf(herb.id, count, rng) })
+    offers.push({ id: `m${month}-${herb.id}`, herb: herb.id, count, reward: rewardOf(s, herb.id, count, rng) })
   }
   return offers
 }

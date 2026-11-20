@@ -385,15 +385,20 @@ describe('入定批量结算（time-decouple.md §3.1 + T54 闭关收益）', ()
     expect(strip(b)).toEqual(strip(manual))
   })
 
-  it('多日结算折叠为汇总条目：新增日志 ≤ 2 条（汇总 + 预告），不再逐日刷穿', () => {
+  it('多日结算折叠：基础新增 ≤ 2 条（汇总 + 预告），奇遇兑现条目保留不收拢（T58）', () => {
     const before = planted(77)
     const r = dispatch(before, { type: 'MEDITATE', days: 5 })
     expect(r.ok).toBe(true)
     const added = r.state!.log.filter((l) => !before.log.some((b) => JSON.stringify(b) === JSON.stringify(l)))
     // 环形截断下 added 可能被挤出，上限判定不受影响
-    expect(added.length).toBeLessThanOrEqual(2)
+    const base = added.filter((l) => !l.title.startsWith('奇遇 · '))
+    expect(base.length).toBeLessThanOrEqual(2)
     expect(r.state!.log[0]).toMatchObject({ kind: 'settle', title: '入定 5 天' })
     expect(r.state!.log.some((l) => l.title === '明日预告')).toBe(true)
+    // seed 77 的 5 天批次恰触发 1 次奇遇：兑现条目应在日志中完整保留（不收进「事件 N 起」）
+    const enc = added.filter((l) => l.title.startsWith('奇遇 · '))
+    expect(enc.length).toBe(1)
+    expect(enc[0].text.length).toBeGreaterThan(0)
   })
 
   it('入定期间成熟照常、缺水豁免（T54 灵泉阵：干旱不再是入定的取舍）', () => {

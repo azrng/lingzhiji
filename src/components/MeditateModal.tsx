@@ -74,7 +74,7 @@ export default function MeditateModal() {
             <div className="flex justify-between text-xs text-gray-500"><span>1 天</span><span>至月末（{maxDays} 天）</span></div>
           </div>
 
-          {/* 快捷档：1/3/7 天与「至下次成熟」（全田成熟时置灰） */}
+          {/* 快捷档：1/3/7 天、「至下次成熟」（全田成熟时置灰）与「至月末」（T58：原滑条端点只是标签，文案像可点快捷） */}
           <div className="flex gap-2 flex-wrap">
             {[1, 3, 7].map((n) => (
               <Btn key={n} variant="secondary" className="!min-h-9" disabled={n > maxDays} onClick={() => setDays(n)}>{n} 天</Btn>
@@ -85,6 +85,11 @@ export default function MeditateModal() {
               title={growingRemain.length === 0 ? '田已成熟，请先收获' : '推进到最早成熟的那一天'}
               onClick={() => setDays(Math.min(Math.max(1, ...growingRemain), maxDays))}
             >至下次成熟</Btn>
+            <Btn
+              variant="secondary" className="!min-h-9"
+              title="推进到本月最后一夜，出关即定额结算"
+              onClick={() => setDays(maxDays)}
+            >至月末</Btn>
           </div>
 
           {/* 田块状态：生长中显示进度与缺水；已成熟提示先收获 */}

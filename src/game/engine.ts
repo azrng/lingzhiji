@@ -347,8 +347,9 @@ export function runMeditationBatch(state: GameState, rng: Rng, days: number): Me
   }
   const added = after.slice(0, after.length - overlap)
   const survivors = after.slice(after.length - overlap)
-  // 折叠保留：突破、月末、市场事件公告与风声（经营决策信息，T57）不收拢
-  const kept = added.filter((l) => l.kind === 'breakthrough' || l.title === '月末已至' || l.title === '坊市风声' || l.title.startsWith('坊市行情'))
+  // 折叠保留：突破、月末、市场事件公告与风声（经营决策信息，T57）、奇遇兑现（T58——稀有事件
+  // 只收进「事件 N 起」会让玩家错过灵田异变/赠种等关键细节；24 天约 2-5 条，日志环 50 条容量可承受）
+  const kept = added.filter((l) => l.kind === 'breakthrough' || l.title === '月末已至' || l.title === '坊市风声' || l.title.startsWith('坊市行情') || l.title.startsWith('奇遇 · '))
   const events = perDay.reduce((a, d) => a + d.events.length, 0)
   const maturedTotal = perDay.reduce((a, d) => a + d.matured.length, 0)
   const breaks = added.filter((l) => l.kind === 'breakthrough').length

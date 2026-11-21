@@ -1,8 +1,8 @@
 // 经济（economy.md）：坊市买卖、应急领种、月末定额与欠缴；在 engine 克隆的 draft 上就地修改
 import {
-  HERB_BY_ID, HERBS, MARKET_EVENT_BY_ID, MONTH_DAYS, QUOTA_FAIL_CONTRIBUTION,
+  CHARMS, HERB_BY_ID, HERBS, MARKET_EVENT_BY_ID, MONTH_DAYS, QUOTA_FAIL_CONTRIBUTION,
   QUOTA_FAIL_STONES, QUOTA_TARGET, REDEEM_COST, SCROLL_INSIGHT, SCROLL_PRICE,
-  SEED_DISCOUNT_REALM, seasonOf, topRealmHerb,
+  SEED_DISCOUNT_REALM, seasonOf, topRealmHerb, type CharmKind,
 } from './constants'
 import { addLog } from './log'
 import { clampResources } from './progression'
@@ -35,6 +35,22 @@ export function buyScroll(s: GameState): ReasonCode | null {
   s.resources.stones -= SCROLL_PRICE
   s.resources.insight += SCROLL_INSIGHT
   addLog(s, { kind: 'action', icon: '📜', title: '购买功法残卷', text: `心得 +${SCROLL_INSIGHT}（−${SCROLL_PRICE} 灵石）` })
+  return null
+}
+
+// 珍品架（T64，T61 P0-a 轻量版）：灵石中价消耗端——策略道具不限购，效果日限天然防囤积
+export function buyCharm(s: GameState, kind: CharmKind): ReasonCode | null {
+  const charm = CHARMS[kind]
+  if (s.resources.stones < charm.price) return 'NO_STONES'
+  s.resources.stones -= charm.price
+  if (kind === 'infusion') {
+    s.pendingTomorrow.infusionDouble = true
+    addLog(s, { kind: 'action', icon: '🧧', title: '使用聚灵符', text: `−${charm.price} 灵石，明日灌注效果翻倍` })
+  } else {
+    for (const f of s.fields) if (f.status === 'growing') f.dry = 0
+    s.wateredToday = true
+    addLog(s, { kind: 'action', icon: '🧧', title: '使用润土符', text: `−${charm.price} 灵石，全田缺水清零，今日视同已浇灌` })
+  }
   return null
 }
 

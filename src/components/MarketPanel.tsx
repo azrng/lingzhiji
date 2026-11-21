@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { convertRate, eventMultOf, monthOf, seedPrice } from '../game/economy'
-import { HERB_BY_ID, HERBS, MARKET_EVENT_BY_ID, QUOTA_TARGET, REALM_NAMES, seasonOf, topRealmHerb } from '../game/constants'
+import { CHARMS, HERB_BY_ID, HERBS, MARKET_EVENT_BY_ID, QUOTA_TARGET, REALM_NAMES, seasonOf, topRealmHerb } from '../game/constants'
 import type { HerbId } from '../game/types'
 import { useGameStore } from '../stores/useGameStore'
 import { useUiStore } from '../stores/useUiStore'
@@ -31,7 +31,8 @@ export default function MarketPanel() {
   const setMarketOpen = useUiStore((s) => s.setMarketOpen)
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [confirmLocked, setConfirmLocked] = useState<HerbId | null>(null)
-  const [confirmSellAll, setConfirmSellAll] = useState<HerbId | null>(null)
+  const [confirmSell, setConfirmSell] = useState<{ herb: HerbId; count: number } | null>(null)
+  const [sellQty, setSellQty] = useState<Partial<Record<HerbId, number>>>({})
   const inventoryValue = HERBS.reduce((sum, herb) => sum + convertRate(herb) * g.inventory[herb.id], 0)
   // 本月行情条（market-events.md §3.5，T57）：定向草动态解析出具体名称
   const marketEv = g.market.current ? MARKET_EVENT_BY_ID[g.market.current] : null
@@ -103,6 +104,21 @@ export default function MarketPanel() {
             </div>
             <Btn className="!py-1.5" disabled={g.resources.stones < 120} onClick={() => act({ type: 'BUY_SCROLL' })}>购买</Btn>
           </div>
+          {/* 珍品架（T64，T61 P0-a 轻量版）：灵石消耗端——策略符箓不限购，效果日限天然防囤积 */}
+          <div className="mt-2 text-xs tracking-widest text-gold-ink">— 珍品架 —</div>
+          {(Object.keys(CHARMS) as (keyof typeof CHARMS)[]).map((kind) => {
+            const c = CHARMS[kind]
+            return (
+              <div key={kind} className="flex items-center gap-3 bg-gold-pale rounded-xl px-3 py-2.5 border border-gold/40">
+                <span className="text-2xl select-none" aria-hidden>🧧</span>
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-800">{c.name}</div>
+                  <div className="text-xs text-gray-500">{c.price} 灵石 · {c.desc}</div>
+                </div>
+                <Btn className="!py-1.5" disabled={g.resources.stones < c.price} onClick={() => act({ type: 'BUY_CHARM', kind })}>购买</Btn>
+              </div>
+            )
+          })}
           <p className="text-xs text-gray-400 mt-1">购买未达境界的种子前会确认提示；播种条件另在灵田判断。</p>
         </div>
       )}
@@ -116,20 +132,31 @@ export default function MarketPanel() {
           {HERBS.filter((h) => g.inventory[h.id] > 0).map((h) => {
             const m = eventMultOf(g, h.id)
             const unit = Math.max(1, Math.floor(h.sell * m))
+            const stock = g.inventory[h.id]
+            const q = Math.min(sellQty[h.id] ?? 1, stock)
+            const setQ = (n: number) => setSellQty((s) => ({ ...s, [h.id]: Math.max(1, Math.min(stock, n)) }))
+            // 步进到最大且清仓致定额不足 → 先确认（沿 T54 保定额口径，范围扩大到任意数量）
+            const sell = () => {
+              const after = inventoryValue - convertRate(h) * q
+              if (after < QUOTA_TARGET) setConfirmSell({ herb: h.id, count: q })
+              else act({ type: 'SELL_HERB', herb: h.id, count: q })
+              setSellQty((s) => ({ ...s, [h.id]: 1 }))
+            }
             return (
               <div key={h.id} className="flex flex-wrap items-center gap-3 bg-gray-100 rounded-xl px-3 py-2.5">
                 <Sprite sheet="market-goods-sheet.webp" cols={4} rows={2} col={3} row={1} size={38} />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-800">{h.name} ×{g.inventory[h.id]}</div>
+                  <div className="text-sm font-medium text-gray-800">{h.name} ×{stock}</div>
                   <div className="text-xs text-gray-500">单价 {unit} 灵石{m !== 1 ? `（行情 ×${m}）` : ''} · 折算定额 {convertRate(h)}</div>
                 </div>
-                <Btn variant="secondary" className="!py-1.5" onClick={() => act({ type: 'SELL_HERB', herb: h.id, count: 1 })}>卖 1</Btn>
-                <Btn variant="secondary" className="!py-1.5" onClick={() => {
-                  // 卖全部保定额（T54 实玩陷阱 #4）：清仓会导致月末无草可缴时先确认；不足 3 天成熟的当月补不回来
-                  const after = inventoryValue - convertRate(h) * g.inventory[h.id]
-                  if (after < QUOTA_TARGET) setConfirmSellAll(h.id)
-                  else act({ type: 'SELL_HERB', herb: h.id, count: g.inventory[h.id] })
-                }}>卖全部</Btn>
+                {/* 数量步进（T61 P1-b：批量出售不再逐次点「卖 1」） */}
+                <div className="flex items-center gap-1" role="group" aria-label={`${h.name}出售数量`}>
+                  <button aria-label={`减少${h.name}出售数量`} className="!min-h-8 w-8 rounded-lg border border-gray-300 bg-gray-50 text-gray-600 disabled:opacity-40" disabled={q <= 1} onClick={() => setQ(q - 1)}>−</button>
+                  <span className="w-8 text-center text-sm font-medium tabular-nums text-gray-800">{q}</span>
+                  <button aria-label={`增加${h.name}出售数量`} className="!min-h-8 w-8 rounded-lg border border-gray-300 bg-gray-50 text-gray-600 disabled:opacity-40" disabled={q >= stock} onClick={() => setQ(q + 1)}>＋</button>
+                  <button aria-label={`${h.name}数量设为最大`} className="!min-h-8 px-2 rounded-lg border border-gray-300 bg-gray-50 text-xs text-gray-600" onClick={() => setQ(stock)}>最大</button>
+                </div>
+                <Btn variant="secondary" className="!py-1.5" onClick={sell}>出售 ×{q}</Btn>
               </div>
             )
           })}
@@ -149,17 +176,17 @@ export default function MarketPanel() {
         </Modal>
       )}
 
-      {confirmSellAll && (() => {
-        const h = HERBS.find((x) => x.id === confirmSellAll)!
-        const after = inventoryValue - convertRate(h) * g.inventory[h.id]
+      {confirmSell && (() => {
+        const h = HERBS.find((x) => x.id === confirmSell.herb)!
+        const after = inventoryValue - convertRate(h) * confirmSell.count
         return (
           <ConfirmOverlay
             title="出售确认"
-            body={`全部出售 ${h.name} ×${g.inventory[h.id]} 后，定额储备折算 ${inventoryValue} → ${after}，不足以缴纳月末定额 ${QUOTA_TARGET} 株当量（还差 ${QUOTA_TARGET - after}）。确定仍要出售？`}
+            body={`出售 ${h.name} ×${confirmSell.count} 后，定额储备折算 ${inventoryValue} → ${after}，不足以缴纳月末定额 ${QUOTA_TARGET} 株当量（还差 ${QUOTA_TARGET - after}）。确定仍要出售？`}
             confirmText="仍要出售"
             tone="danger"
-            onConfirm={() => { act({ type: 'SELL_HERB', herb: h.id, count: g.inventory[h.id] }); setConfirmSellAll(null) }}
-            onCancel={() => setConfirmSellAll(null)}
+            onConfirm={() => { act({ type: 'SELL_HERB', herb: h.id, count: confirmSell.count }); setConfirmSell(null) }}
+            onCancel={() => setConfirmSell(null)}
           />
         )
       })()}

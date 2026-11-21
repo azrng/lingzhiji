@@ -107,6 +107,25 @@ describe('效果边界（encounters.md §3.4/§5）', () => {
     expect(total).toBe(3)
   })
 
+  it('T62 境界内随机：inventory 增量只落境界可种草（高阶现货不再白送，种植阶梯不被抄近道）', () => {
+    // realm 0：穷举种子 200 次，灵雀引路（+2）目标只能是青灵草/凝露花
+    const seen = new Set<string>()
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = createInitialState(seed)
+      applyEncounter(s, ENCOUNTER_BY_ID.sparrowGuide, { next: () => 0.5, state: () => 0 })
+      for (const id of Object.keys(s.inventory)) {
+        if (id !== 'qingling' && s.inventory[id as keyof typeof s.inventory] > 0) seen.add(id)
+      }
+    }
+    expect([...seen].every((id) => id === 'ninglu')).toBe(true) // realm 0 池 = 青灵草/凝露花
+    // realm 3：池扩展到境界内四草
+    const s3 = createInitialState(1)
+    s3.realm = 3
+    applyEncounter(s3, ENCOUNTER_BY_ID.sparrowGuide, { next: () => 0.9, state: () => 0 })
+    const gained = Object.entries(s3.inventory).filter(([id, n]) => n > 0 && !['qingling', 'ninglu'].includes(id)).map(([id]) => id)
+    expect(gained.every((id) => ['ziyun', 'chisui', 'jinling'].includes(id))).toBe(true)
+  })
+
   it('fieldMutation 置随机生长中田保底标记；无生长中田无事', () => {
     const s = createInitialState(1)
     applyEncounter(s, ENCOUNTER_BY_ID.fieldMutation, stubRng(0.5))

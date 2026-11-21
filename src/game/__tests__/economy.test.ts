@@ -1,7 +1,7 @@
 // 经济单测：折算取整方向、欠缴与收田、应急领种谓词（PRD §9/§10/§16.6）
 import { describe, expect, it } from 'vitest'
 import { convertRate, seedPrice } from '../economy'
-import { dispatch, createInitialState } from '../engine'
+import { applyAction, dispatch, createInitialState } from '../engine'
 
 describe('取整方向（economy.md）', () => {
   it('定额折算 ⌊售价÷4⌋ 向下取整', () => {
@@ -250,5 +250,39 @@ describe('可播种随机数', () => {
     const a = run(99)
     const b = run(99)
     expect(a).toEqual(b)
+  })
+})
+
+// 珍品架（T64，T61 P0-a 轻量版）：灵石消耗端——策略符箓效果日限、灵石不足拒绝
+describe('珍品架', () => {
+  it('聚灵符 80 灵石：明日灌注翻倍（同灵泉事件口径）', () => {
+    const s = createInitialState(1)
+    s.resources.stones = 100
+    const r = dispatch(s, { type: 'BUY_CHARM', kind: 'infusion' })
+    expect(r.ok).toBe(true)
+    expect(r.state!.pendingTomorrow.infusionDouble).toBe(true)
+    expect(r.state!.resources.stones).toBe(20)
+  })
+
+  it('润土符 60 灵石：全田 dry 清零并视同已浇灌；灵石不足拒绝且零副作用', () => {
+    const s = createInitialState(1)
+    s.resources.stones = 100
+    s.resources.qi = 5
+    applyAction(s, { type: 'PLANT', fieldId: 1, herb: 'qingling' })
+    s.fields[0].dry = 2
+    const r = dispatch(s, { type: 'BUY_CHARM', kind: 'moisten' })
+    expect(r.ok).toBe(true)
+    expect(r.state!.fields[0].dry).toBe(0)
+    expect(r.state!.wateredToday).toBe(true)
+    expect(r.state!.resources.stones).toBe(40)
+    // 不足：拒绝且水语义不生效
+    const poor = createInitialState(1)
+    poor.resources.qi = 5
+    applyAction(poor, { type: 'PLANT', fieldId: 1, herb: 'qingling' })
+    poor.fields[0].dry = 2
+    const r2 = dispatch(poor, { type: 'BUY_CHARM', kind: 'moisten' })
+    expect(r2.reason).toBe('NO_STONES')
+    expect(r2.state!.fields[0].dry).toBe(2)
+    expect(r2.state!.wateredToday).toBe(false)
   })
 })

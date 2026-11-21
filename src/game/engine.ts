@@ -107,11 +107,14 @@ function applyEffect(s: GameState, eff: EventEffect, rng: Rng): string {
       gainCultivation(s, eff.amount)
       return ''
     case 'inventory': {
-      // 仓库随机灵草增减：减只在有库存时选目标（无事发生）；增从全部灵草随机（走入账收口置图鉴解锁）
+      // 仓库随机灵草增减：减只在有库存时选目标（无事发生）；增从**当前境界可种灵草**随机
+      // （T62 趣味走查 P0-b：高阶现货白送会绕过种植阶梯抄近道——奇遇只送你种得下的草，
+      //   稀有草仍要亲手种；走入账收口置图鉴解锁）
       const owned = Object.entries(s.inventory).filter(([, n]) => n > 0)
-      const pool: [string, number][] = eff.delta < 0 ? owned : Object.entries(s.inventory)
+      const inRealm = HERBS.filter((h) => h.realm <= s.realm).map((h) => [h.id, s.inventory[h.id]] as [string, number])
+      const pool: [string, number][] = eff.delta < 0 ? owned : inRealm
       const t = pool.length ? pick(rng, pool) : null
-      if (!t) return '仓库空空如也'
+      if (!t) return eff.delta < 0 ? '仓库空空如也' : '田里没有你种得下的灵草'
       if (eff.delta > 0) farming.gainHerb(s, t[0] as HerbId, eff.delta)
       else s.inventory[t[0] as keyof typeof s.inventory] += eff.delta
       return ''
@@ -426,7 +429,7 @@ export function applyAction(state: GameState, action: GameAction): { ok: boolean
         err = farming.irrigate(state)
         break
       case 'TUNA':
-        err = farming.tuna(state)
+        err = farming.tuna(state, rng)
         break
       case 'RECLAIM':
         err = farming.reclaim(state, action.fieldId)
@@ -439,6 +442,9 @@ export function applyAction(state: GameState, action: GameAction): { ok: boolean
         break
       case 'BUY_SCROLL':
         err = economy.buyScroll(state)
+        break
+      case 'BUY_CHARM':
+        err = economy.buyCharm(state, action.kind)
         break
       case 'SELL_HERB':
         err = economy.sellHerb(state, action.herb, action.count)

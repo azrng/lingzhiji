@@ -1,5 +1,5 @@
 // 灵田种植（farming.md + farming-depth.md）：全部函数在 engine 已克隆的 draft 上就地修改，返回失败原因或 null
-import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID, MUTATION_RATE, seasonOf } from './constants'
+import { DAILY_AP, FIELD_CAP, HARVEST_PRIME_BONUS, HARVEST_PRIME_CHANCE, HERB_BY_ID, MUTATION_RATE, TUNA_INSPIRED_CHANCE, seasonOf } from './constants'
 import { monthOf } from './economy'
 import { addLog } from './log'
 import { gainCultivation, qiCap } from './progression'
@@ -126,7 +126,7 @@ export function harvest(s: GameState, fieldId: number, rng: Rng): ReasonCode | n
     kind: 'action',
     icon: '🌾',
     title: `收获 · ${def.name}`,
-    text: `+${got} 株，修为 +${expGain}${mutants ? `，✨ 异变灵株 +${mutants}` : ''}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
+    text: `+${got} 株，修为 +${expGain}，市值 ≈${got * def.sell} 灵石${mutants ? `，✨ 异变灵株 +${mutants}` : ''}${prime ? '，灵性涌现 +1 上品' : ''}${nextFert !== field.fertility ? `，地力${nextFert > field.fertility ? '提升' : '下降'}` : ''}`,
   })
   gainCultivation(s, expGain)
   // 清茬但保留田属性（fertility / lastCrop 是田的属性，§5）；lastCrop 更新为本茬
@@ -153,13 +153,16 @@ export function irrigate(s: GameState): ReasonCode | null {
 }
 
 // 修炼吐纳：1 AP，每日 1 次，修为 +1
-export function tuna(s: GameState): ReasonCode | null {
+// 吐纳：1 AP，修为 +1；15% 灵光一闪额外 +1（T61 趣味走查 P1-c：纯固定按钮改带小惊喜的随机）
+export function tuna(s: GameState, rng: Rng): ReasonCode | null {
   if (s.tunaUsedToday) return 'ALREADY_DONE'
   if (s.ap < 1) return 'NO_AP'
   s.ap -= 1
   s.tunaUsedToday = true
-  addLog(s, { kind: 'action', icon: '🧘', title: '修炼吐纳', text: '修为 +1' })
-  gainCultivation(s, 1)
+  const inspired = rng.next() < TUNA_INSPIRED_CHANCE
+  const gain = 1 + (inspired ? 1 : 0)
+  addLog(s, { kind: 'action', icon: '🧘', title: '修炼吐纳', text: `修为 +${gain}${inspired ? '（灵光一闪）' : ''}` })
+  gainCultivation(s, gain)
   return null
 }
 

@@ -48,6 +48,24 @@ describe('灵植堂委托 · 月初生成', () => {
     }
   })
 
+  it('T64 当令优先：第 1 份占走非当令草时，第 2 份必为当令草（realm 0 生发季 = 青灵草）', () => {
+    // realm 0 池 = 青灵草(sprout 适播，当令)/凝露花(grow，非当令)；第 2 份当令池在排除第 1 份后：
+    // 第 1 份=凝露花 → 当令池只剩青灵草 → 第 2 份必为青灵草；第 1 份=青灵草 → 当令池空 → 回落全池凝露花
+    let herb1NingluHerb2 = 0
+    for (const seed of Array.from({ length: 50 }, (_, i) => i + 1)) {
+      const s = month2Start(seed)
+      const [o1, o2] = s.commissions.offers
+      if (o1.herb === 'ninglu') {
+        expect(o2.herb).toBe('qingling')
+        herb1NingluHerb2++
+      } else {
+        expect(o1.herb).toBe('qingling')
+        expect(o2.herb).toBe('ninglu') // 全池回落唯一剩余
+      }
+    }
+    expect(herb1NingluHerb2).toBeGreaterThan(0) // 两种形态都应出现
+  })
+
   it('T58 防哑弹：灵气不足时奖励排除种子档；灵气足够时种子档照常可出', () => {
     // qi 0（连 1 株青灵草都种不下）：50 个种子滚动第 3 月初刷新，任何 offer 都不得是 seed
     for (const seed of Array.from({ length: 50 }, (_, i) => i + 1)) {

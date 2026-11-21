@@ -267,6 +267,7 @@ export type GameAction =
   | { type: 'RECLAIM_LAND' }
   | { type: 'BUY_SEED'; herb: HerbId }
   | { type: 'BUY_SCROLL' }
+  | { type: 'BUY_CHARM'; kind: 'infusion' | 'moisten' } // 珍品架符箓（T64）：灵石消耗端，效果日限
   | { type: 'SELL_HERB'; herb: HerbId; count: number }
   | { type: 'EMERGENCY_SEED' }
   | { type: 'GONGFA_UP' }

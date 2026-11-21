@@ -172,6 +172,22 @@ button:not(:disabled):active { animation: fx-press 0.1s ease-out forwards; }
 }
 .fx-flash-gold { animation: fx-flash-gold 0.55s ease-out 1; }
 
+/* 突破演出（T61 P1-a，T63）：全屏金光呼吸一瞬 + 境界名浮现；2.8s 后由组件定时关闭 */
+@keyframes fx-breakthrough-back {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes fx-breakthrough-text {
+  0% { opacity: 0; transform: scale(0.86); }
+  22% { opacity: 1; transform: scale(1.04); }
+  34% { transform: scale(1); }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.fx-breakthrough-back { animation: fx-breakthrough-back 2.8s ease-out 1 forwards; }
+.fx-breakthrough-text { animation: fx-breakthrough-text 2.8s ease-out 1 forwards; }
+
 /* 减弱动效降级（§3.4）：摇摆 / 按压 / 脉冲 / 氛围层全静；飘字静态显示（fx.ts 按相同时长清理） */
 @media (prefers-reduced-motion: reduce) {
   .fx-sway,
@@ -181,6 +197,8 @@ button:not(:disabled):active { animation: fx-press 0.1s ease-out forwards; }
   .fx-firefly,
   .fx-mature-glow,
   .fx-flash-gold { animation: none; }
+  .fx-breakthrough-back { animation: none; opacity: 0.92; }
+  .fx-breakthrough-text { animation: none; opacity: 1; }
   .fx-firefly { opacity: 0.4; }
   .fx-float-text { animation: none; transform: translate(-50%, -100%); }
   .fx-glow-gold { box-shadow: none; }

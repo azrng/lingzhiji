@@ -179,6 +179,16 @@ export const ENCOUNTER_BY_ID = Object.fromEntries(ENCOUNTERS.map((e) => [e.id, e
 
 // 稀有变异（herb-codex.md §3.2，T56）：收获时逐株独立判定概率；灵田异变奇遇保底至少 1 株
 export const MUTATION_RATE = 0.03
+// 吐纳灵光一闪（T61 趣味走查 P1-c）：额外 +1 修为的概率
+export const TUNA_INSPIRED_CHANCE = 0.15
+
+// 坊市珍品架（T61 趣味走查 P0-a 轻量版，T64）：灵石高频消耗端——中价策略道具，不限购
+// （效果日限天然防囤积：聚灵符=明日灌注翻倍同灵泉事件；润土符=全田缺水计数清零并视同当日浇灌）
+export const CHARMS = {
+  infusion: { name: '聚灵符', price: 80, desc: '明日灌注效果翻倍（1 灵气 = +2 天）' },
+  moisten: { name: '润土符', price: 60, desc: '全田缺水计数清零，今日视同已浇灌' },
+} as const
+export type CharmKind = keyof typeof CHARMS
 
 // ---- 市场事件（market-events.md §3.1，随存档 v8）：月初抽 1 个持续整月、15 日预掷下月（预告=必然）。
 // 行情只动卖出价；种子买入、委托奖励（生成时按表价快照）、定额折算（表价 ÷4）均不受影响。

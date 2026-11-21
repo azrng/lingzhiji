@@ -44,7 +44,7 @@ relations:
 | Action | AP | 前置要点 | 规则归属 |
 |---|---|---|---|
 | PLANT / WATER / HARVEST / IRRIGATE / RECLAIM | 0/1/1/0/2 | 见 farming.md | farming |
-| TUNA（修炼吐纳） | 1 | 每日限 1 次；修为 +1 | progression |
+| TUNA（修炼吐纳） | 1 | 每日限 1 次；修为 +1，15% 灵光一闪额外 +1（T62） | progression |
 | QUIZZ_*（进入/答题/确认结果） | 0 | 资源奖励每现实日 1 次（T49），加练不设限 | quiz |
 | BUY / SELL / EMERGENCY_SEED | 0 | 见 economy.md | economy |
 | GONGFA_UP | 0 | 心得 / 贡献双消耗 | quiz |

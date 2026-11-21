@@ -1,7 +1,7 @@
 // 灵植堂委托（cultivation-commissions.md，M6b）：引擎侧实现（存档 v6 起接真实 GameState）。
 // 月初在 advanceDay 生成选项（境界可播种池 + 确定性 rng，结果入档刷新不重抽）；
 // 接取/交付/放弃为 0 AP 引擎动作。定额储备不在快照单列：视图用 convertRate 对 inventory 求合计（同 QuotaModal 口径）。
-import { COMMISSION_OFFERS, COMMISSION_QUOTA_EQUIV, COMMISSION_SEED_REWARD, HERB_BY_ID, HERBS, QUOTA_TARGET } from './constants'
+import { COMMISSION_OFFERS, COMMISSION_QUOTA_EQUIV, COMMISSION_SEED_REWARD, HERB_BY_ID, HERBS, QUOTA_TARGET, seasonOf } from './constants'
 import { convertRate, monthOf } from './economy'
 import { addLog } from './log'
 import type { Rng } from './rng'
@@ -36,13 +36,21 @@ function rewardOf(s: GameState, herb: HerbId, count: number, rng: Rng): Commissi
   }
 }
 
-// 月初生成选项：当前境界可播种池抽 2 种不同灵草（抽走不放回），数量 ≈COMMISSION_QUOTA_EQUIV 当量（±1 株，下限 2）。
-// id 由「月 + 灵草」构成——每月灵草互异，天然唯一且可读；结果连同 rngState 一起入档
+// 月初生成选项：第一份全池随机；第二份优先**当令池**（当季适播 ∩ 境界池，空则回落全池）
+// ——T61 趣味走查 P2：委托带轻主题（当令草更好种，接取决策多一层物候考量）。
+// 数量 ≈COMMISSION_QUOTA_EQUIV 当量（±1 株，下限 2）；id 由「月 + 灵草」构成，每月互异天然唯一
 export function rollOffers(s: GameState, month: number, rng: Rng): CommissionOffer[] {
-  const pool = HERBS.filter((h) => s.realm >= h.realm)
+  const realmPool = HERBS.filter((h) => s.realm >= h.realm)
+  const seasonal = realmPool.filter((h) => h.allSeason || h.seasons.includes(seasonOf(month)))
   const offers: CommissionOffer[] = []
-  for (let i = 0; i < COMMISSION_OFFERS && pool.length > 0; i++) {
-    const herb = pool.splice(Math.floor(rng.next() * pool.length), 1)[0]
+  const taken = new Set<HerbId>()
+  for (let i = 0; i < COMMISSION_OFFERS; i++) {
+    const preferred = i === 1 ? seasonal : realmPool
+    const pool = preferred.filter((h) => !taken.has(h.id))
+    const final = pool.length ? pool : realmPool.filter((h) => !taken.has(h.id)) // 当令池被占走时回落全池
+    if (!final.length) break
+    const herb = final[Math.floor(rng.next() * final.length)]
+    taken.add(herb.id)
     const count = Math.max(2, Math.ceil(COMMISSION_QUOTA_EQUIV / convertRate(herb)) + (rng.next() < 0.5 ? 0 : 1))
     offers.push({ id: `m${month}-${herb.id}`, herb: herb.id, count, reward: rewardOf(s, herb.id, count, rng) })
   }

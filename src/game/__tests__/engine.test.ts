@@ -215,6 +215,17 @@ describe('事件效果解释器与月度灵潮（core-loop.md §3.4 / PRD §11�
     expect(r.state!.resources.stones).toBe(0)
   })
 
+  it('T62 吐纳灵光一闪：15% 概率修为 +2，否则 +1（固定种子双口径）', () => {
+    const inspiredSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() < 0.15)!
+    const plainSeed = Array.from({ length: 100 }, (_, i) => i).find((i) => createRng(i).next() >= 0.15)!
+    const r1 = dispatch(started(inspiredSeed), { type: 'TUNA' })
+    expect(r1.state!.cultivation).toBe(2)
+    expect(r1.state!.log[0].text).toContain('灵光一闪')
+    const r2 = dispatch(started(plainSeed), { type: 'TUNA' })
+    expect(r2.state!.cultivation).toBe(1)
+    expect(r2.state!.log[0].text).not.toContain('灵光一闪')
+  })
+
   it('阵法波动：进度 −1 钳制 0；灵雀偷食：仓库随机灵草 −1，无库存无事发生', () => {
     let s = started()
     s.resources.qi = 5

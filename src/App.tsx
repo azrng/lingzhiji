@@ -13,6 +13,7 @@ import MeditateModal from './components/MeditateModal'
 import CommissionModal from './components/CommissionModal'
 import WarehouseModal from './components/WarehouseModal'
 import CodexModal from './components/CodexModal'
+import BreakthroughFlash from './components/BreakthroughFlash'
 import DebugPanel from './components/DebugPanel'
 import StartScreen from './screens/StartScreen'
 import Tutorial from './components/Tutorial'
@@ -107,6 +108,7 @@ function GameScreen() {
         </div>
       )}
       <EventToasts />
+      <BreakthroughFlash />
       <TabBanner />
       <DebugPanel />
     </div>

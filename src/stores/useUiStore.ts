@@ -14,6 +14,9 @@ export type Toast = {
   tone?: 'good' | 'bad' | 'gold'
 }
 
+// 突破演出（T63）：境界名（从突破日志标题提取），组件读 game.realm 计算解锁预告
+export type BreakthroughFlash = { realmName: string }
+
 interface UiStore {
   quizOpen: boolean
   marketOpen: boolean
@@ -24,12 +27,14 @@ interface UiStore {
   codexOpen: boolean
   tutorialStep: number // 0 不显示；1-3 引导步骤
   toasts: Toast[]
+  flash: BreakthroughFlash | null // 突破演出（一次一条，后者覆盖）
   setQuizOpen: (v: boolean) => void
   setMarketOpen: (v: boolean) => void
   setSettingsOpen: (v: boolean) => void
   setCommissionOpen: (v: boolean) => void
   setWarehouseOpen: (v: boolean) => void
   setCodexOpen: (v: boolean) => void
+  dismissFlash: () => void
   setMeditateOpen: (v: boolean) => void
   setTutorialStep: (v: number) => void
   pushToasts: (entries: LogEntry[]) => void
@@ -48,12 +53,14 @@ export const useUiStore = create<UiStore>((set) => ({
   codexOpen: false,
   tutorialStep: 0,
   toasts: [],
+  flash: null,
   setQuizOpen: (v) => set({ quizOpen: v }),
   setMarketOpen: (v) => set({ marketOpen: v }),
   setSettingsOpen: (v) => set({ settingsOpen: v }),
   setCommissionOpen: (v) => set({ commissionOpen: v }),
   setWarehouseOpen: (v) => set({ warehouseOpen: v }),
   setCodexOpen: (v) => set({ codexOpen: v }),
+  dismissFlash: () => set({ flash: null }),
   setMeditateOpen: (v) => set({ meditateOpen: v }),
   setTutorialStep: (v) => set({ tutorialStep: v }),
   // 新日志条目转 toast：事件/结算/突破需要即时反馈，普通行动不弹（core-loop.md）
@@ -61,6 +68,12 @@ export const useUiStore = create<UiStore>((set) => ({
     fxForEntries(entries) // 动效在 toast 过滤之前：收获/播种等 action 类不产 toast 但有粒子/飘字（motion-pack.md §3.2）
     playSfxForEntries(entries) // 音效同口径喂全量差量：播种/收获/上品/买卖是 action 类，不产 toast 但映射表要求配音（audio-impl.md §3.4）
     const candidates = entries.filter((e) => e.kind === 'event' || e.kind === 'settle' || e.kind === 'breakthrough')
+    // 突破演出（T63）：日志差量里有突破条目 → 全屏金光（境界名从标题提取，如「突破练气二层」→「练气二层」）
+    const bt = entries.find((e) => e.kind === 'breakthrough')
+    if (bt) {
+      const realmName = bt.title.replace(/^突破/, '').trim()
+      if (realmName) set({ flash: { realmName } })
+    }
     const fresh = candidates.map((e) => ({
       id: seq++,
       evPos: e.evPos,

@@ -22,6 +22,8 @@ last_updated: 2026-11-19
 | lingzhiji | 奇遇系统（三档机缘，T55） | `lingzhiji/encounters.md` | approved | 普通/特殊/传说·机缘三档；特殊档预告绑定必兑现；v1 自动结算 |
 | lingzhiji | 灵植图鉴与稀有变异（T56） | `lingzhiji/herb-codex.md` | approved | 草药 6→15 首批扩容+收获时 3% 变异株+只读图鉴弹层；关键选型按推荐案确认 |
 | lingzhiji | 市场事件与行情周期（T57） | `lingzhiji/market-events.md` | approved | 月度市场事件池（炼丹大会/宗门采购等）+15 日预告下月+按草定向系数；移除旧全局行情事件 |
+| lingzhiji | 入定挂起抉择（T64） | `lingzhiji/encounter-choices.md` | in-review | 入定中特殊/传说奇遇挂起，出关二选一结算；选择式奇遇二期提前；阶段 0 待确认 |
+| lingzhiji | 炼丹坊（T65） | `lingzhiji/alchemy.md` | in-review | 灵草+灵石+灵气→丹药→修为/心得；5 丹方+炉位；灵石消耗端与高阶草价值倍增；阶段 0 待确认 |
 
 ## 跨模块公共约束
 - 背单词为核心学习系统：抽题、判分、奖励口径以 `lingzhiji/v0.1-prd.md` §8 为唯一事实来源。

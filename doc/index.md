@@ -27,3 +27,7 @@ last_updated: 2026-11-19
 | lingzhiji | 灵植图鉴与稀有变异（T56） | 设计 | `design/lingzhiji/herb-codex.md` | approved | DES-LINGZHIJI-CODEX-001 → REQ-LINGZHIJI-CODEX-001 |
 | lingzhiji | 市场事件与行情周期（T57） | 需求 | `requirements/lingzhiji/market-events.md` | approved | REQ-LINGZHIJI-MARKET-001 |
 | lingzhiji | 市场事件与行情周期（T57） | 设计 | `design/lingzhiji/market-events.md` | approved | DES-LINGZHIJI-MARKET-001 → REQ-LINGZHIJI-MARKET-001 |
+| lingzhiji | 入定挂起抉择（选择式奇遇二期，T64） | 需求 | `requirements/lingzhiji/encounter-choices.md` | in-review | REQ-LINGZHIJI-ECHOICE-001 |
+| lingzhiji | 入定挂起抉择（选择式奇遇二期，T64） | 设计 | `design/lingzhiji/encounter-choices.md` | in-review | DES-LINGZHIJI-ECHOICE-001 → REQ-LINGZHIJI-ECHOICE-001 |
+| lingzhiji | 炼丹坊（灵草消耗端与修为倍增线，T65） | 需求 | `requirements/lingzhiji/alchemy.md` | in-review | REQ-LINGZHIJI-ALCHEMY-001 |
+| lingzhiji | 炼丹坊（灵草消耗端与修为倍增线，T65） | 设计 | `design/lingzhiji/alchemy.md` | in-review | DES-LINGZHIJI-ALCHEMY-001 → REQ-LINGZHIJI-ALCHEMY-001 |

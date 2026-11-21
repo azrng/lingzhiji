@@ -33,6 +33,8 @@ relations:
 | lingzhiji | 奇遇系统（三档机遇 / 预告绑定兑现 / 存档 v7） | `lingzhiji/encounters.md` | approved | REQ-LINGZHIJI-ENCOUNTER-001 |
 | lingzhiji | 灵植图鉴与稀有变异（草药 6→15 / 收获 3% 变异 / 图鉴弹层 / 存档 v9） | `lingzhiji/herb-codex.md` | approved | REQ-LINGZHIJI-CODEX-001 |
 | lingzhiji | 市场事件与行情周期（月度事件池 / 15 日预告下月 / 按草定向系数 / 存档 v8） | `lingzhiji/market-events.md` | approved | REQ-LINGZHIJI-MARKET-001 |
+| lingzhiji | 入定挂起抉择（特殊奇遇挂起 / 出关二选一 / 存档 v10 共享窗口） | `lingzhiji/encounter-choices.md` | in-review | REQ-LINGZHIJI-ECHOICE-001 |
+| lingzhiji | 炼丹坊（5 丹方 / 炉位 / 成丹即服 / 存档 v10 共享窗口） | `lingzhiji/alchemy.md` | in-review | REQ-LINGZHIJI-ALCHEMY-001 |
 
 契约：存档契约 CON-LINGZHIJI-SAVE-001 已落地为 `src/game/types.ts` + `src/game/save.ts`（代码为事实来源，历史草案 `doc/contracts/lingzhiji/save-data.md` 已标 superseded）；词库 JSON 索引见 `doc/contracts/lingzhiji.md`。
 
